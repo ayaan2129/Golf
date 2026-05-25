@@ -29,3 +29,29 @@ input {
   margin-top: 3px;
   box-sizing: border-box;
 }
+
+button {
+  width: 100%;
+  margin-top: 15px;
+  padding: 8px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1b5e20;
+}
+
+.results {
+  margin-top: 15px;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.results p {
+  margin: 5px 0;
+}
