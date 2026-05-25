@@ -5,6 +5,84 @@ body {
   padding: 10px;
 }
 
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.login-box {
+  background: white;
+  border: 2px solid #2e7d32;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.login-box h1 {
+  text-align: center;
+  color: #2e7d32;
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.login-box h2 {
+  text-align: center;
+  margin: 0 0 14px;
+  font-size: 16px;
+  color: #555;
+}
+
+.login-box button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.login-box button:hover {
+  background: #1b5e20;
+}
+
+.login-error {
+  margin-top: 10px;
+  color: #b71c1c;
+  font-weight: bold;
+  text-align: center;
+  font-size: 13px;
+}
+
+#logoutBtn {
+  margin-top: 8px;
+  background: #eee;
+  color: #b71c1c;
+}
+
+#logoutBtn:hover {
+  background: #ffd6d6;
+}
+
+.course-notice {
+  margin-top: 12px;
+  padding: 10px;
+  background: #fff3cd;
+  border: 1px solid #e0c970;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
 h1 {
   text-align: center;
   color: #2e7d32;

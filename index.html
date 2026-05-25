@@ -7,7 +7,26 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>Junior Golf Tracker</h1>
+    <div id="loginScreen" class="login-screen">
+      <div class="login-box">
+        <h1>Junior Golf Tracker</h1>
+        <h2>Login</h2>
+
+        <label>Username
+          <input type="text" id="usernameInput" autocomplete="username" />
+        </label>
+
+        <label>Password
+          <input type="password" id="passwordInput" autocomplete="current-password" />
+        </label>
+
+        <button id="loginBtn">Login</button>
+        <p id="loginError" class="login-error"></p>
+      </div>
+    </div>
+
+    <div id="appScreen" style="display:none;">
+      <h1>Junior Golf Tracker</h1>
 
     <div class="setup">
       <h2>Round Setup</h2>
@@ -35,6 +54,7 @@
         <select id="courseSelect">
           <option value="">-- choose --</option>
           <option value="RCGC">RCGC</option>
+          <option value="Tolly">Tolly (coming soon)</option>
           <option value="Other">Other</option>
         </select>
       </label>
@@ -64,6 +84,8 @@
         <p>Back 9: <span id="ciBack9">—</span> yds</p>
       </div>
 
+      <p id="courseNotice" class="course-notice" style="display:none;"></p>
+
       <label>Number of Holes
         <select id="numberOfHoles">
           <option value="18">18 holes</option>
@@ -77,11 +99,13 @@
       <p id="sumScore">Total Score: 0</p>
       <p id="sumDiff">Score vs Par: 0</p>
       <p id="sumPutts">Total Putts: 0</p>
+      <p id="sumChips">Total Chips: 0</p>
       <p id="sumFairway">Fairway Hit %: 0%</p>
       <p id="sumPenalties">Penalties: 0</p>
       <p id="sumMissed">Missed Short Putts: 0</p>
       <button id="saveRoundBtn">Save Round</button>
       <button id="resetBtn">New Round</button>
+      <button id="logoutBtn">Logout</button>
     </div>
 
     <div id="holes"></div>
@@ -105,6 +129,7 @@
     <div class="previous-rounds">
       <h2>Previous Rounds</h2>
       <div id="roundsList"></div>
+    </div>
     </div>
 
     <script src="script.js"></script>

@@ -1,3 +1,44 @@
+const DEMO_USERNAME = "ayaan";
+const DEMO_PASSWORD = "golf123";
+
+function isLoggedIn() {
+  return localStorage.getItem("golfLoggedIn") === "yes";
+}
+
+function showLogin() {
+  document.getElementById("loginScreen").style.display = "";
+  document.getElementById("appScreen").style.display = "none";
+}
+
+function showApp() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appScreen").style.display = "";
+}
+
+document.getElementById("loginBtn").addEventListener("click", function () {
+  const u = document.getElementById("usernameInput").value.trim();
+  const p = document.getElementById("passwordInput").value;
+  if (u === DEMO_USERNAME && p === DEMO_PASSWORD) {
+    localStorage.setItem("golfLoggedIn", "yes");
+    document.getElementById("loginError").textContent = "";
+    document.getElementById("passwordInput").value = "";
+    showApp();
+  } else {
+    document.getElementById("loginError").textContent = "Wrong username or password.";
+  }
+});
+
+document.getElementById("passwordInput").addEventListener("keypress", function (e) {
+  if (e.key === "Enter") document.getElementById("loginBtn").click();
+});
+
+document.getElementById("usernameInput").addEventListener("keypress", function (e) {
+  if (e.key === "Enter") document.getElementById("passwordInput").focus();
+});
+
+if (isLoggedIn()) showApp();
+else showLogin();
+
 const holesContainer = document.getElementById("holes");
 const setupContainer = document.querySelector(".setup");
 
@@ -212,7 +253,21 @@ function applyCourseData() {
   const courseKey = document.getElementById("courseSelect").value;
   const teeKey = document.getElementById("teeSelect").value;
   const courseInfo = document.getElementById("courseInfo");
+  const courseNotice = document.getElementById("courseNotice");
   const course = COURSES[courseKey];
+
+  if (courseKey === "Tolly") {
+    courseInfo.style.display = "none";
+    courseNotice.style.display = "";
+    courseNotice.textContent = "Tolly scorecard coming soon. You can still track shots and enter par by hand.";
+    for (let i = 1; i <= holeCount; i++) {
+      const ds = document.getElementById("holeDistance-" + i);
+      if (ds) ds.textContent = "—";
+    }
+    return;
+  }
+
+  courseNotice.style.display = "none";
 
   if (!course) {
     courseInfo.style.display = "none";
@@ -361,11 +416,13 @@ function getHoleStats(i) {
   const shots = getShotsForHole(i);
   const score = shots.length;
   let putts = 0;
+  let chips = 0;
   let penalties = 0;
   let badShots = 0;
   let goodShots = 0;
   for (const s of shots) {
     if (s.club === "Putter") putts += 1;
+    if (s.club === "Wedge") chips += 1;
     if (s.result === "Penalty") penalties += 1;
     if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
     if (s.quality === "Good shot") goodShots += 1;
@@ -383,6 +440,7 @@ function getHoleStats(i) {
     shots,
     score,
     putts,
+    chips,
     penalties,
     badShots,
     goodShots,
@@ -551,6 +609,7 @@ function updateSummary() {
   let totalScore = 0;
   let totalPar = 0;
   let totalPutts = 0;
+  let totalChips = 0;
   let totalPenalties = 0;
   let fairwaysHit = 0;
   let fairwaysAnswered = 0;
@@ -562,6 +621,7 @@ function updateSummary() {
     totalScore += s.score;
     totalPar += s.par;
     totalPutts += s.putts;
+    totalChips += s.chips;
     totalPenalties += s.penalties;
     fairwaysHit += s.fwHit;
     fairwaysAnswered += s.fwAns;
@@ -579,6 +639,7 @@ function updateSummary() {
   document.getElementById("sumScore").textContent = "Total Score: " + totalScore;
   document.getElementById("sumDiff").textContent = "Score vs Par: " + diffText;
   document.getElementById("sumPutts").textContent = "Total Putts: " + totalPutts;
+  document.getElementById("sumChips").textContent = "Total Chips: " + totalChips;
   document.getElementById("sumFairway").textContent = "Fairway Hit %: " + fairwayPct + "%";
   document.getElementById("sumPenalties").textContent = "Penalties: " + totalPenalties;
   document.getElementById("sumMissed").textContent = "Missed Short Putts: " + missedShortPutts;
@@ -686,6 +747,7 @@ function renderList(id, items, emptyText) {
 function saveRoundToHistory() {
   let totalScore = 0;
   let totalPutts = 0;
+  let totalChips = 0;
   let totalPenalties = 0;
   let fairwaysHit = 0;
   let fairwaysAnswered = 0;
@@ -696,6 +758,7 @@ function saveRoundToHistory() {
     const s = getHoleStats(i);
     totalScore += s.score;
     totalPutts += s.putts;
+    totalChips += s.chips;
     totalPenalties += s.penalties;
     fairwaysHit += s.fwHit;
     fairwaysAnswered += s.fwAns;
@@ -716,6 +779,7 @@ function saveRoundToHistory() {
     totalScore,
     scoreVsPar: coursePar > 0 ? totalScore - coursePar : totalScore,
     totalPutts,
+    totalChips,
     totalPenalties,
     fairwayPct,
     badShots,
@@ -762,6 +826,8 @@ function renderHistory() {
       "Course Par: " + round.coursePar,
       "Total Score: " + round.totalScore,
       "Score vs Par: " + diffText,
+      "Total Putts: " + (round.totalPutts !== undefined ? round.totalPutts : "—"),
+      "Total Chips: " + (round.totalChips !== undefined ? round.totalChips : "—"),
     ];
     for (const line of lines) {
       const p = document.createElement("p");
@@ -954,6 +1020,13 @@ document.getElementById("saveRoundBtn").addEventListener("click", function () {
 document.getElementById("resetBtn").addEventListener("click", function () {
   if (confirm("Start a new round? This will clear all holes (not your previous rounds).")) {
     clearCurrentRound();
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", function () {
+  if (confirm("Log out? Your saved rounds will stay safe.")) {
+    localStorage.removeItem("golfLoggedIn");
+    showLogin();
   }
 });
 
