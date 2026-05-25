@@ -31,13 +31,38 @@
         <input type="text" id="country" />
       </label>
 
-      <label>Course Name
-        <input type="text" id="courseName" />
+      <label>Course
+        <select id="courseSelect">
+          <option value="">-- choose --</option>
+          <option value="RCGC">RCGC</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+
+      <label id="customCourseRow" style="display:none;">Course Name
+        <input type="text" id="customCourseName" />
+      </label>
+
+      <label id="teeRow" style="display:none;">Tee
+        <select id="teeSelect">
+          <option value="">-- choose --</option>
+          <option value="Blue">Blue</option>
+          <option value="White">White</option>
+          <option value="Yellow">Yellow</option>
+          <option value="Red">Red</option>
+        </select>
       </label>
 
       <label>Course Par
         <input type="number" id="coursePar" min="1" />
       </label>
+
+      <div id="courseInfo" class="course-info" style="display:none;">
+        <p>Course Par: <span id="ciCoursePar">—</span></p>
+        <p>Total Distance: <span id="ciTotalDistance">—</span> yds</p>
+        <p>Front 9: <span id="ciFront9">—</span> yds</p>
+        <p>Back 9: <span id="ciBack9">—</span> yds</p>
+      </div>
 
       <label>Number of Holes
         <select id="numberOfHoles">

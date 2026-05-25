@@ -6,12 +6,34 @@ const SETUP_FIELDS = [
   "roundDate",
   "playedIn",
   "country",
-  "courseName",
+  "courseSelect",
+  "customCourseName",
+  "teeSelect",
   "coursePar",
   "numberOfHoles",
 ];
 
+const COURSES = {
+  RCGC: {
+    pars: [4, 3, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4],
+    tees: {
+      Blue: [359, 161, 442, 570, 410, 425, 421, 401, 429, 439, 451, 394, 233, 426, 503, 354, 382, 437],
+      White: [350, 150, 388, 521, 396, 420, 388, 368, 396, 426, 422, 341, 196, 404, 494, 347, 367, 429],
+      Yellow: [309, 142, 368, 463, 382, 377, 333, 352, 316, 371, 359, 326, 157, 348, 409, 329, 357, 367],
+      Red: [305, 137, 332, 451, 352, 330, 299, 326, 314, 367, 351, 283, 126, 323, 403, 327, 347, 363],
+    },
+  },
+};
+
+const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
+
 let holeCount = 18;
+
+function sumArray(arr) {
+  let total = 0;
+  for (const x of arr) total += x;
+  return total;
+}
 
 function makeHoleCard(n) {
   return `
@@ -21,6 +43,8 @@ function makeHoleCard(n) {
       <label>Par
         <input type="number" id="par-${n}" min="1" />
       </label>
+
+      <p class="hole-distance">Distance: <span id="holeDistance-${n}">—</span> yds</p>
 
       <h3>Shots</h3>
       <div class="shots-list" id="shotsList-${n}"></div>
@@ -51,6 +75,8 @@ function makeHoleCard(n) {
           <option value="No">No</option>
         </select>
       </label>
+
+      <div class="hole-analysis" id="holeAnalysis-${n}"></div>
     </div>
   `;
 }
@@ -83,7 +109,7 @@ function makeShotCard(shotNumber) {
       <label>Lie
         <select data-shot-field="lie">
           <option value="">-- choose --</option>
-          <option value="Tee box">Tee box</option>
+          <option value="Tee">Tee</option>
           <option value="Fairway">Fairway</option>
           <option value="Rough">Rough</option>
           <option value="Bunker">Bunker</option>
@@ -135,6 +161,12 @@ function buildHoles() {
   holesContainer.innerHTML = "";
   for (let i = 1; i <= holeCount; i++) {
     holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
+    if ((i === 5 || i === 10 || i === 15) && i <= holeCount) {
+      holesContainer.insertAdjacentHTML(
+        "beforeend",
+        `<div class="trend-check" id="trendCheck-${i}" style="display:none;"><h3>Trend Check after Hole ${i}</h3><div class="trend-lines"></div></div>`
+      );
+    }
   }
 }
 
@@ -167,16 +199,68 @@ function getShotsForHole(holeNum) {
   return shots;
 }
 
-function toggleCountryRow() {
+function toggleSetupRows() {
+  const course = document.getElementById("courseSelect").value;
+  document.getElementById("customCourseRow").style.display = course === "Other" ? "" : "none";
+  document.getElementById("teeRow").style.display = COURSES[course] ? "" : "none";
+
   const playedIn = document.getElementById("playedIn").value;
-  document.getElementById("countryRow").style.display =
-    playedIn === "Outside India" ? "" : "none";
+  document.getElementById("countryRow").style.display = playedIn === "Outside India" ? "" : "none";
+}
+
+function applyCourseData() {
+  const courseKey = document.getElementById("courseSelect").value;
+  const teeKey = document.getElementById("teeSelect").value;
+  const courseInfo = document.getElementById("courseInfo");
+  const course = COURSES[courseKey];
+
+  if (!course) {
+    courseInfo.style.display = "none";
+    for (let i = 1; i <= holeCount; i++) {
+      const ds = document.getElementById("holeDistance-" + i);
+      if (ds) ds.textContent = "—";
+    }
+    return;
+  }
+
+  const totalPar = sumArray(course.pars);
+  document.getElementById("coursePar").value = totalPar;
+
+  for (let i = 1; i <= Math.min(course.pars.length, holeCount); i++) {
+    const parEl = document.getElementById("par-" + i);
+    if (parEl) parEl.value = course.pars[i - 1];
+  }
+
+  if (teeKey && course.tees[teeKey]) {
+    const distances = course.tees[teeKey];
+    const total = sumArray(distances);
+    const front9 = sumArray(distances.slice(0, 9));
+    const back9 = sumArray(distances.slice(9, 18));
+
+    document.getElementById("ciCoursePar").textContent = totalPar;
+    document.getElementById("ciTotalDistance").textContent = total;
+    document.getElementById("ciFront9").textContent = front9;
+    document.getElementById("ciBack9").textContent = back9;
+    courseInfo.style.display = "";
+
+    for (let i = 1; i <= Math.min(distances.length, holeCount); i++) {
+      const ds = document.getElementById("holeDistance-" + i);
+      if (ds) ds.textContent = distances[i - 1];
+    }
+  } else {
+    courseInfo.style.display = "none";
+    for (let i = 1; i <= holeCount; i++) {
+      const ds = document.getElementById("holeDistance-" + i);
+      if (ds) ds.textContent = "—";
+    }
+  }
 }
 
 function saveAll() {
   const data = { setup: {}, holes: {} };
   for (const f of SETUP_FIELDS) {
-    data.setup[f] = document.getElementById(f).value;
+    const el = document.getElementById(f);
+    if (el) data.setup[f] = el.value;
   }
   for (let i = 1; i <= holeCount; i++) {
     data.holes[i] = {
@@ -210,7 +294,7 @@ function loadAll() {
       holeCount = Number(stored);
       buildHoles();
     }
-    toggleCountryRow();
+    toggleSetupRows();
   }
 
   if (data.holes) {
@@ -251,6 +335,13 @@ function getCoursePar() {
   return Number(document.getElementById("coursePar").value) || 0;
 }
 
+function getCourseName() {
+  const sel = document.getElementById("courseSelect").value;
+  if (sel === "RCGC") return "RCGC";
+  if (sel === "Other") return document.getElementById("customCourseName").value || "Other course";
+  return "";
+}
+
 function getCountry() {
   const playedIn = document.getElementById("playedIn").value;
   if (playedIn === "India") return "India";
@@ -265,6 +356,197 @@ function getTotalScore() {
   return total;
 }
 
+function getHoleStats(i) {
+  const par = Number(document.getElementById("par-" + i).value) || 0;
+  const shots = getShotsForHole(i);
+  const score = shots.length;
+  let putts = 0;
+  let penalties = 0;
+  let badShots = 0;
+  let goodShots = 0;
+  for (const s of shots) {
+    if (s.club === "Putter") putts += 1;
+    if (s.result === "Penalty") penalties += 1;
+    if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
+    if (s.quality === "Good shot") goodShots += 1;
+  }
+  let fwHit = 0;
+  let fwAns = 0;
+  if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
+    fwAns = 1;
+    if (shots[0].result === "On fairway") fwHit = 1;
+  }
+  const firstPuttResult = document.getElementById("firstPuttResult-" + i).value;
+  const missedShort = document.getElementById("missedShortPutt-" + i).value === "Yes";
+  return {
+    par,
+    shots,
+    score,
+    putts,
+    penalties,
+    badShots,
+    goodShots,
+    fwHit,
+    fwAns,
+    firstPuttResult,
+    missedShort,
+  };
+}
+
+function analyzeHole(i) {
+  const s = getHoleStats(i);
+  if (s.score === 0) return null;
+
+  let mistake;
+  if (s.penalties > 0) mistake = s.penalties + " penalty stroke(s).";
+  else if (s.missedShort) mistake = "Missed a short putt.";
+  else if (s.putts >= 3) mistake = "3-putt on this hole.";
+  else if (s.badShots > 0) {
+    const firstBad = s.shots.find(function (sh) { return BAD_QUALITIES.indexOf(sh.quality) !== -1; });
+    mistake = (firstBad ? firstBad.quality : "Mishit") + " hurt your hole.";
+  } else if (s.par > 0 && s.score > s.par + 1) mistake = "Score was " + (s.score - s.par) + " over par.";
+  else mistake = "No major mistake.";
+
+  let wentWell;
+  const hitFairway = s.shots.length > 0 && s.shots[0].lie === "Tee" && s.shots[0].result === "On fairway";
+  const reachedGreen = s.shots.some(function (sh) { return sh.result === "On green"; });
+  if (s.par > 0 && s.score <= s.par) wentWell = "Made par or better.";
+  else if (s.firstPuttResult === "Holed") wentWell = "Holed your first putt.";
+  else if (hitFairway) wentWell = "Hit the fairway off the tee.";
+  else if (reachedGreen) wentWell = "Reached the green.";
+  else if (s.goodShots > 0) wentWell = s.goodShots + " good shot(s).";
+  else wentWell = "Keep your head up.";
+
+  let practise;
+  if (s.missedShort || s.putts >= 3) practise = "Short putting.";
+  else if (s.penalties > 0) practise = "Course management.";
+  else if (s.badShots > 0) practise = "Ball striking.";
+  else if (s.par >= 4 && !hitFairway && s.shots.length > 0 && s.shots[0].lie === "Tee") practise = "Tee shot accuracy.";
+  else if (s.firstPuttResult === "Short" || s.firstPuttResult === "Long") practise = "Lag putting.";
+  else if (s.par > 0 && s.score > s.par + 1) practise = "Approach shots.";
+  else practise = "Keep doing what you're doing.";
+
+  return { mistake, wentWell, practise };
+}
+
+function renderHoleAnalyses() {
+  for (let i = 1; i <= holeCount; i++) {
+    const div = document.getElementById("holeAnalysis-" + i);
+    if (!div) continue;
+    div.innerHTML = "";
+    const a = analyzeHole(i);
+    if (!a) continue;
+    const lines = [
+      "Main mistake: " + a.mistake,
+      "What went well: " + a.wentWell,
+      "Practise: " + a.practise,
+    ];
+    for (const line of lines) {
+      const p = document.createElement("p");
+      p.textContent = line;
+      div.appendChild(p);
+    }
+  }
+}
+
+function getTrendLines(throughHole) {
+  const half = Math.floor(throughHole / 2);
+
+  function avg(holes, key) {
+    if (holes.length === 0) return null;
+    let total = 0;
+    for (const h of holes) total += h[key];
+    return total / holes.length;
+  }
+  function avgPct(holes, hitKey, ansKey) {
+    let hit = 0;
+    let ans = 0;
+    for (const h of holes) {
+      hit += h[hitKey];
+      ans += h[ansKey];
+    }
+    if (ans === 0) return null;
+    return hit / ans;
+  }
+
+  const allStats = [];
+  for (let i = 1; i <= throughHole; i++) {
+    const s = getHoleStats(i);
+    if (s.score > 0) allStats.push(s);
+  }
+  if (allStats.length < 2) return ["Play more holes for a trend check."];
+
+  const first = [];
+  const second = [];
+  for (const st of allStats) {
+    if (st === undefined) continue;
+  }
+  for (let i = 1; i <= throughHole; i++) {
+    const s = getHoleStats(i);
+    if (s.score === 0) continue;
+    if (i <= half) first.push(s);
+    else second.push(s);
+  }
+  if (first.length === 0 || second.length === 0) return ["Play more holes for a trend check."];
+
+  const lines = [];
+
+  const firstBad = avg(first, "badShots");
+  const secondBad = avg(second, "badShots");
+  if (firstBad !== null && secondBad !== null) {
+    if (secondBad > firstBad + 0.5) lines.push("Misses are increasing - take a breath.");
+    else if (secondBad < firstBad - 0.5) lines.push("Fewer misses than earlier - great rhythm.");
+  }
+
+  const firstPutts = avg(first, "putts");
+  const secondPutts = avg(second, "putts");
+  if (firstPutts !== null && secondPutts !== null) {
+    if (secondPutts > firstPutts + 0.4) lines.push("Putting is getting worse.");
+    else if (secondPutts < firstPutts - 0.4) lines.push("Putting is improving.");
+  }
+
+  const firstFw = avgPct(first, "fwHit", "fwAns");
+  const secondFw = avgPct(second, "fwHit", "fwAns");
+  if (firstFw !== null && secondFw !== null) {
+    if (secondFw > firstFw + 0.2) lines.push("Tee shots are improving.");
+    else if (secondFw < firstFw - 0.2) lines.push("Tee shots getting less accurate.");
+  }
+
+  const firstScore = avg(first, "score");
+  const secondScore = avg(second, "score");
+  if (firstScore !== null && secondScore !== null) {
+    if (secondScore > firstScore + 0.8) lines.push("Fatigue may be showing - score per hole going up.");
+  }
+
+  if (lines.length === 0) lines.push("Steady performance - keep going.");
+  return lines;
+}
+
+function renderTrendChecks() {
+  for (const h of [5, 10, 15]) {
+    if (h > holeCount) continue;
+    const wrap = document.getElementById("trendCheck-" + h);
+    if (!wrap) continue;
+    let hasData = false;
+    for (let i = 1; i <= h; i++) {
+      if (getShotsForHole(i).length > 0) { hasData = true; break; }
+    }
+    if (!hasData) {
+      wrap.style.display = "none";
+      continue;
+    }
+    wrap.style.display = "";
+    const linesDiv = wrap.querySelector(".trend-lines");
+    linesDiv.innerHTML = "";
+    const lines = getTrendLines(h);
+    for (const line of lines) {
+      const p = document.createElement("p");
+      p.textContent = line;
+      linesDiv.appendChild(p);
+    }
+  }
+}
+
 function updateSummary() {
   let totalScore = 0;
   let totalPar = 0;
@@ -275,30 +557,15 @@ function updateSummary() {
   let missedShortPutts = 0;
 
   for (let i = 1; i <= holeCount; i++) {
-    const par = Number(document.getElementById("par-" + i).value) || 0;
-    const shots = getShotsForHole(i);
-    const score = shots.length;
-
-    document.getElementById("holeScore-" + i).textContent = score;
-
-    totalScore += score;
-    totalPar += par;
-
-    for (const shot of shots) {
-      if (shot.club === "Putter") totalPutts += 1;
-      if (shot.result === "Penalty") totalPenalties += 1;
-    }
-
-    if (par >= 4 && shots.length > 0) {
-      const first = shots[0];
-      if (first.lie === "Tee box" && first.result) {
-        if (first.result === "On fairway") fairwaysHit += 1;
-        fairwaysAnswered += 1;
-      }
-    }
-
-    const missed = document.getElementById("missedShortPutt-" + i).value;
-    if (missed === "Yes") missedShortPutts += 1;
+    const s = getHoleStats(i);
+    document.getElementById("holeScore-" + i).textContent = s.score;
+    totalScore += s.score;
+    totalPar += s.par;
+    totalPutts += s.putts;
+    totalPenalties += s.penalties;
+    fairwaysHit += s.fwHit;
+    fairwaysAnswered += s.fwAns;
+    if (s.missedShort) missedShortPutts += 1;
   }
 
   const coursePar = getCoursePar();
@@ -307,9 +574,7 @@ function updateSummary() {
   const diffText = diff > 0 ? "+" + diff : "" + diff;
 
   let fairwayPct = 0;
-  if (fairwaysAnswered > 0) {
-    fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
-  }
+  if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
 
   document.getElementById("sumScore").textContent = "Total Score: " + totalScore;
   document.getElementById("sumDiff").textContent = "Score vs Par: " + diffText;
@@ -336,52 +601,29 @@ function analyze() {
   let par3Count = 0;
   let scoredHoles = 0;
 
-  const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
-
   for (let i = 1; i <= holeCount; i++) {
-    const par = Number(document.getElementById("par-" + i).value) || 0;
-    const shots = getShotsForHole(i);
-    const score = shots.length;
-
-    if (score > 0) scoredHoles += 1;
-    totalScore += score;
-
-    let putts = 0;
-    for (const shot of shots) {
-      if (shot.club === "Putter") putts += 1;
-      if (shot.result === "Penalty") totalPenalties += 1;
-      if (BAD_QUALITIES.indexOf(shot.quality) !== -1) badShots += 1;
-      if (shot.quality === "Good shot") goodShots += 1;
-    }
-    totalPutts += putts;
-    if (putts >= 3) threePutts += 1;
-
-    if (par >= 4 && shots.length > 0) {
-      const first = shots[0];
-      if (first.lie === "Tee box" && first.result) {
-        if (first.result === "On fairway") fairwaysHit += 1;
-        fairwaysAnswered += 1;
-      }
-    }
-
-    const fpr = document.getElementById("firstPuttResult-" + i).value;
-    if (fpr === "Short") firstPuttShort += 1;
-    if (fpr === "Long") firstPuttLong += 1;
-
-    const missed = document.getElementById("missedShortPutt-" + i).value;
-    if (missed === "Yes") missedShortPutts += 1;
-
-    if (par === 3 && score > 0) {
-      par3Score += score;
-      par3ParTotal += par;
+    const s = getHoleStats(i);
+    if (s.score > 0) scoredHoles += 1;
+    totalScore += s.score;
+    totalPutts += s.putts;
+    totalPenalties += s.penalties;
+    fairwaysHit += s.fwHit;
+    fairwaysAnswered += s.fwAns;
+    badShots += s.badShots;
+    goodShots += s.goodShots;
+    if (s.putts >= 3) threePutts += 1;
+    if (s.firstPuttResult === "Short") firstPuttShort += 1;
+    if (s.firstPuttResult === "Long") firstPuttLong += 1;
+    if (s.missedShort) missedShortPutts += 1;
+    if (s.par === 3 && s.score > 0) {
+      par3Score += s.score;
+      par3ParTotal += s.par;
       par3Count += 1;
     }
   }
 
   let fairwayPct = null;
-  if (fairwaysAnswered > 0) {
-    fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
-  }
+  if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
 
   const mistakes = [];
   if (totalPenalties >= 3) mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
@@ -394,9 +636,7 @@ function analyze() {
 
   const strengths = [];
   if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
-  if (scoredHoles > 0 && totalPutts / scoredHoles < 2) {
-    strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
-  }
+  if (scoredHoles > 0 && totalPutts / scoredHoles < 2) strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
   if (totalPenalties === 0 && scoredHoles >= Math.min(holeCount, 9)) strengths.push("Penalty-free round.");
   if (par3Count >= 2 && par3Score <= par3ParTotal + 1) strengths.push("Strong scoring on par 3s.");
   if (goodShots >= 8) strengths.push("Lots of good shots (" + goodShots + ").");
@@ -413,14 +653,12 @@ function analyze() {
   if (threePutts >= 3) weaknesses.push({ score: threePutts * 18, text: "Your biggest weakness today was 3-putting because you had " + threePutts + " three-putts. Practise lag putting from 30+ feet." });
   if (totalPenalties >= 3) weaknesses.push({ score: totalPenalties * 15, text: "Your biggest weakness today was penalties because you lost " + totalPenalties + " strokes. Play safer off the tee." });
   if (fairwayPct !== null && fairwayPct < 50) weaknesses.push({ score: 50 - fairwayPct, text: "Your biggest weakness today was driving accuracy because you only hit " + fairwayPct + "% of fairways. Practise tee shots with a target." });
-  if (badShots >= 5) weaknesses.push({ score: badShots * 10, text: "Your biggest weakness today was ball striking - " + badShots + " tops, duffs, slices, or hooks. Spend more time on the range working on clean contact." });
+  if (badShots >= 5) weaknesses.push({ score: badShots * 10, text: "Your biggest weakness today was ball striking - " + badShots + " tops/duffs/slices/hooks. Spend more time on the range." });
 
   let topWeakness;
-  if (scoredHoles < 5) {
-    topWeakness = "Fill in shots for at least 5 holes to get your coach feedback.";
-  } else if (weaknesses.length === 0) {
-    topWeakness = "No big weakness today - well played!";
-  } else {
+  if (scoredHoles < 5) topWeakness = "Fill in shots for at least 5 holes to get your coach feedback.";
+  else if (weaknesses.length === 0) topWeakness = "No big weakness today - well played!";
+  else {
     weaknesses.sort(function (a, b) { return b.score - a.score; });
     topWeakness = weaknesses[0].text;
   }
@@ -429,6 +667,9 @@ function analyze() {
   renderList("practiceList", practice, "Play more rounds to find what to practise.");
   renderList("strengthsList", strengths, "Fill in more holes to see your strengths.");
   document.getElementById("topWeakness").textContent = topWeakness;
+
+  renderHoleAnalyses();
+  renderTrendChecks();
 }
 
 function renderList(id, items, emptyText) {
@@ -443,16 +684,45 @@ function renderList(id, items, emptyText) {
 }
 
 function saveRoundToHistory() {
+  let totalScore = 0;
+  let totalPutts = 0;
+  let totalPenalties = 0;
+  let fairwaysHit = 0;
+  let fairwaysAnswered = 0;
+  let missedShortPutts = 0;
+  let badShots = 0;
+
+  for (let i = 1; i <= holeCount; i++) {
+    const s = getHoleStats(i);
+    totalScore += s.score;
+    totalPutts += s.putts;
+    totalPenalties += s.penalties;
+    fairwaysHit += s.fwHit;
+    fairwaysAnswered += s.fwAns;
+    badShots += s.badShots;
+    if (s.missedShort) missedShortPutts += 1;
+  }
+
+  const coursePar = getCoursePar();
+  const fairwayPct = fairwaysAnswered > 0 ? Math.round((fairwaysHit / fairwaysAnswered) * 100) : null;
+
   const round = {
     playerName: document.getElementById("playerName").value || "Unknown",
     date: document.getElementById("roundDate").value || "",
     country: getCountry(),
-    courseName: document.getElementById("courseName").value || "Unknown course",
-    coursePar: getCoursePar(),
-    totalScore: getTotalScore(),
+    courseName: getCourseName() || "Unknown course",
+    tee: document.getElementById("teeSelect").value || "",
+    coursePar,
+    totalScore,
+    scoreVsPar: coursePar > 0 ? totalScore - coursePar : totalScore,
+    totalPutts,
+    totalPenalties,
+    fairwayPct,
+    badShots,
+    missedShortPutts,
     holes: holeCount,
+    savedAt: new Date().toISOString(),
   };
-  round.scoreVsPar = round.coursePar > 0 ? round.totalScore - round.coursePar : round.totalScore;
 
   const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
   history.push(round);
@@ -465,6 +735,13 @@ function renderHistory() {
   list.innerHTML = "";
   const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
 
+  if (history.length >= 5) {
+    list.appendChild(makeImprovementBanner(history));
+  }
+
+  const comparisons = makeCourseComparisons(history);
+  for (const c of comparisons) list.appendChild(c);
+
   if (history.length === 0) {
     const p = document.createElement("p");
     p.textContent = "No rounds saved yet.";
@@ -472,7 +749,8 @@ function renderHistory() {
     return;
   }
 
-  for (const round of history) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const round = history[i];
     const card = document.createElement("div");
     card.className = "round-card";
     const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
@@ -480,7 +758,7 @@ function renderHistory() {
       "Player: " + round.playerName,
       "Date: " + (round.date || "—"),
       "Country: " + round.country,
-      "Course: " + round.courseName,
+      "Course: " + round.courseName + (round.tee ? " (" + round.tee + " tees)" : ""),
       "Course Par: " + round.coursePar,
       "Total Score: " + round.totalScore,
       "Score vs Par: " + diffText,
@@ -494,16 +772,127 @@ function renderHistory() {
   }
 }
 
+function makeImprovementBanner(history) {
+  const div = document.createElement("div");
+  div.className = "improvement-banner";
+  const h = document.createElement("h3");
+  h.textContent = "After " + history.length + " rounds";
+  div.appendChild(h);
+
+  const first = history[0];
+  const last = history[history.length - 1];
+  const change = last.totalScore - first.totalScore;
+
+  let msg;
+  if (first.coursePar && last.coursePar) {
+    const firstDiff = first.totalScore - first.coursePar;
+    const lastDiff = last.totalScore - last.coursePar;
+    const diffChange = lastDiff - firstDiff;
+    if (diffChange < 0) msg = "Your game has IMPROVED. Score vs par changed from " + (firstDiff >= 0 ? "+" + firstDiff : firstDiff) + " to " + (lastDiff >= 0 ? "+" + lastDiff : lastDiff) + " - " + Math.abs(diffChange) + " strokes better.";
+    else if (diffChange > 0) msg = "Your scores have gone UP by " + diffChange + " strokes vs par. Time to focus on weak areas.";
+    else msg = "Your score is steady at " + (firstDiff >= 0 ? "+" + firstDiff : firstDiff) + " vs par.";
+  } else if (change < 0) msg = "Your game has IMPROVED. First round: " + first.totalScore + ". Latest: " + last.totalScore + ". Drop of " + Math.abs(change) + " strokes.";
+  else if (change > 0) msg = "Your scores have gone UP. First: " + first.totalScore + ". Latest: " + last.totalScore + ".";
+  else msg = "Your score is steady at " + last.totalScore + ".";
+
+  const p = document.createElement("p");
+  p.textContent = msg;
+  div.appendChild(p);
+  return div;
+}
+
+function makeCourseComparisons(history) {
+  const byCourse = {};
+  for (const r of history) {
+    if (!byCourse[r.courseName]) byCourse[r.courseName] = [];
+    byCourse[r.courseName].push(r);
+  }
+  const cards = [];
+  for (const course in byCourse) {
+    const rounds = byCourse[course];
+    if (rounds.length < 2) continue;
+    const r1 = rounds[rounds.length - 2];
+    const r2 = rounds[rounds.length - 1];
+    cards.push(buildComparisonCard(course, r1, r2));
+  }
+  return cards;
+}
+
+function buildComparisonCard(course, r1, r2) {
+  const div = document.createElement("div");
+  div.className = "comparison-card";
+  const h = document.createElement("h3");
+  h.textContent = course + " - Last 2 Rounds Comparison";
+  div.appendChild(h);
+
+  const strengths = [];
+  const weaknesses = [];
+
+  const scoreChange = r2.totalScore - r1.totalScore;
+  if (scoreChange < 0) strengths.push("Score dropped by " + Math.abs(scoreChange) + " strokes.");
+  else if (scoreChange > 0) weaknesses.push("Score went up by " + scoreChange + " strokes.");
+
+  if (r2.totalPutts !== undefined && r1.totalPutts !== undefined) {
+    const puttChange = r2.totalPutts - r1.totalPutts;
+    if (puttChange < 0) strengths.push("Putting improved (" + Math.abs(puttChange) + " fewer putts).");
+    else if (puttChange > 0) weaknesses.push("Putting got worse (" + puttChange + " more putts).");
+  }
+
+  if (r2.totalPenalties !== undefined && r1.totalPenalties !== undefined) {
+    const penChange = r2.totalPenalties - r1.totalPenalties;
+    if (penChange < 0) strengths.push("Fewer penalties this round.");
+    else if (penChange > 0) weaknesses.push("More penalties this round.");
+  }
+
+  if (r2.fairwayPct != null && r1.fairwayPct != null) {
+    const fwChange = r2.fairwayPct - r1.fairwayPct;
+    if (fwChange >= 5) strengths.push("Fairway accuracy up " + fwChange + "%.");
+    else if (fwChange <= -5) weaknesses.push("Fairway accuracy down " + Math.abs(fwChange) + "%.");
+  }
+
+  if (r2.missedShortPutts !== undefined && r1.missedShortPutts !== undefined) {
+    const msChange = r2.missedShortPutts - r1.missedShortPutts;
+    if (msChange < 0) strengths.push("Fewer missed short putts.");
+    else if (msChange > 0) weaknesses.push("More missed short putts.");
+  }
+
+  function addSection(title, items, fallback) {
+    const h4 = document.createElement("h4");
+    h4.textContent = title;
+    div.appendChild(h4);
+    if (items.length === 0) {
+      const p = document.createElement("p");
+      p.textContent = fallback;
+      div.appendChild(p);
+      return;
+    }
+    const ul = document.createElement("ul");
+    for (const it of items) {
+      const li = document.createElement("li");
+      li.textContent = it;
+      ul.appendChild(li);
+    }
+    div.appendChild(ul);
+  }
+
+  addSection("Strengths", strengths, "No clear strengths yet.");
+  addSection("Weaknesses", weaknesses, "No clear weaknesses.");
+
+  return div;
+}
+
 function clearCurrentRound() {
   for (const f of SETUP_FIELDS) {
     const el = document.getElementById(f);
+    if (!el) continue;
     if (f === "numberOfHoles") el.value = "18";
     else if (f === "playedIn") el.value = "India";
     else el.value = "";
   }
   holeCount = 18;
   buildHoles();
-  toggleCountryRow();
+  toggleSetupRows();
+  applyCourseData();
   localStorage.removeItem("golfRound");
   updateSummary();
   analyze();
@@ -522,7 +911,11 @@ function onSetupChange(event) {
     loadAll();
   }
   if (event.target.id === "playedIn") {
-    toggleCountryRow();
+    toggleSetupRows();
+  }
+  if (event.target.id === "courseSelect" || event.target.id === "teeSelect") {
+    toggleSetupRows();
+    applyCourseData();
   }
   handleChange();
 }
@@ -566,6 +959,8 @@ document.getElementById("resetBtn").addEventListener("click", function () {
 
 buildHoles();
 loadAll();
+toggleSetupRows();
+applyCourseData();
 updateSummary();
 analyze();
 renderHistory();

@@ -113,6 +113,106 @@ h1 {
   text-align: center;
 }
 
+.hole-distance {
+  margin: 6px 0;
+  font-size: 13px;
+  color: #555;
+  text-align: center;
+}
+
+.course-info {
+  background: #f0f7ff;
+  border: 1px solid #90c2f5;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.course-info p {
+  margin: 3px 0;
+}
+
+.hole-analysis {
+  margin-top: 12px;
+  padding: 8px;
+  background: #fff8d6;
+  border: 1px solid #e0c970;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.hole-analysis p {
+  margin: 3px 0;
+}
+
+.trend-check {
+  background: #e6f4ff;
+  border: 2px solid #1976d2;
+  border-radius: 10px;
+  padding: 12px;
+  width: 100%;
+  max-width: 320px;
+  margin: 15px auto;
+  box-sizing: border-box;
+}
+
+.trend-check h3 {
+  margin: 0 0 8px;
+  color: #1565c0;
+  text-align: center;
+  font-size: 15px;
+}
+
+.trend-check p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.improvement-banner {
+  background: #fff;
+  border: 2px solid #c5a200;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 0 12px;
+}
+
+.improvement-banner h3 {
+  margin: 0 0 6px;
+  color: #8a6d00;
+}
+
+.improvement-banner p {
+  margin: 4px 0;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.comparison-card {
+  background: #fff;
+  border: 2px solid #1976d2;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 0 12px;
+}
+
+.comparison-card h3 {
+  margin: 0 0 6px;
+  color: #1565c0;
+  font-size: 15px;
+}
+
+.comparison-card h4 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.comparison-card ul {
+  margin: 4px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
 .summary {
   background: #2e7d32;
   color: white;
