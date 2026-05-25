@@ -35,6 +35,23 @@ h1 {
   font-weight: bold;
 }
 
+.summary button {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  background: white;
+  color: #2e7d32;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.summary button:hover {
+  background: #f0fff0;
+}
+
 .hole-card {
   background: white;
   border: 2px solid #2e7d32;

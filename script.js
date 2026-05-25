@@ -1,5 +1,19 @@
 const holesContainer = document.getElementById("holes");
 
+const FIELDS = [
+  "par",
+  "score",
+  "putts",
+  "shot1Distance",
+  "shot1Direction",
+  "fairwayHit",
+  "chipDistance",
+  "chipResult",
+  "penalties",
+  "firstPuttResult",
+  "missedShortPutt",
+];
+
 function makeHoleCard(n) {
   return `
     <div class="hole-card">
@@ -86,6 +100,27 @@ for (let i = 1; i <= 18; i++) {
   holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
 }
 
+function saveAll() {
+  const data = {};
+  for (let i = 1; i <= 18; i++) {
+    for (const field of FIELDS) {
+      const key = field + "-" + i;
+      data[key] = document.getElementById(key).value;
+    }
+  }
+  localStorage.setItem("golfRound", JSON.stringify(data));
+}
+
+function loadAll() {
+  const raw = localStorage.getItem("golfRound");
+  if (!raw) return;
+  const data = JSON.parse(raw);
+  for (const key in data) {
+    const el = document.getElementById(key);
+    if (el) el.value = data[key];
+  }
+}
+
 function updateSummary() {
   let totalScore = 0;
   let totalPar = 0;
@@ -136,7 +171,25 @@ function updateSummary() {
   document.getElementById("sumMissed").textContent = "Missed Short Putts: " + missedShortPutts;
 }
 
-holesContainer.addEventListener("input", updateSummary);
-holesContainer.addEventListener("change", updateSummary);
+function handleChange() {
+  saveAll();
+  updateSummary();
+}
 
+holesContainer.addEventListener("input", handleChange);
+holesContainer.addEventListener("change", handleChange);
+
+document.getElementById("resetBtn").addEventListener("click", function () {
+  if (confirm("Start a new round? This will clear all holes.")) {
+    localStorage.removeItem("golfRound");
+    for (let i = 1; i <= 18; i++) {
+      for (const field of FIELDS) {
+        document.getElementById(field + "-" + i).value = "";
+      }
+    }
+    updateSummary();
+  }
+});
+
+loadAll();
 updateSummary();
