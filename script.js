@@ -1,5 +1,5 @@
-const DEMO_USERNAME = "ayaan";
-const DEMO_PASSWORD = "golf123";
+const DEMO_USERNAME = "Ayaan";
+const DEMO_PASSWORD = "Golf123";
 
 function isLoggedIn() {
   return localStorage.getItem("golfLoggedIn") === "yes";
@@ -85,7 +85,9 @@ function makeHoleCard(n) {
         <input type="number" id="par-${n}" min="1" />
       </label>
 
-      <p class="hole-distance">Distance: <span id="holeDistance-${n}">—</span> yds</p>
+      <label class="hole-distance">Distance (yards)
+        <input type="number" id="holeDistance-${n}" min="0" />
+      </label>
 
       <h3>Shots</h3>
       <div class="shots-list" id="shotsList-${n}"></div>
@@ -249,6 +251,22 @@ function toggleSetupRows() {
   document.getElementById("countryRow").style.display = playedIn === "Outside India" ? "" : "none";
 }
 
+function updateCourseInfoFromInputs() {
+  let total = 0;
+  let front9 = 0;
+  let back9 = 0;
+  for (let i = 1; i <= holeCount; i++) {
+    const v = Number(document.getElementById("holeDistance-" + i).value) || 0;
+    total += v;
+    if (i <= 9) front9 += v;
+    else back9 += v;
+  }
+  document.getElementById("ciCoursePar").textContent = getCoursePar() || "—";
+  document.getElementById("ciTotalDistance").textContent = total || "—";
+  document.getElementById("ciFront9").textContent = front9 || "—";
+  document.getElementById("ciBack9").textContent = back9 || "—";
+}
+
 function applyCourseData() {
   const courseKey = document.getElementById("courseSelect").value;
   const teeKey = document.getElementById("teeSelect").value;
@@ -260,21 +278,19 @@ function applyCourseData() {
     courseInfo.style.display = "none";
     courseNotice.style.display = "";
     courseNotice.textContent = "Tolly scorecard coming soon. You can still track shots and enter par by hand.";
-    for (let i = 1; i <= holeCount; i++) {
-      const ds = document.getElementById("holeDistance-" + i);
-      if (ds) ds.textContent = "—";
-    }
     return;
   }
 
   courseNotice.style.display = "none";
 
+  if (courseKey === "Other") {
+    courseInfo.style.display = "";
+    updateCourseInfoFromInputs();
+    return;
+  }
+
   if (!course) {
     courseInfo.style.display = "none";
-    for (let i = 1; i <= holeCount; i++) {
-      const ds = document.getElementById("holeDistance-" + i);
-      if (ds) ds.textContent = "—";
-    }
     return;
   }
 
@@ -288,26 +304,14 @@ function applyCourseData() {
 
   if (teeKey && course.tees[teeKey]) {
     const distances = course.tees[teeKey];
-    const total = sumArray(distances);
-    const front9 = sumArray(distances.slice(0, 9));
-    const back9 = sumArray(distances.slice(9, 18));
-
-    document.getElementById("ciCoursePar").textContent = totalPar;
-    document.getElementById("ciTotalDistance").textContent = total;
-    document.getElementById("ciFront9").textContent = front9;
-    document.getElementById("ciBack9").textContent = back9;
-    courseInfo.style.display = "";
-
     for (let i = 1; i <= Math.min(distances.length, holeCount); i++) {
       const ds = document.getElementById("holeDistance-" + i);
-      if (ds) ds.textContent = distances[i - 1];
+      if (ds) ds.value = distances[i - 1];
     }
+    courseInfo.style.display = "";
+    updateCourseInfoFromInputs();
   } else {
     courseInfo.style.display = "none";
-    for (let i = 1; i <= holeCount; i++) {
-      const ds = document.getElementById("holeDistance-" + i);
-      if (ds) ds.textContent = "—";
-    }
   }
 }
 
@@ -320,6 +324,7 @@ function saveAll() {
   for (let i = 1; i <= holeCount; i++) {
     data.holes[i] = {
       par: document.getElementById("par-" + i).value,
+      distance: document.getElementById("holeDistance-" + i).value,
       shots: getShotsForHole(i),
       firstPuttDistance: document.getElementById("firstPuttDistance-" + i).value,
       firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
@@ -359,6 +364,9 @@ function loadAll() {
 
       const parEl = document.getElementById("par-" + i);
       if (parEl && hole.par !== undefined) parEl.value = hole.par;
+
+      const distEl = document.getElementById("holeDistance-" + i);
+      if (distEl && hole.distance !== undefined) distEl.value = hole.distance;
 
       const fpdEl = document.getElementById("firstPuttDistance-" + i);
       if (fpdEl && hole.firstPuttDistance !== undefined) fpdEl.value = hole.firstPuttDistance;
@@ -640,6 +648,7 @@ function updateSummary() {
   document.getElementById("sumDiff").textContent = "Score vs Par: " + diffText;
   document.getElementById("sumPutts").textContent = "Total Putts: " + totalPutts;
   document.getElementById("sumChips").textContent = "Total Chips: " + totalChips;
+  document.getElementById("sumChipsPutts").textContent = "Chips + Putts: " + (totalChips + totalPutts);
   document.getElementById("sumFairway").textContent = "Fairway Hit %: " + fairwayPct + "%";
   document.getElementById("sumPenalties").textContent = "Penalties: " + totalPenalties;
   document.getElementById("sumMissed").textContent = "Missed Short Putts: " + missedShortPutts;
@@ -968,6 +977,10 @@ function handleChange() {
   saveAll();
   updateSummary();
   analyze();
+  const courseKey = document.getElementById("courseSelect").value;
+  if (courseKey === "Other" || COURSES[courseKey]) {
+    updateCourseInfoFromInputs();
+  }
 }
 
 function onSetupChange(event) {
