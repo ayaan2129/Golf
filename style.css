@@ -1,0 +1,31 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #eaf6ea;
+  margin: 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #2e7d32;
+}
+
+.hole-card {
+  background: white;
+  border: 2px solid #2e7d32;
+  border-radius: 10px;
+  padding: 15px;
+  width: 220px;
+  margin: 20px auto;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 5px;
+  margin-top: 3px;
+  box-sizing: border-box;
+}
