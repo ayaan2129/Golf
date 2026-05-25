@@ -1,12 +1,38 @@
 body {
   font-family: Arial, sans-serif;
   background: #eaf6ea;
-  margin: 20px;
+  margin: 0;
+  padding: 10px;
 }
 
 h1 {
   text-align: center;
   color: #2e7d32;
+  margin: 10px 0;
+}
+
+.summary {
+  background: #2e7d32;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 16px;
+  max-width: 320px;
+  margin: 10px auto 20px;
+  position: sticky;
+  top: 10px;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.summary h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.summary p {
+  margin: 4px 0;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .hole-card {
@@ -16,8 +42,14 @@ h1 {
   padding: 15px;
   width: 100%;
   max-width: 320px;
-  margin: 20px auto;
+  margin: 15px auto;
   box-sizing: border-box;
+}
+
+.hole-card h2 {
+  margin: 0 0 10px;
+  color: #2e7d32;
+  text-align: center;
 }
 
 .hole-card h3 {
@@ -31,6 +63,7 @@ h1 {
 label {
   display: block;
   margin-top: 10px;
+  font-size: 14px;
 }
 
 input,
@@ -43,30 +76,4 @@ select {
   border: 1px solid #bbb;
   border-radius: 5px;
   background: white;
-}
-
-button {
-  width: 100%;
-  margin-top: 15px;
-  padding: 8px;
-  background: #2e7d32;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1b5e20;
-}
-
-.results {
-  margin-top: 15px;
-  font-weight: bold;
-  color: #2e7d32;
-}
-
-.results p {
-  margin: 5px 0;
 }

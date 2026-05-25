@@ -9,85 +9,17 @@
   <body>
     <h1>Junior Golf Tracker</h1>
 
-    <div class="hole-card">
-      <h2>Hole 1</h2>
-
-      <label for="par">Par</label>
-      <input type="number" id="par" min="1" />
-
-      <label for="score">Score</label>
-      <input type="number" id="score" min="1" />
-
-      <label for="putts">Putts</label>
-      <input type="number" id="putts" min="0" />
-
-      <h3>Tee Shot</h3>
-
-      <label for="shot1Distance">Shot 1 Distance (yards)</label>
-      <input type="number" id="shot1Distance" min="0" />
-
-      <label for="shot1Direction">Shot 1 Direction</label>
-      <select id="shot1Direction">
-        <option value="">-- choose --</option>
-        <option value="Left">Left</option>
-        <option value="Straight">Straight</option>
-        <option value="Right">Right</option>
-      </select>
-
-      <label for="fairwayHit">Fairway Hit?</label>
-      <select id="fairwayHit">
-        <option value="">-- choose --</option>
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
-      </select>
-
-      <h3>Short Game</h3>
-
-      <label for="chipDistance">Chip Distance (yards)</label>
-      <input type="number" id="chipDistance" min="0" />
-
-      <label for="chipResult">Chip Result</label>
-      <select id="chipResult">
-        <option value="">-- choose --</option>
-        <option value="Near">Near</option>
-        <option value="Medium">Medium</option>
-        <option value="Far">Far</option>
-      </select>
-
-      <label for="penalties">Penalties</label>
-      <input type="number" id="penalties" min="0" />
-
-      <h3>Putting</h3>
-
-      <label for="firstPuttResult">First Putt Result</label>
-      <select id="firstPuttResult">
-        <option value="">-- choose --</option>
-        <option value="Short">Short</option>
-        <option value="Long">Long</option>
-        <option value="Good">Good</option>
-        <option value="Holed">Holed</option>
-      </select>
-
-      <label for="missedShortPutt">Missed Short Putt?</label>
-      <select id="missedShortPutt">
-        <option value="">-- choose --</option>
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
-      </select>
-
-      <button id="calculate">Calculate Score</button>
-
-      <div class="results">
-        <p id="diff"></p>
-        <p id="name"></p>
-        <p id="totalPutts"></p>
-        <p id="teeShotInfo"></p>
-        <p id="fairwayInfo"></p>
-        <p id="chipInfo"></p>
-        <p id="penaltiesInfo"></p>
-        <p id="puttInfo"></p>
-      </div>
+    <div class="summary">
+      <h2>Round Summary</h2>
+      <p id="sumScore">Total Score: 0</p>
+      <p id="sumDiff">Score vs Par: 0</p>
+      <p id="sumPutts">Total Putts: 0</p>
+      <p id="sumFairway">Fairway Hit %: 0%</p>
+      <p id="sumPenalties">Penalties: 0</p>
+      <p id="sumMissed">Missed Short Putts: 0</p>
     </div>
+
+    <div id="holes"></div>
 
     <script src="script.js"></script>
   </body>
