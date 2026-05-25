@@ -83,6 +83,51 @@ label {
   font-size: 14px;
 }
 
+.coach {
+  background: #fffbea;
+  border: 2px solid #c5a200;
+  border-radius: 10px;
+  padding: 15px;
+  width: 100%;
+  max-width: 320px;
+  margin: 20px auto;
+  box-sizing: border-box;
+}
+
+.coach h2 {
+  margin: 0 0 10px;
+  color: #8a6d00;
+  text-align: center;
+}
+
+.coach h3 {
+  color: #8a6d00;
+  margin: 14px 0 4px;
+  font-size: 14px;
+  border-bottom: 1px solid #ecd97a;
+  padding-bottom: 4px;
+}
+
+.coach p {
+  font-size: 14px;
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+.coach ul {
+  margin: 6px 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+#topWeakness {
+  background: #fff3cd;
+  padding: 8px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
 input,
 select {
   width: 100%;
