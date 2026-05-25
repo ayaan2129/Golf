@@ -28,6 +28,61 @@
     <div id="appScreen" style="display:none;">
       <h1>Junior Golf Tracker</h1>
 
+    <div class="dashboard">
+      <h2>Dashboard</h2>
+
+      <div class="month-picker">
+        <label>Month
+          <select id="monthSelect"></select>
+        </label>
+        <label>Year
+          <select id="yearSelect"></select>
+        </label>
+      </div>
+
+      <div class="calendar" id="calendar"></div>
+
+      <div class="monthly-summary" id="monthlySummary"></div>
+
+      <div class="month-compare" id="monthCompare"></div>
+
+      <div class="upcoming-section">
+        <h3>Upcoming Rounds</h3>
+
+        <div class="upcoming-form">
+          <label>Date <input type="date" id="upcomingDate" /></label>
+          <label>Course
+            <select id="upcomingCourse">
+              <option value="RCGC">RCGC</option>
+              <option value="Tolly">Tolly</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label id="upcomingOtherRow" style="display:none;">Course Name
+            <input type="text" id="upcomingOtherName" />
+          </label>
+          <label>Tee
+            <select id="upcomingTee">
+              <option value="">Any</option>
+              <option value="Blue">Blue</option>
+              <option value="White">White</option>
+              <option value="Yellow">Yellow</option>
+              <option value="Red">Red</option>
+            </select>
+          </label>
+          <label>Holes
+            <select id="upcomingHoles">
+              <option value="18">18 holes</option>
+              <option value="9">9 holes</option>
+            </select>
+          </label>
+          <button id="addUpcomingBtn">Add Upcoming Round</button>
+        </div>
+
+        <div id="upcomingList"></div>
+      </div>
+    </div>
+
     <div class="setup">
       <h2>Round Setup</h2>
 
@@ -131,6 +186,13 @@
       <h2>Previous Rounds</h2>
       <div id="roundsList"></div>
     </div>
+    </div>
+
+    <div id="roundDetailModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <button class="modal-close" id="modalClose">Close</button>
+        <div id="modalBody"></div>
+      </div>
     </div>
 
     <script src="script.js"></script>

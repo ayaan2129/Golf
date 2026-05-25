@@ -419,6 +419,44 @@ function getTotalScore() {
   return total;
 }
 
+function computeHoleStats(par, shots, firstPuttResult, missedShortStr) {
+  par = Number(par) || 0;
+  shots = shots || [];
+  const score = shots.length;
+  let putts = 0;
+  let chips = 0;
+  let penalties = 0;
+  let badShots = 0;
+  let goodShots = 0;
+  for (const s of shots) {
+    if (s.club === "Putter") putts += 1;
+    if (s.club === "Wedge") chips += 1;
+    if (s.result === "Penalty") penalties += 1;
+    if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
+    if (s.quality === "Good shot") goodShots += 1;
+  }
+  let fwHit = 0;
+  let fwAns = 0;
+  if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
+    fwAns = 1;
+    if (shots[0].result === "On fairway") fwHit = 1;
+  }
+  return {
+    par,
+    shots,
+    score,
+    putts,
+    chips,
+    penalties,
+    badShots,
+    goodShots,
+    fwHit,
+    fwAns,
+    firstPuttResult: firstPuttResult || "",
+    missedShort: missedShortStr === "Yes",
+  };
+}
+
 function getHoleStats(i) {
   const par = Number(document.getElementById("par-" + i).value) || 0;
   const shots = getShotsForHole(i);
@@ -778,6 +816,24 @@ function saveRoundToHistory() {
   const coursePar = getCoursePar();
   const fairwayPct = fairwaysAnswered > 0 ? Math.round((fairwaysHit / fairwaysAnswered) * 100) : null;
 
+  const fullData = { setup: {}, holes: {} };
+  for (const f of SETUP_FIELDS) {
+    const el = document.getElementById(f);
+    if (el) fullData.setup[f] = el.value;
+  }
+  for (let i = 1; i <= holeCount; i++) {
+    fullData.holes[i] = {
+      par: document.getElementById("par-" + i).value,
+      distance: document.getElementById("holeDistance-" + i).value,
+      shots: getShotsForHole(i),
+      firstPuttDistance: document.getElementById("firstPuttDistance-" + i).value,
+      firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
+      missedShortPutt: document.getElementById("missedShortPutt-" + i).value,
+    };
+  }
+
+  const analysis = computeAnalysisFromHoles(getAllHoleStatsList());
+
   const round = {
     playerName: document.getElementById("playerName").value || "Unknown",
     date: document.getElementById("roundDate").value || "",
@@ -795,12 +851,18 @@ function saveRoundToHistory() {
     missedShortPutts,
     holes: holeCount,
     savedAt: new Date().toISOString(),
+    mistakes: analysis.mistakes,
+    strengths: analysis.strengths,
+    practice: analysis.practice,
+    topWeakness: analysis.topWeakness,
+    fullData: fullData,
   };
 
   const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
   history.push(round);
   localStorage.setItem("roundHistory", JSON.stringify(history));
   renderHistory();
+  renderDashboard();
 }
 
 function renderHistory() {
@@ -826,6 +888,9 @@ function renderHistory() {
     const round = history[i];
     const card = document.createElement("div");
     card.className = "round-card";
+    card.style.cursor = "pointer";
+    card.addEventListener("click", function () { showRoundDetail(round); });
+
     const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
     const lines = [
       "Player: " + round.playerName,
@@ -837,6 +902,7 @@ function renderHistory() {
       "Score vs Par: " + diffText,
       "Total Putts: " + (round.totalPutts !== undefined ? round.totalPutts : "—"),
       "Total Chips: " + (round.totalChips !== undefined ? round.totalChips : "—"),
+      "(Tap to see full details)",
     ];
     for (const line of lines) {
       const p = document.createElement("p");
@@ -1043,6 +1109,609 @@ document.getElementById("logoutBtn").addEventListener("click", function () {
   }
 });
 
+function getAllHoleStatsList() {
+  const list = [];
+  for (let i = 1; i <= holeCount; i++) {
+    list.push(getHoleStats(i));
+  }
+  return list;
+}
+
+function getHoleStatsFromSavedHole(holeData) {
+  return computeHoleStats(
+    holeData.par,
+    holeData.shots || [],
+    holeData.firstPuttResult,
+    holeData.missedShortPutt
+  );
+}
+
+function computeAnalysisFromHoles(holeStatsList) {
+  let totalScore = 0;
+  let totalPutts = 0;
+  let totalPenalties = 0;
+  let fairwaysHit = 0;
+  let fairwaysAnswered = 0;
+  let missedShortPutts = 0;
+  let firstPuttShort = 0;
+  let firstPuttLong = 0;
+  let threePutts = 0;
+  let badShots = 0;
+  let goodShots = 0;
+  let par3Score = 0;
+  let par3ParTotal = 0;
+  let par3Count = 0;
+  let scoredHoles = 0;
+  const localHoleCount = holeStatsList.length;
+
+  for (const s of holeStatsList) {
+    if (s.score > 0) scoredHoles += 1;
+    totalScore += s.score;
+    totalPutts += s.putts;
+    totalPenalties += s.penalties;
+    fairwaysHit += s.fwHit;
+    fairwaysAnswered += s.fwAns;
+    badShots += s.badShots;
+    goodShots += s.goodShots;
+    if (s.putts >= 3) threePutts += 1;
+    if (s.firstPuttResult === "Short") firstPuttShort += 1;
+    if (s.firstPuttResult === "Long") firstPuttLong += 1;
+    if (s.missedShort) missedShortPutts += 1;
+    if (s.par === 3 && s.score > 0) {
+      par3Score += s.score;
+      par3ParTotal += s.par;
+      par3Count += 1;
+    }
+  }
+
+  let fairwayPct = null;
+  if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
+
+  const mistakes = [];
+  if (totalPenalties >= 3) mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
+  if (fairwayPct !== null && fairwayPct < 50) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (missedShortPutts >= 2) mistakes.push("Missed " + missedShortPutts + " short putts.");
+  if (firstPuttShort >= 4) mistakes.push("First putts too short " + firstPuttShort + " times.");
+  if (firstPuttLong >= 4) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (threePutts >= 3) mistakes.push("Too many 3-putts: " + threePutts + " holes.");
+  if (badShots >= 5) mistakes.push("Many poor shots (" + badShots + ").");
+
+  const strengths = [];
+  if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
+  if (scoredHoles > 0 && totalPutts / scoredHoles < 2) strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
+  if (totalPenalties === 0 && scoredHoles >= Math.min(localHoleCount, 9)) strengths.push("Penalty-free round.");
+  if (par3Count >= 2 && par3Score <= par3ParTotal + 1) strengths.push("Strong scoring on par 3s.");
+  if (goodShots >= 8) strengths.push("Lots of good shots (" + goodShots + ").");
+
+  const practice = [];
+  if (missedShortPutts >= 2) practice.push("Short putting (3-5 foot putts)");
+  if (fairwayPct !== null && fairwayPct < 50) practice.push("Tee shot accuracy");
+  if (firstPuttShort >= 4 || firstPuttLong >= 4) practice.push("Lag putting (long putts)");
+  if (totalPenalties >= 3) practice.push("Penalty-free course management");
+  if (badShots >= 5) practice.push("Ball striking (clean contact)");
+
+  const weaknesses = [];
+  if (missedShortPutts >= 2) weaknesses.push({ score: missedShortPutts * 20, text: "Your biggest weakness was putting - " + totalPutts + " putts and " + missedShortPutts + " missed short putts. Practise 3-5 foot putts." });
+  if (threePutts >= 3) weaknesses.push({ score: threePutts * 18, text: "Your biggest weakness was 3-putting - " + threePutts + " three-putts. Practise lag putting." });
+  if (totalPenalties >= 3) weaknesses.push({ score: totalPenalties * 15, text: "Your biggest weakness was penalties - " + totalPenalties + " strokes lost. Play safer." });
+  if (fairwayPct !== null && fairwayPct < 50) weaknesses.push({ score: 50 - fairwayPct, text: "Your biggest weakness was driving accuracy - " + fairwayPct + "% fairways. Practise tee shots." });
+  if (badShots >= 5) weaknesses.push({ score: badShots * 10, text: "Your biggest weakness was ball striking - " + badShots + " mishits. Work on clean contact." });
+
+  let topWeakness;
+  if (scoredHoles < 5) topWeakness = "Fill in shots for at least 5 holes to get coach feedback.";
+  else if (weaknesses.length === 0) topWeakness = "No big weakness - well played!";
+  else {
+    weaknesses.sort(function (a, b) { return b.score - a.score; });
+    topWeakness = weaknesses[0].text;
+  }
+
+  return { mistakes, strengths, practice, topWeakness };
+}
+
+function computeHoleAnalysisFromStats(s) {
+  if (s.score === 0) return null;
+
+  let mistake;
+  if (s.penalties > 0) mistake = s.penalties + " penalty stroke(s).";
+  else if (s.missedShort) mistake = "Missed a short putt.";
+  else if (s.putts >= 3) mistake = "3-putt on this hole.";
+  else if (s.badShots > 0) {
+    const firstBad = s.shots.find(function (sh) { return BAD_QUALITIES.indexOf(sh.quality) !== -1; });
+    mistake = (firstBad ? firstBad.quality : "Mishit") + " hurt your hole.";
+  } else if (s.par > 0 && s.score > s.par + 1) mistake = "Score was " + (s.score - s.par) + " over par.";
+  else mistake = "No major mistake.";
+
+  let wentWell;
+  const hitFairway = s.shots.length > 0 && s.shots[0].lie === "Tee" && s.shots[0].result === "On fairway";
+  const reachedGreen = s.shots.some(function (sh) { return sh.result === "On green"; });
+  if (s.par > 0 && s.score <= s.par) wentWell = "Made par or better.";
+  else if (s.firstPuttResult === "Holed") wentWell = "Holed your first putt.";
+  else if (hitFairway) wentWell = "Hit the fairway off the tee.";
+  else if (reachedGreen) wentWell = "Reached the green.";
+  else if (s.goodShots > 0) wentWell = s.goodShots + " good shot(s).";
+  else wentWell = "Keep your head up.";
+
+  let practise;
+  if (s.missedShort || s.putts >= 3) practise = "Short putting.";
+  else if (s.penalties > 0) practise = "Course management.";
+  else if (s.badShots > 0) practise = "Ball striking.";
+  else if (s.par >= 4 && !hitFairway && s.shots.length > 0 && s.shots[0].lie === "Tee") practise = "Tee shot accuracy.";
+  else if (s.firstPuttResult === "Short" || s.firstPuttResult === "Long") practise = "Lag putting.";
+  else if (s.par > 0 && s.score > s.par + 1) practise = "Approach shots.";
+  else practise = "Keep doing what you're doing.";
+
+  return { mistake, wentWell, practise };
+}
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+let currentDashYear;
+let currentDashMonth;
+
+function initDashboard() {
+  const monthSel = document.getElementById("monthSelect");
+  const yearSel = document.getElementById("yearSelect");
+  monthSel.innerHTML = "";
+  for (let m = 0; m < 12; m++) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = MONTH_NAMES[m];
+    monthSel.appendChild(opt);
+  }
+  const today = new Date();
+  yearSel.innerHTML = "";
+  for (let y = today.getFullYear() - 2; y <= today.getFullYear() + 1; y++) {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    yearSel.appendChild(opt);
+  }
+  currentDashYear = today.getFullYear();
+  currentDashMonth = today.getMonth();
+  monthSel.value = currentDashMonth;
+  yearSel.value = currentDashYear;
+
+  monthSel.addEventListener("change", function () {
+    currentDashMonth = Number(monthSel.value);
+    renderDashboard();
+  });
+  yearSel.addEventListener("change", function () {
+    currentDashYear = Number(yearSel.value);
+    renderDashboard();
+  });
+
+  document.getElementById("upcomingCourse").addEventListener("change", function () {
+    document.getElementById("upcomingOtherRow").style.display =
+      this.value === "Other" ? "" : "none";
+  });
+
+  document.getElementById("addUpcomingBtn").addEventListener("click", addUpcomingRound);
+  document.getElementById("modalClose").addEventListener("click", closeRoundDetail);
+}
+
+function getHistory() {
+  return JSON.parse(localStorage.getItem("roundHistory") || "[]");
+}
+
+function getUpcoming() {
+  return JSON.parse(localStorage.getItem("upcomingRounds") || "[]");
+}
+
+function saveUpcoming(arr) {
+  localStorage.setItem("upcomingRounds", JSON.stringify(arr));
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const parts = str.split("-");
+  if (parts.length !== 3) return null;
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
+
+function dateKey(y, m, d) {
+  return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+
+function renderCalendar(year, month) {
+  const cal = document.getElementById("calendar");
+  cal.innerHTML = "";
+
+  const dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  for (const d of dayHeaders) {
+    const c = document.createElement("div");
+    c.className = "cal-header";
+    c.textContent = d;
+    cal.appendChild(c);
+  }
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+
+  for (let i = 0; i < startWeekday; i++) {
+    const c = document.createElement("div");
+    c.className = "cal-empty";
+    cal.appendChild(c);
+  }
+
+  const rounds = getHistory();
+  const upcoming = getUpcoming();
+  const playedMap = {};
+  for (const r of rounds) {
+    if (r.date) playedMap[r.date] = r;
+  }
+  const upcomingDates = {};
+  for (const u of upcoming) {
+    if (u.date) upcomingDates[u.date] = true;
+  }
+
+  const today = new Date();
+  const todayStr = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = dateKey(year, month, day);
+    const cell = document.createElement("div");
+    cell.className = "cal-day";
+    cell.textContent = day;
+    if (ds === todayStr) cell.classList.add("cal-today");
+    if (playedMap[ds]) {
+      cell.classList.add("cal-played");
+      const round = playedMap[ds];
+      cell.addEventListener("click", function () { showRoundDetail(round); });
+    } else if (upcomingDates[ds]) {
+      cell.classList.add("cal-upcoming");
+    }
+    cal.appendChild(cell);
+  }
+}
+
+function renderMonthlySummary(year, month) {
+  const div = document.getElementById("monthlySummary");
+  div.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = MONTH_NAMES[month] + " " + year;
+  div.appendChild(h);
+
+  const monthRounds = getHistory().filter(function (r) {
+    const d = parseDate(r.date);
+    return d && d.getFullYear() === year && d.getMonth() === month;
+  });
+
+  if (monthRounds.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No rounds played this month.";
+    div.appendChild(p);
+    return;
+  }
+
+  const scores = monthRounds.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+  if (scores.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No completed rounds yet.";
+    div.appendChild(p);
+    return;
+  }
+
+  const best = Math.min.apply(null, scores);
+  const worst = Math.max.apply(null, scores);
+  const avg = (scores.reduce(function (a, b) { return a + b; }, 0) / scores.length).toFixed(1);
+
+  const lines = [
+    "Rounds played: " + monthRounds.length,
+    "Best score: " + best,
+    "Worst score: " + worst,
+    "Average score: " + avg,
+  ];
+
+  const byCourse = {};
+  for (const r of monthRounds) {
+    if (!byCourse[r.courseName]) byCourse[r.courseName] = [];
+    if (r.totalScore > 0) byCourse[r.courseName].push(r.totalScore);
+  }
+  for (const c in byCourse) {
+    if (byCourse[c].length === 0) continue;
+    const cBest = Math.min.apply(null, byCourse[c]);
+    const cWorst = Math.max.apply(null, byCourse[c]);
+    lines.push(c + " — best: " + cBest + ", worst: " + cWorst);
+  }
+
+  for (const line of lines) {
+    const p = document.createElement("p");
+    p.textContent = line;
+    div.appendChild(p);
+  }
+}
+
+function renderMonthCompare(year, month) {
+  const div = document.getElementById("monthCompare");
+  div.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Compared to last month";
+  div.appendChild(h);
+
+  let prevYear = year;
+  let prevMonth = month - 1;
+  if (prevMonth < 0) {
+    prevMonth = 11;
+    prevYear = year - 1;
+  }
+
+  const history = getHistory();
+  const current = history.filter(function (r) {
+    const d = parseDate(r.date);
+    return d && d.getFullYear() === year && d.getMonth() === month;
+  });
+  const previous = history.filter(function (r) {
+    const d = parseDate(r.date);
+    return d && d.getFullYear() === prevYear && d.getMonth() === prevMonth;
+  });
+
+  if (current.length === 0 || previous.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "Need rounds in this month and the previous month to compare.";
+    div.appendChild(p);
+    return;
+  }
+
+  function avgKey(arr, key) {
+    let total = 0;
+    let count = 0;
+    for (const r of arr) {
+      const v = r[key];
+      if (v !== undefined && v !== null && !isNaN(v)) {
+        total += v;
+        count += 1;
+      }
+    }
+    return count > 0 ? total / count : null;
+  }
+
+  const lines = [];
+  const cScore = avgKey(current, "totalScore");
+  const pScore = avgKey(previous, "totalScore");
+  if (cScore !== null && pScore !== null) {
+    const d = cScore - pScore;
+    if (d < -0.5) lines.push("Scoring better: down " + Math.abs(d).toFixed(1) + " strokes on average.");
+    else if (d > 0.5) lines.push("Scoring worse: up " + d.toFixed(1) + " strokes on average.");
+    else lines.push("Scoring is steady.");
+  }
+
+  const cPutts = avgKey(current, "totalPutts");
+  const pPutts = avgKey(previous, "totalPutts");
+  if (cPutts !== null && pPutts !== null) {
+    const d = cPutts - pPutts;
+    if (d < -0.5) lines.push("Putts improving (" + Math.abs(d).toFixed(1) + " fewer).");
+    else if (d > 0.5) lines.push("Putts worse (" + d.toFixed(1) + " more).");
+  }
+
+  const cChips = avgKey(current, "totalChips");
+  const pChips = avgKey(previous, "totalChips");
+  if (cChips !== null && pChips !== null) {
+    const d = cChips - pChips;
+    if (d < -0.5) lines.push("Fewer chips needed - short game sharper.");
+    else if (d > 0.5) lines.push("More chips needed - tighten approach play.");
+  }
+
+  const cPen = avgKey(current, "totalPenalties");
+  const pPen = avgKey(previous, "totalPenalties");
+  if (cPen !== null && pPen !== null) {
+    const d = cPen - pPen;
+    if (d < -0.3) lines.push("Penalties down - smarter course management.");
+    else if (d > 0.3) lines.push("Penalties up - play safer off the tee.");
+  }
+
+  const cFw = avgKey(current, "fairwayPct");
+  const pFw = avgKey(previous, "fairwayPct");
+  if (cFw !== null && pFw !== null) {
+    const d = cFw - pFw;
+    if (d >= 5) lines.push("Fairways improving (+" + Math.round(d) + "%).");
+    else if (d <= -5) lines.push("Fairway accuracy dropping (-" + Math.abs(Math.round(d)) + "%).");
+  }
+
+  if (lines.length === 0) lines.push("Stats look about the same as last month.");
+  for (const line of lines) {
+    const p = document.createElement("p");
+    p.textContent = line;
+    div.appendChild(p);
+  }
+}
+
+function addUpcomingRound() {
+  const date = document.getElementById("upcomingDate").value;
+  const course = document.getElementById("upcomingCourse").value;
+  const tee = document.getElementById("upcomingTee").value;
+  const holes = document.getElementById("upcomingHoles").value;
+  const otherName = document.getElementById("upcomingOtherName").value;
+
+  if (!date) {
+    alert("Pick a date for your upcoming round.");
+    return;
+  }
+
+  const courseName = course === "Other" ? (otherName || "Other course") : course;
+  const arr = getUpcoming();
+  arr.push({ date, course: courseName, tee, holes });
+  saveUpcoming(arr);
+
+  document.getElementById("upcomingDate").value = "";
+  document.getElementById("upcomingOtherName").value = "";
+  document.getElementById("upcomingCourse").value = "RCGC";
+  document.getElementById("upcomingOtherRow").style.display = "none";
+
+  renderUpcoming();
+  renderCalendar(currentDashYear, currentDashMonth);
+}
+
+function renderUpcoming() {
+  const list = document.getElementById("upcomingList");
+  list.innerHTML = "";
+  const arr = getUpcoming().slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+  if (arr.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No upcoming rounds added yet.";
+    list.appendChild(p);
+    return;
+  }
+
+  for (const u of arr) {
+    const card = document.createElement("div");
+    card.className = "upcoming-card";
+
+    const info = document.createElement("span");
+    info.textContent = u.date + " — " + u.course + (u.tee ? " (" + u.tee + ")" : "") + " — " + u.holes + " holes";
+    card.appendChild(info);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", function () {
+      const all = getUpcoming();
+      const idx = all.findIndex(function (x) { return x.date === u.date && x.course === u.course && x.tee === u.tee && x.holes === u.holes; });
+      if (idx >= 0) all.splice(idx, 1);
+      saveUpcoming(all);
+      renderUpcoming();
+      renderCalendar(currentDashYear, currentDashMonth);
+    });
+    card.appendChild(removeBtn);
+
+    list.appendChild(card);
+  }
+}
+
+function renderDashboard() {
+  renderCalendar(currentDashYear, currentDashMonth);
+  renderMonthlySummary(currentDashYear, currentDashMonth);
+  renderMonthCompare(currentDashYear, currentDashMonth);
+  renderUpcoming();
+}
+
+function showRoundDetail(round) {
+  const body = document.getElementById("modalBody");
+  body.innerHTML = "";
+
+  const title = document.createElement("h2");
+  title.textContent = round.courseName + " — " + (round.date || "no date");
+  body.appendChild(title);
+
+  const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
+  const summary = [
+    "Player: " + round.playerName,
+    "Tee: " + (round.tee || "—"),
+    "Course Par: " + round.coursePar,
+    "Total Score: " + round.totalScore,
+    "Score vs Par: " + diffText,
+    "Total Putts: " + (round.totalPutts !== undefined ? round.totalPutts : "—"),
+    "Total Chips: " + (round.totalChips !== undefined ? round.totalChips : "—"),
+    "Penalties: " + (round.totalPenalties !== undefined ? round.totalPenalties : "—"),
+    "Fairway Hit %: " + (round.fairwayPct !== null && round.fairwayPct !== undefined ? round.fairwayPct + "%" : "—"),
+    "Missed Short Putts: " + (round.missedShortPutts !== undefined ? round.missedShortPutts : "—"),
+  ];
+  for (const s of summary) {
+    const p = document.createElement("p");
+    p.textContent = s;
+    body.appendChild(p);
+  }
+
+  if (round.topWeakness) {
+    const h = document.createElement("h3");
+    h.textContent = "Top Weakness";
+    body.appendChild(h);
+    const p = document.createElement("p");
+    p.textContent = round.topWeakness;
+    body.appendChild(p);
+  }
+
+  function listSection(title, items, emptyText) {
+    const h = document.createElement("h3");
+    h.textContent = title;
+    body.appendChild(h);
+    const arr = items && items.length > 0 ? items : [emptyText];
+    const ul = document.createElement("ul");
+    for (const item of arr) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+
+  listSection("Biggest Mistakes", round.mistakes, "No big mistakes.");
+  listSection("Strengths", round.strengths, "No clear strengths.");
+  listSection("Practice", round.practice, "Nothing flagged - keep playing.");
+
+  if (round.fullData && round.fullData.holes) {
+    const h = document.createElement("h3");
+    h.textContent = "Hole by Hole";
+    body.appendChild(h);
+
+    for (const holeNum in round.fullData.holes) {
+      const hole = round.fullData.holes[holeNum];
+      const holeDiv = document.createElement("div");
+      holeDiv.className = "detail-hole";
+
+      const ht = document.createElement("h4");
+      ht.textContent = "Hole " + holeNum + " — Par " + (hole.par || "—") + (hole.distance ? ", " + hole.distance + " yds" : "");
+      holeDiv.appendChild(ht);
+
+      const shots = hole.shots || [];
+      if (shots.length === 0) {
+        const p = document.createElement("p");
+        p.textContent = "No shots recorded.";
+        holeDiv.appendChild(p);
+      } else {
+        for (let i = 0; i < shots.length; i++) {
+          const sh = shots[i];
+          const p = document.createElement("p");
+          const parts = [
+            "Shot " + (i + 1) + ":",
+            sh.club || "—",
+            (sh.distanceHit || "—") + " yds hit",
+            "lie: " + (sh.lie || "—"),
+            "dir: " + (sh.direction || "—"),
+            "quality: " + (sh.quality || "—"),
+            "result: " + (sh.result || "—"),
+          ];
+          p.textContent = parts.join(" • ");
+          holeDiv.appendChild(p);
+        }
+      }
+
+      const putting = document.createElement("p");
+      putting.textContent =
+        "First putt: " + (hole.firstPuttDistance || "—") + " ft, result: " +
+        (hole.firstPuttResult || "—") + ", missed short: " + (hole.missedShortPutt || "—");
+      holeDiv.appendChild(putting);
+
+      const stats = getHoleStatsFromSavedHole(hole);
+      const analysis = computeHoleAnalysisFromStats(stats);
+      if (analysis) {
+        const ad = document.createElement("div");
+        ad.className = "detail-hole-analysis";
+        for (const line of [
+          "Main mistake: " + analysis.mistake,
+          "What went well: " + analysis.wentWell,
+          "Practise: " + analysis.practise,
+        ]) {
+          const p = document.createElement("p");
+          p.textContent = line;
+          ad.appendChild(p);
+        }
+        holeDiv.appendChild(ad);
+      }
+
+      body.appendChild(holeDiv);
+    }
+  }
+
+  document.getElementById("roundDetailModal").style.display = "";
+  window.scrollTo(0, 0);
+}
+
+function closeRoundDetail() {
+  document.getElementById("roundDetailModal").style.display = "none";
+}
+
 buildHoles();
 loadAll();
 toggleSetupRows();
@@ -1050,3 +1719,5 @@ applyCourseData();
 updateSummary();
 analyze();
 renderHistory();
+initDashboard();
+renderDashboard();
