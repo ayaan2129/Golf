@@ -1,6 +1,17 @@
 const holesContainer = document.getElementById("holes");
+const setupContainer = document.querySelector(".setup");
 
-const FIELDS = [
+const SETUP_FIELDS = [
+  "playerName",
+  "roundDate",
+  "playedIn",
+  "country",
+  "courseName",
+  "coursePar",
+  "numberOfHoles",
+];
+
+const HOLE_FIELDS = [
   "par",
   "score",
   "putts",
@@ -13,6 +24,8 @@ const FIELDS = [
   "firstPuttResult",
   "missedShortPutt",
 ];
+
+let holeCount = 18;
 
 function makeHoleCard(n) {
   return `
@@ -96,16 +109,28 @@ function makeHoleCard(n) {
   `;
 }
 
-for (let i = 1; i <= 18; i++) {
-  holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
+function buildHoles() {
+  holesContainer.innerHTML = "";
+  for (let i = 1; i <= holeCount; i++) {
+    holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
+  }
+}
+
+function toggleCountryRow() {
+  const playedIn = document.getElementById("playedIn").value;
+  document.getElementById("countryRow").style.display =
+    playedIn === "Outside India" ? "" : "none";
 }
 
 function saveAll() {
-  const data = {};
-  for (let i = 1; i <= 18; i++) {
-    for (const field of FIELDS) {
-      const key = field + "-" + i;
-      data[key] = document.getElementById(key).value;
+  const data = { setup: {}, holes: {} };
+  for (const f of SETUP_FIELDS) {
+    data.setup[f] = document.getElementById(f).value;
+  }
+  for (let i = 1; i <= holeCount; i++) {
+    for (const field of HOLE_FIELDS) {
+      const el = document.getElementById(field + "-" + i);
+      if (el) data.holes[field + "-" + i] = el.value;
     }
   }
   localStorage.setItem("golfRound", JSON.stringify(data));
@@ -115,10 +140,30 @@ function loadAll() {
   const raw = localStorage.getItem("golfRound");
   if (!raw) return;
   const data = JSON.parse(raw);
-  for (const key in data) {
-    const el = document.getElementById(key);
-    if (el) el.value = data[key];
+
+  if (data.setup) {
+    for (const f of SETUP_FIELDS) {
+      const el = document.getElementById(f);
+      if (el && data.setup[f] !== undefined) el.value = data.setup[f];
+    }
+    const storedCount = data.setup.numberOfHoles;
+    if (storedCount === "9" || storedCount === "18") {
+      holeCount = Number(storedCount);
+      buildHoles();
+    }
+    toggleCountryRow();
   }
+
+  if (data.holes) {
+    for (const key in data.holes) {
+      const el = document.getElementById(key);
+      if (el) el.value = data.holes[key];
+    }
+  }
+}
+
+function getCoursePar() {
+  return Number(document.getElementById("coursePar").value) || 0;
 }
 
 function updateSummary() {
@@ -130,7 +175,7 @@ function updateSummary() {
   let fairwaysAnswered = 0;
   let missedShortPutts = 0;
 
-  for (let i = 1; i <= 18; i++) {
+  for (let i = 1; i <= holeCount; i++) {
     const par = Number(document.getElementById("par-" + i).value) || 0;
     const score = Number(document.getElementById("score-" + i).value) || 0;
     const putts = Number(document.getElementById("putts-" + i).value) || 0;
@@ -150,12 +195,12 @@ function updateSummary() {
       fairwaysAnswered += 1;
     }
 
-    if (missed === "Yes") {
-      missedShortPutts += 1;
-    }
+    if (missed === "Yes") missedShortPutts += 1;
   }
 
-  const diff = totalScore - totalPar;
+  const coursePar = getCoursePar();
+  const parForDiff = coursePar > 0 ? coursePar : totalPar;
+  const diff = totalScore - parForDiff;
   const diffText = diff > 0 ? "+" + diff : "" + diff;
 
   let fairwayPct = 0;
@@ -173,7 +218,6 @@ function updateSummary() {
 
 function analyze() {
   let totalScore = 0;
-  let totalPar = 0;
   let totalPutts = 0;
   let totalPenalties = 0;
   let fairwaysHit = 0;
@@ -190,7 +234,7 @@ function analyze() {
   let par3Count = 0;
   let scoredHoles = 0;
 
-  for (let i = 1; i <= 18; i++) {
+  for (let i = 1; i <= holeCount; i++) {
     const par = Number(document.getElementById("par-" + i).value) || 0;
     const score = Number(document.getElementById("score-" + i).value) || 0;
     const putts = Number(document.getElementById("putts-" + i).value) || 0;
@@ -201,9 +245,7 @@ function analyze() {
     const chip = document.getElementById("chipResult-" + i).value;
 
     if (score > 0) scoredHoles += 1;
-
     totalScore += score;
-    totalPar += par;
     totalPutts += putts;
     totalPenalties += penalties;
 
@@ -229,7 +271,6 @@ function analyze() {
     }
 
     if (putts >= 3) threePutts += 1;
-
     if (par === 3 && score > 0) {
       par3Score += score;
       par3ParTotal += par;
@@ -243,45 +284,22 @@ function analyze() {
   }
 
   const mistakes = [];
-  if (totalPenalties >= 3) {
-    mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
-  }
-  if (fairwayPct !== null && fairwayPct < 50) {
-    mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
-  }
-  if (missedShortPutts >= 2) {
-    mistakes.push("Missed " + missedShortPutts + " short putts.");
-  }
-  if (firstPuttShort >= 4) {
-    mistakes.push("First putts too short " + firstPuttShort + " times.");
-  }
-  if (firstPuttLong >= 4) {
-    mistakes.push("First putts too long " + firstPuttLong + " times.");
-  }
-  if (chipsFar >= 3) {
-    mistakes.push("Chips finishing far from the hole (" + chipsFar + " times).");
-  }
-  if (threePutts >= 3) {
-    mistakes.push("Too many 3-putts: " + threePutts + " holes.");
-  }
+  if (totalPenalties >= 3) mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
+  if (fairwayPct !== null && fairwayPct < 50) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (missedShortPutts >= 2) mistakes.push("Missed " + missedShortPutts + " short putts.");
+  if (firstPuttShort >= 4) mistakes.push("First putts too short " + firstPuttShort + " times.");
+  if (firstPuttLong >= 4) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (chipsFar >= 3) mistakes.push("Chips finishing far (" + chipsFar + " times).");
+  if (threePutts >= 3) mistakes.push("Too many 3-putts: " + threePutts + " holes.");
 
   const strengths = [];
-  if (fairwayPct !== null && fairwayPct >= 70) {
-    strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
-  }
-  if (chipsAnswered > 0 && chipsNear / chipsAnswered >= 0.6) {
-    strengths.push("Good chip results: " + chipsNear + " near the hole.");
-  }
+  if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
+  if (chipsAnswered > 0 && chipsNear / chipsAnswered >= 0.6) strengths.push("Good chip results: " + chipsNear + " near the hole.");
   if (scoredHoles > 0 && totalPutts / scoredHoles < 2) {
-    const avg = (totalPutts / scoredHoles).toFixed(1);
-    strengths.push("Good putting: " + avg + " putts per hole.");
+    strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
   }
-  if (totalPenalties === 0 && scoredHoles >= 9) {
-    strengths.push("Penalty-free round.");
-  }
-  if (par3Count >= 2 && par3Score <= par3ParTotal + 1) {
-    strengths.push("Strong scoring on par 3s.");
-  }
+  if (totalPenalties === 0 && scoredHoles >= Math.min(holeCount, 9)) strengths.push("Penalty-free round.");
+  if (par3Count >= 2 && par3Score <= par3ParTotal + 1) strengths.push("Strong scoring on par 3s.");
 
   const practice = [];
   if (missedShortPutts >= 2) practice.push("Short putting (3-5 foot putts)");
@@ -291,53 +309,11 @@ function analyze() {
   if (totalPenalties >= 3) practice.push("Penalty-free course management");
 
   const weaknesses = [];
-  if (missedShortPutts >= 2) {
-    weaknesses.push({
-      score: missedShortPutts * 20,
-      text:
-        "Your biggest weakness today was putting because you had " +
-        totalPutts +
-        " putts and missed " +
-        missedShortPutts +
-        " short putts. Practise 3-5 foot putts first.",
-    });
-  }
-  if (threePutts >= 3) {
-    weaknesses.push({
-      score: threePutts * 18,
-      text:
-        "Your biggest weakness today was 3-putting because you had " +
-        threePutts +
-        " three-putts. Practise lag putting from 30+ feet.",
-    });
-  }
-  if (totalPenalties >= 3) {
-    weaknesses.push({
-      score: totalPenalties * 15,
-      text:
-        "Your biggest weakness today was penalties because you lost " +
-        totalPenalties +
-        " strokes. Play safer off the tee.",
-    });
-  }
-  if (fairwayPct !== null && fairwayPct < 50) {
-    weaknesses.push({
-      score: 50 - fairwayPct,
-      text:
-        "Your biggest weakness today was driving accuracy because you only hit " +
-        fairwayPct +
-        "% of fairways. Practise tee shots with a target.",
-    });
-  }
-  if (chipsFar >= 3) {
-    weaknesses.push({
-      score: chipsFar * 12,
-      text:
-        "Your biggest weakness today was chipping because " +
-        chipsFar +
-        " chips finished far from the hole. Practise chips from 10-30 yards.",
-    });
-  }
+  if (missedShortPutts >= 2) weaknesses.push({ score: missedShortPutts * 20, text: "Your biggest weakness today was putting because you had " + totalPutts + " putts and missed " + missedShortPutts + " short putts. Practise 3-5 foot putts first." });
+  if (threePutts >= 3) weaknesses.push({ score: threePutts * 18, text: "Your biggest weakness today was 3-putting because you had " + threePutts + " three-putts. Practise lag putting from 30+ feet." });
+  if (totalPenalties >= 3) weaknesses.push({ score: totalPenalties * 15, text: "Your biggest weakness today was penalties because you lost " + totalPenalties + " strokes. Play safer off the tee." });
+  if (fairwayPct !== null && fairwayPct < 50) weaknesses.push({ score: 50 - fairwayPct, text: "Your biggest weakness today was driving accuracy because you only hit " + fairwayPct + "% of fairways. Practise tee shots with a target." });
+  if (chipsFar >= 3) weaknesses.push({ score: chipsFar * 12, text: "Your biggest weakness today was chipping because " + chipsFar + " chips finished far from the hole. Practise chips from 10-30 yards." });
 
   let topWeakness;
   if (scoredHoles < 5) {
@@ -345,19 +321,13 @@ function analyze() {
   } else if (weaknesses.length === 0) {
     topWeakness = "No big weakness today - well played!";
   } else {
-    weaknesses.sort(function (a, b) {
-      return b.score - a.score;
-    });
+    weaknesses.sort(function (a, b) { return b.score - a.score; });
     topWeakness = weaknesses[0].text;
   }
 
   renderList("mistakesList", mistakes, "No big mistakes yet - keep going!");
   renderList("practiceList", practice, "Play more rounds to find what to practise.");
-  renderList(
-    "strengthsList",
-    strengths,
-    "Fill in more holes to see your strengths."
-  );
+  renderList("strengthsList", strengths, "Fill in more holes to see your strengths.");
   document.getElementById("topWeakness").textContent = topWeakness;
 }
 
@@ -372,28 +342,144 @@ function renderList(id, items, emptyText) {
   }
 }
 
+function getCountry() {
+  const playedIn = document.getElementById("playedIn").value;
+  if (playedIn === "India") return "India";
+  return document.getElementById("country").value || "Outside India";
+}
+
+function getTotalScore() {
+  let total = 0;
+  for (let i = 1; i <= holeCount; i++) {
+    total += Number(document.getElementById("score-" + i).value) || 0;
+  }
+  return total;
+}
+
+function saveRoundToHistory() {
+  const playerName = document.getElementById("playerName").value || "Unknown";
+  const date = document.getElementById("roundDate").value || "";
+  const country = getCountry();
+  const courseName = document.getElementById("courseName").value || "Unknown course";
+  const coursePar = getCoursePar();
+  const totalScore = getTotalScore();
+  const scoreVsPar = coursePar > 0 ? totalScore - coursePar : totalScore;
+
+  const round = {
+    playerName,
+    date,
+    country,
+    courseName,
+    coursePar,
+    totalScore,
+    scoreVsPar,
+    holes: holeCount,
+  };
+
+  const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
+  history.push(round);
+  localStorage.setItem("roundHistory", JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById("roundsList");
+  list.innerHTML = "";
+  const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
+
+  if (history.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No rounds saved yet.";
+    list.appendChild(p);
+    return;
+  }
+
+  for (let i = 0; i < history.length; i++) {
+    const round = history[i];
+    const card = document.createElement("div");
+    card.className = "round-card";
+
+    const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
+    const lines = [
+      "Player: " + round.playerName,
+      "Date: " + (round.date || "—"),
+      "Country: " + round.country,
+      "Course: " + round.courseName,
+      "Course Par: " + round.coursePar,
+      "Total Score: " + round.totalScore,
+      "Score vs Par: " + diffText,
+    ];
+
+    for (const line of lines) {
+      const p = document.createElement("p");
+      p.textContent = line;
+      card.appendChild(p);
+    }
+    list.appendChild(card);
+  }
+}
+
+function clearCurrentRound() {
+  for (const f of SETUP_FIELDS) {
+    const el = document.getElementById(f);
+    if (f === "numberOfHoles") {
+      el.value = "18";
+    } else if (f === "playedIn") {
+      el.value = "India";
+    } else {
+      el.value = "";
+    }
+  }
+  holeCount = 18;
+  buildHoles();
+  toggleCountryRow();
+  localStorage.removeItem("golfRound");
+  updateSummary();
+  analyze();
+}
+
 function handleChange() {
   saveAll();
   updateSummary();
   analyze();
 }
 
+function onSetupChange(event) {
+  if (event.target.id === "numberOfHoles") {
+    holeCount = Number(event.target.value);
+    buildHoles();
+    loadAll();
+  }
+  if (event.target.id === "playedIn") {
+    toggleCountryRow();
+  }
+  handleChange();
+}
+
+setupContainer.addEventListener("change", onSetupChange);
+setupContainer.addEventListener("input", handleChange);
 holesContainer.addEventListener("input", handleChange);
 holesContainer.addEventListener("change", handleChange);
 
-document.getElementById("resetBtn").addEventListener("click", function () {
-  if (confirm("Start a new round? This will clear all holes.")) {
-    localStorage.removeItem("golfRound");
-    for (let i = 1; i <= 18; i++) {
-      for (const field of FIELDS) {
-        document.getElementById(field + "-" + i).value = "";
-      }
-    }
-    updateSummary();
-    analyze();
+document.getElementById("saveRoundBtn").addEventListener("click", function () {
+  if (getTotalScore() === 0) {
+    alert("Add some scores before saving the round.");
+    return;
+  }
+  saveRoundToHistory();
+  if (confirm("Round saved! Start a new round now?")) {
+    clearCurrentRound();
   }
 });
 
+document.getElementById("resetBtn").addEventListener("click", function () {
+  if (confirm("Start a new round? This will clear all holes (not your previous rounds).")) {
+    clearCurrentRound();
+  }
+});
+
+buildHoles();
 loadAll();
 updateSummary();
 analyze();
+renderHistory();

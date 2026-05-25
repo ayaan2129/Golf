@@ -9,6 +9,44 @@
   <body>
     <h1>Junior Golf Tracker</h1>
 
+    <div class="setup">
+      <h2>Round Setup</h2>
+
+      <label>Player Name
+        <input type="text" id="playerName" />
+      </label>
+
+      <label>Date
+        <input type="date" id="roundDate" />
+      </label>
+
+      <label>Played In
+        <select id="playedIn">
+          <option value="India">India</option>
+          <option value="Outside India">Outside India</option>
+        </select>
+      </label>
+
+      <label id="countryRow" style="display:none;">Country
+        <input type="text" id="country" />
+      </label>
+
+      <label>Course Name
+        <input type="text" id="courseName" />
+      </label>
+
+      <label>Course Par
+        <input type="number" id="coursePar" min="1" />
+      </label>
+
+      <label>Number of Holes
+        <select id="numberOfHoles">
+          <option value="18">18 holes</option>
+          <option value="9">9 holes</option>
+        </select>
+      </label>
+    </div>
+
     <div class="summary">
       <h2>Round Summary</h2>
       <p id="sumScore">Total Score: 0</p>
@@ -17,6 +55,7 @@
       <p id="sumFairway">Fairway Hit %: 0%</p>
       <p id="sumPenalties">Penalties: 0</p>
       <p id="sumMissed">Missed Short Putts: 0</p>
+      <button id="saveRoundBtn">Save Round</button>
       <button id="resetBtn">New Round</button>
     </div>
 
@@ -36,6 +75,11 @@
 
       <h3>Your Strengths</h3>
       <ul id="strengthsList"></ul>
+    </div>
+
+    <div class="previous-rounds">
+      <h2>Previous Rounds</h2>
+      <div id="roundsList"></div>
     </div>
 
     <script src="script.js"></script>
