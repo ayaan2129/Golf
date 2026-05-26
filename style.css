@@ -1148,6 +1148,49 @@ textarea { resize: vertical; }
   font-weight: 700;
 }
 
+.mode-toggle {
+  background: white;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px auto;
+  max-width: 340px;
+  box-shadow: var(--card-shadow);
+  border-left: 5px solid var(--water);
+}
+
+.mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+
+.mode-toggle select {
+  flex: 1;
+  margin: 0;
+}
+
+.quick-row {
+  background: linear-gradient(180deg, #fff8d6, #fff3cd);
+  border: 2px dashed var(--gold);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.quick-row label {
+  display: block;
+  margin: 6px 0;
+  font-weight: 700;
+}
+
+.quick-row input {
+  font-size: 18px;
+  text-align: center;
+}
+
 .club-stats-table tr.clickable {
   cursor: pointer;
 }

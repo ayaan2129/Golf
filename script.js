@@ -739,6 +739,16 @@ function makeHoleCard(n) {
 
       <p class="hole-score">Shots so far: <span id="holeScore-${n}">0</span></p>
 
+      <div class="quick-row" id="quickRow-${n}" style="display:none;">
+        <h4 style="margin:0 0 6px; color:#8a6d00;">Quick Score</h4>
+        <label>Score
+          <input type="number" id="quickScore-${n}" min="0" />
+        </label>
+        <label>Putts (of that score)
+          <input type="number" id="quickPutts-${n}" min="0" />
+        </label>
+      </div>
+
       <div class="putting-section" id="puttingSection-${n}" style="display:none;">
         <h3>Putting</h3>
         <div class="putts-list" id="puttsList-${n}"></div>
@@ -961,6 +971,7 @@ function buildHoles() {
   }
   if (currentHoleIndex >= active.length) currentHoleIndex = 0;
   showHole(currentHoleIndex);
+  applyRoundMode();
 }
 
 function showHole(index) {
@@ -1148,6 +1159,8 @@ function saveAll() {
       distance: document.getElementById("holeDistance-" + i).value,
       shots: getShotsForHole(i),
       putts: getPuttsForHole(i),
+      quickScore: (document.getElementById("quickScore-" + i) || {}).value || "",
+      quickPutts: (document.getElementById("quickPutts-" + i) || {}).value || "",
       firstPuttDistance: fpdEl ? fpdEl.value : "",
       firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
       missedShortPutt: document.getElementById("missedShortPutt-" + i).value,
@@ -1200,6 +1213,11 @@ function loadAll() {
 
       const distEl = document.getElementById("holeDistance-" + i);
       if (distEl && hole.distance !== undefined) distEl.value = hole.distance;
+
+      const qsEl = document.getElementById("quickScore-" + i);
+      if (qsEl && hole.quickScore !== undefined) qsEl.value = hole.quickScore;
+      const qpEl = document.getElementById("quickPutts-" + i);
+      if (qpEl && hole.quickPutts !== undefined) qpEl.value = hole.quickPutts;
 
       const fpdEl = document.getElementById("firstPuttDistance-" + i);
       if (fpdEl && hole.firstPuttDistance !== undefined) fpdEl.value = hole.firstPuttDistance;
@@ -1314,8 +1332,53 @@ function computeHoleStats(par, shots, firstPuttResult, missedShortStr, savedPutt
   };
 }
 
+function getRoundMode() {
+  const el = document.getElementById("roundMode");
+  return (el && el.value) || localStorage.getItem("roundMode") || "full";
+}
+
+function applyRoundMode() {
+  const mode = getRoundMode();
+  const cards = document.querySelectorAll(".hole-card");
+  cards.forEach(function (card) {
+    const num = card.querySelector(".add-shot-btn") && card.querySelector(".add-shot-btn").dataset.hole;
+    if (!num) return;
+    const shotsBlock = card.querySelector(".shots-list");
+    const addShotBtn = card.querySelector(".add-shot-btn");
+    const shotsHeader = Array.from(card.querySelectorAll("h3")).find(function (h) { return h.textContent === "Shots"; });
+    const holeScore = card.querySelector(".hole-score");
+    const quickRow = card.querySelector(".quick-row");
+    const puttingSection = card.querySelector(".putting-section");
+
+    if (mode === "quick") {
+      if (shotsBlock) shotsBlock.style.display = "none";
+      if (addShotBtn) addShotBtn.style.display = "none";
+      if (shotsHeader) shotsHeader.style.display = "none";
+      if (holeScore) holeScore.style.display = "none";
+      if (puttingSection) puttingSection.style.display = "none";
+      if (quickRow) quickRow.style.display = "";
+    } else {
+      if (shotsBlock) shotsBlock.style.display = "";
+      if (addShotBtn) addShotBtn.style.display = "";
+      if (shotsHeader) shotsHeader.style.display = "";
+      if (holeScore) holeScore.style.display = "";
+      if (quickRow) quickRow.style.display = "none";
+      updatePuttingVisibility(num);
+    }
+  });
+}
+
 function getHoleStats(i) {
   const par = Number(document.getElementById("par-" + i).value) || 0;
+  if (getRoundMode() === "quick") {
+    const score = Number((document.getElementById("quickScore-" + i) || {}).value) || 0;
+    const putts = Number((document.getElementById("quickPutts-" + i) || {}).value) || 0;
+    return {
+      par, shots: [], score, putts, chips: 0, penalties: 0, badShots: 0, goodShots: 0,
+      fwHit: 0, fwAns: 0, gir: 0, girAns: 0, scrambleAns: 0, scrambleSave: 0,
+      firstPuttResult: "", missedShort: false,
+    };
+  }
   const shots = getShotsForHole(i);
   const puttsArr = getPuttsForHole(i);
   let putts = puttsArr.length;
@@ -1622,6 +1685,7 @@ function analyze() {
   let par3Count = 0;
   let scoredHoles = 0;
 
+  let girHit = 0, girAns = 0, scrambleSave = 0, scrambleAns = 0;
   for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     if (s.score > 0) scoredHoles += 1;
@@ -1632,6 +1696,10 @@ function analyze() {
     fairwaysAnswered += s.fwAns;
     badShots += s.badShots;
     goodShots += s.goodShots;
+    girHit += s.gir || 0;
+    girAns += s.girAns || 0;
+    scrambleSave += s.scrambleSave || 0;
+    scrambleAns += s.scrambleAns || 0;
     if (s.putts >= 3) threePutts += 1;
     if (s.firstPuttResult === "Short") firstPuttShort += 1;
     if (s.firstPuttResult === "Long") firstPuttLong += 1;
@@ -1645,10 +1713,14 @@ function analyze() {
 
   let fairwayPct = null;
   if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
+  const girPct = girAns > 0 ? Math.round((girHit / girAns) * 100) : null;
+  const scramblePct = scrambleAns > 0 ? Math.round((scrambleSave / scrambleAns) * 100) : null;
 
   const mistakes = [];
   if (totalPenalties >= 1) mistakes.push("Penalty strokes lost: " + totalPenalties + ".");
   if (fairwayPct !== null && fairwayPct < 60) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (girPct !== null && girAns >= 3 && girPct < 30) mistakes.push("Greens in Regulation only " + girPct + "% — approach play needs work.");
+  if (scramblePct !== null && scrambleAns >= 3 && scramblePct < 30) mistakes.push("Scrambling only " + scramblePct + "% — short game lost strokes.");
   if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
   if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
   if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
@@ -1657,6 +1729,8 @@ function analyze() {
 
   const strengths = [];
   if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
+  if (girPct !== null && girAns >= 3 && girPct >= 50) strengths.push("Strong approach play: " + girPct + "% GIR.");
+  if (scramblePct !== null && scrambleAns >= 3 && scramblePct >= 50) strengths.push("Sharp short game: " + scramblePct + "% scrambling.");
   if (scoredHoles > 0 && totalPutts / scoredHoles < 2) strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
   if (totalPenalties === 0 && scoredHoles >= Math.min(holeCount, 9)) strengths.push("Penalty-free round.");
   if (par3Count >= 2 && par3Score <= par3ParTotal + 1) strengths.push("Strong scoring on par 3s.");
@@ -1847,6 +1921,7 @@ function saveRoundToHistory() {
     holes: getActiveHoles().length,
     activeHoles: getActiveHoles(),
     holesMode: document.getElementById("holesMode").value || "18",
+    roundMode: getRoundMode(),
     savedAt: new Date().toISOString(),
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
@@ -2386,9 +2461,21 @@ function computeAnalysisFromHoles(holeStatsList) {
   let fairwayPct = null;
   if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
 
+  let girHit = 0, girAns = 0, scrambleSave = 0, scrambleAns = 0;
+  for (const s of holeStatsList) {
+    girHit += s.gir || 0;
+    girAns += s.girAns || 0;
+    scrambleSave += s.scrambleSave || 0;
+    scrambleAns += s.scrambleAns || 0;
+  }
+  const girPct = girAns > 0 ? Math.round((girHit / girAns) * 100) : null;
+  const scramblePct = scrambleAns > 0 ? Math.round((scrambleSave / scrambleAns) * 100) : null;
+
   const mistakes = [];
   if (totalPenalties >= 1) mistakes.push("Penalty strokes lost: " + totalPenalties + ".");
   if (fairwayPct !== null && fairwayPct < 60) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (girPct !== null && girAns >= 3 && girPct < 30) mistakes.push("Greens in Regulation only " + girPct + "% — approach play needs work.");
+  if (scramblePct !== null && scrambleAns >= 3 && scramblePct < 30) mistakes.push("Scrambling only " + scramblePct + "% — short game lost strokes.");
   if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
   if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
   if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
@@ -2397,6 +2484,8 @@ function computeAnalysisFromHoles(holeStatsList) {
 
   const strengths = [];
   if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
+  if (girPct !== null && girAns >= 3 && girPct >= 50) strengths.push("Strong approach play: " + girPct + "% GIR.");
+  if (scramblePct !== null && scrambleAns >= 3 && scramblePct >= 50) strengths.push("Sharp short game: " + scramblePct + "% scrambling.");
   if (scoredHoles > 0 && totalPutts / scoredHoles < 2) strengths.push("Good putting: " + (totalPutts / scoredHoles).toFixed(1) + " putts per hole.");
   if (totalPenalties === 0 && scoredHoles >= Math.min(localHoleCount, 9)) strengths.push("Penalty-free round.");
   if (par3Count >= 2 && par3Score <= par3ParTotal + 1) strengths.push("Strong scoring on par 3s.");
@@ -3108,9 +3197,265 @@ function renderDashboard() {
   renderGoalTracker();
   renderAchievements();
   renderTypeStats();
+  renderParTypeStats();
+  renderApproachBands();
   renderClubStats();
   renderHandicapTrend();
+  renderScoreTrend();
   renderUpcoming();
+}
+
+function gatherAllScoredHoles() {
+  const out = [];
+  const history = getHistory();
+  for (const r of history) {
+    if (!r.fullData || !r.fullData.holes) continue;
+    for (const k in r.fullData.holes) {
+      const h = r.fullData.holes[k];
+      const stats = getHoleStatsFromSavedHole(h);
+      if (stats.score > 0) out.push(stats);
+    }
+  }
+  for (const i of getActiveHoles()) {
+    const s = getHoleStats(i);
+    if (s.score > 0) out.push(s);
+  }
+  return out;
+}
+
+function renderParTypeStats() {
+  const card = document.getElementById("parTypeCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Performance by Par Type";
+  card.appendChild(h);
+
+  const buckets = { 3: { count: 0, sum: 0 }, 4: { count: 0, sum: 0 }, 5: { count: 0, sum: 0 } };
+  for (const s of gatherAllScoredHoles()) {
+    if (buckets[s.par]) {
+      buckets[s.par].count += 1;
+      buckets[s.par].sum += s.score;
+    }
+  }
+
+  if (Object.values(buckets).every(function (b) { return b.count === 0; })) {
+    const p = document.createElement("p");
+    p.textContent = "Play and save rounds to compare your scoring by par type.";
+    card.appendChild(p);
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.className = "club-stats-table";
+  table.innerHTML = "<thead><tr><th>Par</th><th>Holes</th><th>Avg score</th><th>vs Par</th></tr></thead>";
+  const tbody = document.createElement("tbody");
+  for (const p of [3, 4, 5]) {
+    const b = buckets[p];
+    const tr = document.createElement("tr");
+    let avg = "—", vsPar = "—";
+    if (b.count > 0) {
+      const a = b.sum / b.count;
+      avg = a.toFixed(2);
+      const diff = a - p;
+      vsPar = diff > 0 ? "+" + diff.toFixed(2) : diff.toFixed(2);
+    }
+    tr.innerHTML = "<td class=\"club-name\">Par " + p + "</td><td>" + b.count + "</td><td>" + avg + "</td><td>" + vsPar + "</td>";
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  card.appendChild(table);
+
+  const insights = [];
+  const sorted = [3, 4, 5]
+    .filter(function (p) { return buckets[p].count > 0; })
+    .map(function (p) { return { p, vs: buckets[p].sum / buckets[p].count - p }; });
+  if (sorted.length > 0) {
+    sorted.sort(function (a, b) { return b.vs - a.vs; });
+    insights.push("Hardest for you: Par " + sorted[0].p + " (avg " + (sorted[0].vs >= 0 ? "+" : "") + sorted[0].vs.toFixed(2) + ").");
+    insights.push("Easiest for you: Par " + sorted[sorted.length - 1].p + " (avg " + (sorted[sorted.length - 1].vs >= 0 ? "+" : "") + sorted[sorted.length - 1].vs.toFixed(2) + ").");
+  }
+  for (const line of insights) {
+    const p = document.createElement("p");
+    p.style.fontSize = "12px";
+    p.style.marginTop = "6px";
+    p.textContent = line;
+    card.appendChild(p);
+  }
+}
+
+function bucketFor(yards) {
+  if (yards < 50) return null;
+  if (yards < 75) return "50-75";
+  if (yards < 100) return "75-100";
+  if (yards < 125) return "100-125";
+  if (yards < 150) return "125-150";
+  if (yards < 175) return "150-175";
+  if (yards < 200) return "175-200";
+  return "200+";
+}
+
+function renderApproachBands() {
+  const card = document.getElementById("approachBandsCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Approach Shots by Distance";
+  card.appendChild(h);
+
+  const shots = gatherAllShots().filter(function (s) {
+    return s.club && s.club !== "Putter" && s.distanceHit && Number(s.distanceHit) >= 50;
+  });
+  if (shots.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "Play approach shots (50+ yards) to see distance-band stats.";
+    card.appendChild(p);
+    return;
+  }
+
+  const bands = ["50-75", "75-100", "100-125", "125-150", "150-175", "175-200", "200+"];
+  const data = {};
+  for (const b of bands) data[b] = { count: 0, onGreen: 0, misses: {} };
+
+  for (const s of shots) {
+    const b = bucketFor(Number(s.distanceHit));
+    if (!b || !data[b]) continue;
+    data[b].count += 1;
+    if (s.result === "Green" || s.result === "Holed" || s.result === "On green") data[b].onGreen += 1;
+    if (s.direction && s.direction !== "Straight") {
+      data[b].misses[s.direction] = (data[b].misses[s.direction] || 0) + 1;
+    }
+  }
+
+  const table = document.createElement("table");
+  table.className = "club-stats-table";
+  table.innerHTML = "<thead><tr><th>Yds</th><th>#</th><th>Green %</th><th>Top miss</th></tr></thead>";
+  const tbody = document.createElement("tbody");
+  for (const b of bands) {
+    if (data[b].count === 0) continue;
+    let topMiss = "—";
+    let topMissCount = 0;
+    for (const dir in data[b].misses) {
+      if (data[b].misses[dir] > topMissCount) {
+        topMiss = dir;
+        topMissCount = data[b].misses[dir];
+      }
+    }
+    const pct = Math.round((data[b].onGreen / data[b].count) * 100);
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td class=\"club-name\">" + b + "</td><td>" + data[b].count + "</td><td>" + pct + "%</td><td>" + topMiss + "</td>";
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  card.appendChild(table);
+
+  const bandsWithData = bands.filter(function (b) { return data[b].count >= 2; });
+  if (bandsWithData.length >= 2) {
+    const ranked = bandsWithData
+      .map(function (b) { return { b, pct: data[b].onGreen / data[b].count }; })
+      .sort(function (a, b) { return b.pct - a.pct; });
+    const strongest = ranked[0];
+    const weakest = ranked[ranked.length - 1];
+    const p1 = document.createElement("p");
+    p1.style.fontSize = "12px";
+    p1.style.marginTop = "6px";
+    p1.textContent = "Strongest yardage: " + strongest.b + " yds (" + Math.round(strongest.pct * 100) + "% on green).";
+    card.appendChild(p1);
+    const p2 = document.createElement("p");
+    p2.style.fontSize = "12px";
+    p2.textContent = "Weakest yardage: " + weakest.b + " yds (" + Math.round(weakest.pct * 100) + "% on green) — practice this distance.";
+    card.appendChild(p2);
+  }
+}
+
+function renderScoreTrend() {
+  const card = document.getElementById("scoreTrendCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Score Trend";
+  card.appendChild(h);
+
+  const rounds = getHistory()
+    .filter(function (r) { return r.date && r.totalScore > 0; })
+    .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  if (rounds.length < 2) {
+    const p = document.createElement("p");
+    p.textContent = "Save at least 2 rounds to see your score trend.";
+    card.appendChild(p);
+    return;
+  }
+
+  const w = 320, hpx = 160, pad = 24;
+  const scores = rounds.map(function (r) { return r.totalScore; });
+  const minS = Math.min.apply(null, scores);
+  const maxS = Math.max.apply(null, scores);
+  const range = Math.max(1, maxS - minS);
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + w + " " + hpx);
+  svg.setAttribute("width", w);
+  svg.setAttribute("height", hpx);
+
+  const bg = document.createElementNS(svgNS, "rect");
+  bg.setAttribute("width", w);
+  bg.setAttribute("height", hpx);
+  bg.setAttribute("fill", "#f8fbf8");
+  svg.appendChild(bg);
+
+  const pts = rounds.map(function (r, i) {
+    const x = pad + (i / Math.max(1, rounds.length - 1)) * (w - 2 * pad);
+    const y = pad + ((maxS - r.totalScore) / range) * (hpx - 2 * pad);
+    return { x, y, r };
+  });
+
+  const path = document.createElementNS(svgNS, "polyline");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#1976d2");
+  path.setAttribute("stroke-width", 3);
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("points", pts.map(function (p) { return p.x + "," + p.y; }).join(" "));
+  svg.appendChild(path);
+
+  for (const p of pts) {
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("cx", p.x);
+    dot.setAttribute("cy", p.y);
+    dot.setAttribute("r", 4);
+    dot.setAttribute("fill", p.r.gameType === "Tournament" ? "#7e57c2" : "#2e7d32");
+    dot.setAttribute("stroke", "white");
+    dot.setAttribute("stroke-width", 1.5);
+    svg.appendChild(dot);
+  }
+
+  const tMax = document.createElementNS(svgNS, "text");
+  tMax.setAttribute("x", 4);
+  tMax.setAttribute("y", 14);
+  tMax.setAttribute("font-size", 11);
+  tMax.setAttribute("fill", "#4f6f4f");
+  tMax.textContent = String(maxS);
+  svg.appendChild(tMax);
+  const tMin = document.createElementNS(svgNS, "text");
+  tMin.setAttribute("x", 4);
+  tMin.setAttribute("y", hpx - 4);
+  tMin.setAttribute("font-size", 11);
+  tMin.setAttribute("fill", "#4f6f4f");
+  tMin.textContent = String(minS);
+  svg.appendChild(tMin);
+
+  card.appendChild(svg);
+
+  const first = rounds[0].totalScore;
+  const last = rounds[rounds.length - 1].totalScore;
+  const diff = last - first;
+  const p = document.createElement("p");
+  p.style.fontSize = "12px";
+  p.style.marginTop = "6px";
+  if (diff < 0) p.textContent = "Down " + Math.abs(diff) + " strokes since first round — improving!";
+  else if (diff > 0) p.textContent = "Up " + diff + " strokes — focus on weak areas.";
+  else p.textContent = "Steady.";
+  card.appendChild(p);
 }
 
 function renderHandicapTrend() {
@@ -3768,6 +4113,17 @@ function initChat() {
     btn.addEventListener("click", function () {
       sendChatMessage(btn.dataset.q);
     });
+  });
+}
+
+const roundModeSel = document.getElementById("roundMode");
+if (roundModeSel) {
+  const stored = localStorage.getItem("roundMode");
+  if (stored) roundModeSel.value = stored;
+  roundModeSel.addEventListener("change", function () {
+    localStorage.setItem("roundMode", roundModeSel.value);
+    applyRoundMode();
+    handleChange();
   });
 }
 

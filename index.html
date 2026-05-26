@@ -253,6 +253,15 @@
       <div id="trackerTab" class="tab-page" style="display:none;">
         <h2 class="page-label">Page 5 — Hole Tracker</h2>
 
+        <div class="mode-toggle">
+          <label>Round mode:
+            <select id="roundMode">
+              <option value="full">Full (shot by shot)</option>
+              <option value="quick">Quick (just score + putts)</option>
+            </select>
+          </label>
+        </div>
+
         <div class="hole-progress-bar">
           <div id="holeProgressFill" class="hole-progress-fill"></div>
         </div>
@@ -364,9 +373,15 @@
           <div class="overall-stats" id="normalGameStats"></div>
           <div class="overall-stats" id="tournamentStats"></div>
 
+          <div class="club-stats-card" id="parTypeCard"></div>
+
+          <div class="club-stats-card" id="approachBandsCard"></div>
+
           <div class="club-stats-card" id="clubStatsCard"></div>
 
           <div class="club-stats-card" id="handicapTrendCard"></div>
+
+          <div class="club-stats-card" id="scoreTrendCard"></div>
 
           <div class="upcoming-section">
             <h3>Upcoming Rounds</h3>
