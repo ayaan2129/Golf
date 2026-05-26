@@ -190,16 +190,16 @@ function switchTab(tabId) {
   window.scrollTo(0, 0);
 }
 
-document.querySelectorAll("[data-go]").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    const target = btn.dataset.go;
-    if (target === "welcome") {
-      showWelcome();
-    } else if (target === "trackerTab" || target === "statsTab") {
-      showApp();
-      switchTab(target);
-    }
-  });
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest && e.target.closest("[data-go]");
+  if (!btn) return;
+  const target = btn.dataset.go;
+  if (target === "welcome") {
+    showWelcome();
+  } else if (target === "trackerTab" || target === "statsTab") {
+    showApp();
+    switchTab(target);
+  }
 });
 
 const statsLogoutBtn = document.getElementById("statsLogoutBtn");
