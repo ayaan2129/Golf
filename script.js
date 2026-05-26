@@ -95,12 +95,64 @@ function showLogin() {
   setShellVisible(false);
 }
 
+function renderHomeDashboard() {
+  const profile = getProfile();
+  const acct = currentAccount();
+  const name = profile.displayName || (acct && acct.displayName) || "Player";
+  const greet = document.getElementById("welcomeName");
+  if (greet) greet.textContent = name;
+
+  const today = new Date();
+  const dayStr = today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const sub = document.getElementById("homeSub");
+  if (sub) sub.textContent = dayStr;
+
+  const wxText = document.getElementById("homeWeatherText");
+  if (wxText) {
+    let w = null;
+    try { w = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+    if (w) {
+      wxText.textContent = Math.round(w.tempMax || 0) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
+    } else {
+      wxText.textContent = "Pick a date in Setup to fetch.";
+    }
+  }
+
+  const lastEl = document.getElementById("homeLastRoundText");
+  if (lastEl) {
+    const history = getHistory();
+    if (history.length === 0) {
+      lastEl.textContent = "No rounds saved yet.";
+    } else {
+      const r = history[history.length - 1];
+      const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
+      lastEl.textContent = r.courseName + " " + (r.tee || "") + " · " + (r.date || "") + " · " + r.totalScore + " (" + diff + ")";
+    }
+  }
+
+  const fEl = document.getElementById("homeFocusText");
+  if (fEl) {
+    const recent = getHistory().slice(-3);
+    const allMistakes = [];
+    for (const r of recent) for (const m of (r.mistakes || [])) allMistakes.push(m);
+    if (allMistakes.length > 0) {
+      fEl.textContent = "Work on: " + allMistakes[0];
+    } else {
+      fEl.textContent = "Have fun, stay smooth.";
+    }
+  }
+
+  const tEl = document.getElementById("homeThoughtText");
+  if (tEl) tEl.textContent = getDailyThought();
+}
+
 function showWelcome() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "";
   document.getElementById("appScreen").style.display = "none";
   setShellVisible(true);
   syncBottomTabs("home");
+  renderHomeDashboard();
   renderWelcome();
 }
 
@@ -427,7 +479,28 @@ if (displayNameInit) {
     const v = (displayNameInit.value || "").trim();
     setProfileField("displayName", v);
     renderPlayerCard();
+    const greet = document.getElementById("welcomeName");
+    if (greet) greet.textContent = v || "Player";
   });
+}
+
+const favEl = document.getElementById("favPlayerInput");
+if (favEl) {
+  const p = getProfile();
+  if (p.favPlayer) favEl.value = p.favPlayer;
+  favEl.addEventListener("input", function () { setProfileField("favPlayer", favEl.value || ""); });
+}
+const goalEl = document.getElementById("bigGoalInput");
+if (goalEl) {
+  const p = getProfile();
+  if (p.bigGoal) goalEl.value = p.bigGoal;
+  goalEl.addEventListener("input", function () { setProfileField("bigGoal", goalEl.value || ""); });
+}
+
+const profileUsernameEl = document.getElementById("profileUsername");
+if (profileUsernameEl) {
+  const u = getCurrentUsername();
+  profileUsernameEl.textContent = "Username: " + (u || "—");
 }
 
 function switchTab(tabId) {
@@ -461,7 +534,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab") {
     showApp();
     switchTab(target);
     syncBottomTabs(target);
@@ -487,6 +560,25 @@ document.querySelectorAll(".bt").forEach(function (btn) {
     }
   });
 });
+
+const homeStart = document.getElementById("homeStartBtn");
+if (homeStart) {
+  homeStart.addEventListener("click", function () {
+    showApp();
+    switchTab("setupTab");
+    syncBottomTabs("setupTab");
+  });
+}
+
+const profileLogout = document.getElementById("profileLogoutBtn");
+if (profileLogout) {
+  profileLogout.addEventListener("click", function () {
+    if (confirm("Log out?")) {
+      setCurrentUsername(null);
+      showLogin();
+    }
+  });
+}
 
 const headerHome = document.getElementById("headerHomeBtn");
 if (headerHome) {
