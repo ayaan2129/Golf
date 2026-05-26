@@ -86,6 +86,12 @@
           <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice</button>
         </div>
 
+        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.15), rgba(47, 175, 62, 0.1)); border:1px solid var(--gold);">
+          <h3 style="margin:0 0 6px;">🤖 Turn on the AI Coach</h3>
+          <p style="margin:0 0 10px; font-size:13px;">Bring your own API key (free credit at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock AI round reports, practice plans, and swing analysis tailored to your data.</p>
+          <button class="home-cta-btn secondary" data-go-tab="statsTab" id="byoOpenSettingsBtn" style="font-size:13px; padding:8px 14px;">Add your key →</button>
+        </div>
+
         <div class="home-tile home-place">
           <h3>Today at <span id="homeCourse">RCGC</span></h3>
           <p id="homeWeatherText">—</p>
@@ -401,20 +407,29 @@
           <div class="club-stats-card" id="weatherImpactCard"></div>
 
           <div class="ai-card">
-            <h3>AI Coach Settings</h3>
-            <p style="font-size:13px; margin:0 0 8px;">Two ways to enable the AI Coach. Pick one.</p>
-            <label>AI Proxy URL (recommended — keeps key on the server)
-              <input type="text" id="aiProxyUrl" placeholder="https://...workers.dev" autocomplete="off" />
-            </label>
-            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Deploy the Cloudflare Worker in <code>proxy/</code> (see proxy/README.md), then paste its URL here. The xAI key stays on the worker as an env secret.</p>
-            <label>Or: Grok API Key (key stored on this device only)
+            <h3>AI Coach Settings (BYO key)</h3>
+            <p style="font-size:13px; margin:0 0 10px;">Bring your own AI key. Two options — pick whichever is easier.</p>
+
+            <div style="background:rgba(47, 175, 62, 0.08); border-left:3px solid var(--green-bright); padding:10px 12px; margin:0 0 12px; font-size:12px; line-height:1.5;">
+              <strong>Don't have a key yet?</strong><br/>
+              Sign in at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>, click "API Keys", and copy a new key. xAI gives every new account some free credit to start.
+            </div>
+
+            <label>Option A — Grok API key (stored on this device only)
               <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
             </label>
+            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Lives in your browser's localStorage under your account. Other accounts on this device don't see it.</p>
+
+            <label>Option B — AI Proxy URL (key stays on a server you own)
+              <input type="text" id="aiProxyUrl" placeholder="https://...workers.dev" autocomplete="off" />
+            </label>
+            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Deploy the Cloudflare Worker in <code>proxy/</code> (see proxy/README.md), then paste its URL. Best if you don't want any key in your browser.</p>
+
             <label>
               <input type="checkbox" id="aiModeToggle" style="width:auto; margin-right:6px;" />
-              Use AI for chat & reports
+              Use AI for chat &amp; reports
             </label>
-            <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
+            <p id="aiStatus" class="ai-status">AI coach off — add a key above to enable.</p>
             <button id="seedDemoBtn" class="ai-action-btn" style="background:#1976d2; color:white;">Seed Ayaan demo data</button>
             <button id="wipeDemoBtn" class="ai-action-btn" style="background:#444; color:#eee; margin-top:6px;">Wipe ALL local data</button>
           </div>
@@ -594,16 +609,10 @@
         </div>
 
         <div class="profile-section">
-          <h3 class="profile-section-title">AI Coach</h3>
-          <div class="profile-row">
-            <label>Grok API Key</label>
-            <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
-          </div>
-          <div class="profile-row profile-row-toggle">
-            <label>Use AI for chat &amp; reports</label>
-            <input type="checkbox" id="aiModeToggle" />
-          </div>
-          <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
+          <h3 class="profile-section-title">AI Coach (BYO key)</h3>
+          <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">Bring your own xAI Grok key (free credit on signup at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock the AI coach. Each user's key stays on their own device.</p>
+          <p id="aiStatusProfile" class="ai-status" style="margin:0 0 10px;">AI coach off — add a key on the Stats tab to enable.</p>
+          <button id="goToAiSettingsBtn" class="ai-action-btn" style="width:100%;">Add / change my AI key →</button>
         </div>
 
         <details class="profile-section">

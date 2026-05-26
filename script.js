@@ -262,6 +262,25 @@ function renderWelcome() {
   }
   nameEl.textContent = name;
 
+  // BYO banner: show only when the AI coach isn't configured yet
+  const byo = document.getElementById("byoBanner");
+  if (byo) byo.style.display = (typeof aiEnabled === "function" && aiEnabled()) ? "none" : "";
+  const byoBtn = document.getElementById("byoOpenSettingsBtn");
+  if (byoBtn && !byoBtn._wired) {
+    byoBtn._wired = true;
+    byoBtn.addEventListener("click", function () {
+      showApp();
+      switchTab("statsTab");
+      setTimeout(function () {
+        const card = document.getElementById("grokApiKey");
+        if (card) {
+          card.scrollIntoView({ block: "center", behavior: "smooth" });
+          card.focus();
+        }
+      }, 250);
+    });
+  }
+
   const goalsDiv = document.getElementById("welcomeGoals");
   goalsDiv.innerHTML = "";
   const goal = suggestTeeProgression();
@@ -624,7 +643,22 @@ function switchTab(tabId) {
     renderDashboard();
     renderHistory();
   }
+  if (tabId === "profileTab") {
+    syncAiStatusOnProfile();
+  }
   window.scrollTo(0, 0);
+}
+
+function syncAiStatusOnProfile() {
+  const el = document.getElementById("aiStatusProfile");
+  if (!el) return;
+  if (typeof aiEnabled === "function" && aiEnabled()) {
+    el.textContent = "AI coach ON — your key is set.";
+    el.classList.add("on");
+  } else {
+    el.textContent = "AI coach off — add a key on the Stats tab to enable.";
+    el.classList.remove("on");
+  }
 }
 
 document.addEventListener("click", function (e) {
@@ -3868,12 +3902,21 @@ function initDashboard() {
   const grokKeyInput = document.getElementById("grokApiKey");
   const proxyUrlInput = document.getElementById("aiProxyUrl");
   const aiToggle = document.getElementById("aiModeToggle");
+  function autoEnableAiOnFirstCredential() {
+    // Whenever a user enters any credential, flip aiMode on automatically
+    // (unless they've explicitly turned it off).
+    if (localStorage.getItem("aiMode") !== "off" && (getProxyUrl() || getGrokKey())) {
+      localStorage.setItem("aiMode", "on");
+      if (aiToggle) aiToggle.checked = true;
+    }
+  }
   if (grokKeyInput) {
     grokKeyInput.value = localStorage.getItem("grokApiKey") || "";
     grokKeyInput.addEventListener("input", function () {
       const v = grokKeyInput.value.trim();
       if (v) localStorage.setItem("grokApiKey", v);
       else localStorage.removeItem("grokApiKey");
+      autoEnableAiOnFirstCredential();
       renderAiStatus();
     });
   }
@@ -3883,14 +3926,12 @@ function initDashboard() {
       const v = proxyUrlInput.value.trim();
       if (v) localStorage.setItem("aiProxyUrl", v);
       else localStorage.removeItem("aiProxyUrl");
+      autoEnableAiOnFirstCredential();
       renderAiStatus();
     });
   }
   if (aiToggle) {
-    // Auto-on the first time the user enters any credential
-    if (localStorage.getItem("aiMode") === null && (getProxyUrl() || getGrokKey())) {
-      localStorage.setItem("aiMode", "on");
-    }
+    autoEnableAiOnFirstCredential();
     aiToggle.checked = localStorage.getItem("aiMode") === "on";
     aiToggle.addEventListener("change", function () {
       localStorage.setItem("aiMode", aiToggle.checked ? "on" : "off");
@@ -3898,6 +3939,20 @@ function initDashboard() {
     });
   }
   renderAiStatus();
+
+  const goToAiSettingsBtn = document.getElementById("goToAiSettingsBtn");
+  if (goToAiSettingsBtn) {
+    goToAiSettingsBtn.addEventListener("click", function () {
+      switchTab("statsTab");
+      setTimeout(function () {
+        const card = document.getElementById("grokApiKey");
+        if (card) {
+          card.scrollIntoView({ block: "center", behavior: "smooth" });
+          try { card.focus(); } catch (e) {}
+        }
+      }, 250);
+    });
+  }
 
   const reportBtn = document.getElementById("genRoundReportBtn");
   if (reportBtn) reportBtn.addEventListener("click", generateRoundReport);
@@ -5249,16 +5304,18 @@ async function generatePreRoundBrief() {
 
 function renderAiStatus() {
   const el = document.getElementById("aiStatus");
-  if (!el) return;
-  if (aiEnabled()) {
-    el.textContent = getProxyUrl()
-      ? "AI coach ON — routing through your proxy (key stays on server)."
-      : "AI coach ON — calling Grok directly with your local key.";
-    el.classList.add("on");
-  } else {
-    el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
-    el.classList.remove("on");
+  if (el) {
+    if (aiEnabled()) {
+      el.textContent = getProxyUrl()
+        ? "AI coach ON — routing through your proxy (key stays on server)."
+        : "AI coach ON — calling Grok directly with your local key.";
+      el.classList.add("on");
+    } else {
+      el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
+      el.classList.remove("on");
+    }
   }
+  if (typeof syncAiStatusOnProfile === "function") syncAiStatusOnProfile();
 }
 
 function renderWeatherImpact() {
