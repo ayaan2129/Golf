@@ -108,101 +108,104 @@
     <div id="appScreen" style="display:none;">
       <div class="app-body">
 
+
       <div id="setupTab" class="tab-page">
-        <h2 class="section-header">Round Setup</h2>
+        <div class="setup-hero">
+          <h1 class="setup-hero-title">New Round</h1>
+          <p class="setup-hero-sub">Pick course, tee, and holes. That's it.</p>
+        </div>
 
-        <div class="setup">
-          <h2>Round Setup</h2>
-
-          <label>Player Name
-            <input type="text" id="playerName" value="Ayaan" />
+        <div class="setup-card">
+          <label class="profile-section-title">Course</label>
+          <select id="courseSelect" class="big-select">
+            <option value="">Choose a course</option>
+            <option value="RCGC">RCGC — Royal Calcutta GC</option>
+            <option value="Tolly">Tolly — coming soon</option>
+            <option value="Other">Add custom course</option>
+          </select>
+          <label id="customCourseRow" style="display:none; margin-top:12px;">Course Name
+            <input type="text" id="customCourseName" placeholder="e.g. DLF Golf &amp; Country Club" />
           </label>
-
-          <label>Date
-            <input type="date" id="roundDate" />
-          </label>
-
-          <label>Played In
-            <select id="playedIn">
-              <option value="India">India</option>
-              <option value="Outside India">Outside India</option>
-            </select>
-          </label>
-
-          <label id="countryRow" style="display:none;">Country
-            <input type="text" id="country" />
-          </label>
-
-          <label>Course
-            <select id="courseSelect">
-              <option value="">-- choose --</option>
-              <option value="RCGC">RCGC</option>
-              <option value="Tolly">Tolly (coming soon)</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-
-          <label id="customCourseRow" style="display:none;">Course Name
-            <input type="text" id="customCourseName" />
-          </label>
-
-          <label>Course Par
-            <input type="number" id="coursePar" min="1" />
-          </label>
-
-          <div id="courseInfo" class="course-info" style="display:none;">
-            <p>Course Par: <span id="ciCoursePar">—</span></p>
-            <p>Total Distance: <span id="ciTotalDistance">—</span> yds</p>
-            <p>Front 9: <span id="ciFront9">—</span> yds</p>
-            <p>Back 9: <span id="ciBack9">—</span> yds</p>
-          </div>
-
           <p id="courseNotice" class="course-notice" style="display:none;"></p>
+        </div>
 
-          <label>Holes Played
-            <select id="holesMode">
-              <option value="18">Full 18</option>
-              <option value="front9">Front 9</option>
-              <option value="back9">Back 9</option>
-              <option value="custom">Custom holes</option>
-            </select>
-          </label>
-
-          <div id="customHolesRow" style="display:none;">
-            <p style="margin:6px 0; font-size:13px;">Tick the holes you played:</p>
-            <div id="customHolesChecks" class="custom-holes-checks"></div>
+        <div class="setup-card" id="teeCardSetup">
+          <label class="profile-section-title">Tee Colour</label>
+          <div class="pill-group" id="teePillGroup">
+            <button class="pill" data-tee="Blue" type="button"><span class="dot blue"></span>Blue</button>
+            <button class="pill" data-tee="White" type="button"><span class="dot white"></span>White</button>
+            <button class="pill" data-tee="Yellow" type="button"><span class="dot yellow"></span>Yellow</button>
+            <button class="pill" data-tee="Red" type="button"><span class="dot red"></span>Red</button>
           </div>
+        </div>
 
-          <label>Game Type
+        <div class="setup-card">
+          <label class="profile-section-title">Holes</label>
+          <div class="pill-group" id="holesPillGroup">
+            <button class="pill active" data-holes="18" type="button">18 holes</button>
+            <button class="pill" data-holes="front9" type="button">Front 9</button>
+            <button class="pill" data-holes="back9" type="button">Back 9</button>
+          </div>
+        </div>
+
+        <div class="setup-card course-info-card" id="courseInfo" style="display:none;">
+          <label class="profile-section-title">Course Info</label>
+          <div class="info-grid">
+            <div class="info-cell"><div class="info-val" id="ciCoursePar">—</div><div class="info-lbl">Course Par</div></div>
+            <div class="info-cell"><div class="info-val" id="ciTotalDistance">—</div><div class="info-lbl">Total Yds</div></div>
+            <div class="info-cell"><div class="info-val" id="ciFront9">—</div><div class="info-lbl">Front 9</div></div>
+            <div class="info-cell"><div class="info-val" id="ciBack9">—</div><div class="info-lbl">Back 9</div></div>
+          </div>
+          <p class="info-foot" id="courseGreenSpeed"></p>
+          <p class="info-foot" id="courseNotes"></p>
+        </div>
+
+        <div class="setup-card weather-card-setup">
+          <label class="profile-section-title">Today's Weather</label>
+          <p class="weather-line" id="defaultsTemp">Pick a course to load weather</p>
+        </div>
+
+        <details class="setup-card">
+          <summary class="profile-section-title">Advanced</summary>
+          <div class="profile-row">
+            <label>Date</label>
+            <input type="date" id="roundDate" />
+          </div>
+          <div class="profile-row">
+            <label>Game Type</label>
             <select id="gameType">
-              <option value="Normal Game">Normal Game</option>
+              <option value="Normal Game">Normal</option>
               <option value="Tournament">Tournament</option>
             </select>
-          </label>
-
-          <label id="tournamentNameRow" style="display:none;">Tournament Name
-            <input type="text" id="tournamentName" />
-          </label>
-
-          <label id="tournamentFormatRow" style="display:none;">Tournament Format
+          </div>
+          <div class="profile-row" id="tournamentNameRow" style="display:none;">
+            <label>Tournament</label>
+            <input type="text" id="tournamentName" placeholder="Name" />
+          </div>
+          <div class="profile-row" id="tournamentFormatRow" style="display:none;">
+            <label>Format</label>
             <select id="tournamentFormat">
-              <option value="">-- choose --</option>
+              <option value="">—</option>
               <option value="Stroke play">Stroke play</option>
               <option value="Match play">Match play</option>
-              <option value="5-club tournament">5-club tournament</option>
+              <option value="5-club tournament">5-club</option>
               <option value="Stableford">Stableford</option>
               <option value="Scramble">Scramble</option>
-              <option value="Practice tournament">Practice tournament</option>
+              <option value="Practice tournament">Practice</option>
             </select>
-          </label>
+          </div>
+        </details>
 
+        <div style="display:none;">
+          <input type="text" id="playerName" value="Ayaan" />
+          <select id="playedIn"><option value="India" selected>India</option><option value="Outside India">Outside India</option></select>
+          <label id="countryRow"><input type="text" id="country" /></label>
+          <input type="number" id="coursePar" />
+          <select id="holesMode"><option value="18">18</option><option value="front9">front9</option><option value="back9">back9</option><option value="custom">custom</option></select>
+          <div id="customHolesRow"><div id="customHolesChecks"></div></div>
         </div>
 
-        <div class="page-nav">
-          <button class="btn-back" data-go="welcome">← Back: Pre-Round</button>
-          <button class="btn-next" data-go="clubsTab">Next: Club Setup →</button>
-          <button id="setupLogoutBtn">Logout</button>
-        </div>
+        <button id="startRoundBtn" class="home-cta-btn" style="margin-top: 8px;">Start Round →</button>
       </div>
 
       <div id="clubsTab" class="tab-page" style="display:none;">

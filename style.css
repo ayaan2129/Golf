@@ -675,6 +675,161 @@ details.profile-section ul {
   color: var(--green-deep);
 }
 
+/* ========== SETUP PAGE ========== */
+.setup-hero {
+  text-align: center;
+  padding: 24px 14px 8px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.setup-hero-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.8px;
+  margin: 0 0 6px;
+  line-height: 1.05;
+}
+
+.setup-hero-sub {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.setup-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  width: 100%;
+  max-width: 420px;
+  margin: 12px auto;
+  box-sizing: border-box;
+  box-shadow: var(--card-shadow);
+}
+
+.big-select {
+  width: 100%;
+  font-size: 17px;
+  padding: 14px 38px 14px 14px;
+  font-weight: 600;
+  background-color: var(--bg);
+}
+
+.pill-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 10px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+.pill:active { transform: scale(0.97); }
+
+.pill.active {
+  background: linear-gradient(135deg, var(--green-bright), var(--green-mid));
+  color: white;
+  border-color: var(--green-deep);
+  box-shadow: 0 6px 16px rgba(19, 122, 44, 0.30);
+}
+
+.pill .dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.2);
+}
+
+.dot.blue { background: #1565c0; border-color: #0d47a1; }
+.dot.white { background: white; }
+.dot.yellow { background: #f5b800; border-color: #c98a00; }
+.dot.red { background: #c62828; border-color: #8a0000; }
+
+.pill.active .dot { border-color: rgba(255,255,255,0.7); }
+
+.course-info-card .info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.course-info-card .info-cell {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 10px 4px;
+  text-align: center;
+}
+
+.course-info-card .info-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--green-deep);
+  line-height: 1;
+}
+
+.course-info-card .info-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 4px;
+  letter-spacing: 0.4px;
+}
+
+.info-foot {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.weather-card-setup .weather-line {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+#startRoundBtn {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 16px auto 32px;
+  padding: 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(240, 179, 35, 0.40);
+  letter-spacing: -0.2px;
+}
+
+#startRoundBtn:active { transform: translateY(1px); }
+
 .section-header {
   text-align: center;
   color: white;

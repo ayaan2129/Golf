@@ -613,6 +613,69 @@ if (homeStart) {
     syncDrawerActive("setupTab");
   });
 }
+
+// Tee pill buttons → set hidden teeSelect and trigger course-data refresh
+document.querySelectorAll("#teePillGroup .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#teePillGroup .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    const tee = pill.dataset.tee;
+    const sel = document.getElementById("teeSelect");
+    if (sel) {
+      sel.value = tee;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    applyCourseData && applyCourseData();
+    const d = (document.getElementById("defaultsDateInput") || document.getElementById("roundDate") || {}).value || todayISO();
+    loadTemperatureForDate(d);
+  });
+});
+
+// Holes pill buttons → set hidden holesMode
+document.querySelectorAll("#holesPillGroup .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#holesPillGroup .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    const mode = pill.dataset.holes;
+    const sel = document.getElementById("holesMode");
+    if (sel) {
+      sel.value = mode;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+});
+
+// Show green speed + notes when course picked
+function renderCourseExtras() {
+  const courseKey = (document.getElementById("courseSelect") || {}).value;
+  const c = COURSES[courseKey];
+  const gsEl = document.getElementById("courseGreenSpeed");
+  const notesEl = document.getElementById("courseNotes");
+  if (gsEl) gsEl.textContent = c && c.greenSpeed ? "Green speed: " + c.greenSpeed : "";
+  if (notesEl) notesEl.textContent = c && c.notes ? c.notes : "";
+}
+
+const courseSelectEl = document.getElementById("courseSelect");
+if (courseSelectEl) {
+  courseSelectEl.addEventListener("change", function () {
+    renderCourseExtras();
+    const d = todayISO();
+    loadTemperatureForDate(d);
+  });
+}
+
+// Start Round button
+const startRoundBtn = document.getElementById("startRoundBtn");
+if (startRoundBtn) {
+  startRoundBtn.addEventListener("click", function () {
+    // Default to today's date if Advanced not filled
+    const dateInput = document.getElementById("roundDate");
+    if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    showApp();
+    switchTab("trackerTab");
+    syncDrawerActive("trackerTab");
+  });
+}
 const homePractice = document.getElementById("homePracticeBtn");
 if (homePractice) {
   homePractice.addEventListener("click", function () {
@@ -717,7 +780,7 @@ document.getElementById("welcomeScreen").style.display = "none";
 document.getElementById("appScreen").style.display = "none";
 
 const holesContainer = document.getElementById("holes");
-const setupContainer = document.querySelector(".setup");
+const setupContainer = document.querySelector(".setup") || document.getElementById("setupTab");
 
 const SETUP_FIELDS = [
   "playerName",
@@ -799,6 +862,8 @@ const ACHIEVEMENTS = [
 const COURSES = {
   RCGC: {
     location: { lat: 22.5337, lon: 88.3491, tz: "Asia/Kolkata", name: "Royal Calcutta GC" },
+    greenSpeed: "Medium-fast (~10 stimp)",
+    notes: "Historic parkland. Greens read true. Watch the cross-bunkers on hole 4.",
     pars: [4, 3, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4],
     tees: {
       Blue: [359, 161, 442, 570, 410, 425, 421, 401, 429, 439, 451, 394, 233, 426, 503, 354, 382, 437],
@@ -809,6 +874,8 @@ const COURSES = {
   },
   Tolly: {
     location: { lat: 22.5113, lon: 88.3464, tz: "Asia/Kolkata", name: "Tollygunge Club" },
+    greenSpeed: "—",
+    notes: "Scorecard pending.",
     pars: null,
     tees: null,
   },
