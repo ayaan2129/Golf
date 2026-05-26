@@ -61,6 +61,9 @@
       <button class="drawer-item" data-go-tab="setupTab">⚙  New Round Setup</button>
       <button class="drawer-item" data-go-tab="trackerTab">⛳  Current Round</button>
       <button class="drawer-item" data-go-tab="statsTab">▦  Stats &amp; History</button>
+      <button class="drawer-item" data-go-tab="practiceTab">🎯  Practice</button>
+      <button class="drawer-item" data-go-tab="clubsTab">🏌  My Bag &amp; Distances</button>
+      <button class="drawer-item" data-go-tab="videosTab">▶  Swing Videos</button>
       <button class="drawer-item" data-go-tab="coachTab">💬  Coach</button>
       <button class="drawer-item" data-go-tab="profileTab">◯  My Profile</button>
       <div class="drawer-divider"></div>
@@ -383,6 +386,8 @@
           <div class="overall-stats" id="normalGameStats"></div>
           <div class="overall-stats" id="tournamentStats"></div>
 
+          <div class="club-stats-card" id="practiceInsightsCard"></div>
+
           <div class="club-stats-card" id="parTypeCard"></div>
 
           <div class="club-stats-card" id="approachBandsCard"></div>
@@ -620,6 +625,380 @@
           <button id="seedDemoBtn" class="btn-secondary">Load Demo Data</button>
           <button id="wipeDemoBtn" class="btn-secondary danger">Wipe All Data</button>
           <button id="profileLogoutBtn" class="btn-danger">Logout</button>
+        </div>
+      </div>
+
+      <div id="practiceTab" class="tab-page" style="display:none;">
+        <div class="setup-hero">
+          <h1 class="setup-hero-title">Practice</h1>
+          <p class="setup-hero-sub" id="practiceSubText">Quick log per shot. Builds % over time.</p>
+        </div>
+
+        <div id="practicePickerView">
+          <div class="setup-card">
+            <label class="profile-section-title">What are you practising?</label>
+            <div class="practice-type-grid">
+              <button class="practice-type-tile" data-prac="putting">
+                <div class="ptt-icon">⛳</div>
+                <div class="ptt-label">Putting</div>
+              </button>
+              <button class="practice-type-tile" data-prac="chipping">
+                <div class="ptt-icon">◐</div>
+                <div class="ptt-label">Chipping</div>
+              </button>
+              <button class="practice-type-tile" data-prac="iron">
+                <div class="ptt-icon">─</div>
+                <div class="ptt-label">Irons</div>
+              </button>
+              <button class="practice-type-tile" data-prac="driver">
+                <div class="ptt-icon">▲</div>
+                <div class="ptt-label">Driver</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Putting Stats</label>
+            <div id="puttStatsSummary">Log some putts to see your make rate.</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Chipping Stats</label>
+            <div id="chipStatsSummary">Log some chips to see your up-and-down rate.</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Iron Stats</label>
+            <div id="ironStatsSummary">Log some iron shots to see your yardage gapping.</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Driver / Wood Stats</label>
+            <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
+          </div>
+        </div>
+
+        <div id="puttingView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="puttBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Putting Drill</h2>
+              <button id="puttEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="puttRunning">0 putts · 0% made</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
+            <div class="profile-row">
+              <label>Distance</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="puttDistance" placeholder="ft" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Break</label>
+              <div class="pill-group small-pills" id="puttBreakPills">
+                <button class="pill active" data-break="straight" type="button">— Straight</button>
+                <button class="pill" data-break="L-to-R" type="button">↘ L→R</button>
+                <button class="pill" data-break="R-to-L" type="button">↙ R→L</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Slope</label>
+              <div class="pill-group small-pills" id="puttSlopePills">
+                <button class="pill active" data-slope="flat" type="button">Flat</button>
+                <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                <button class="pill" data-slope="downhill" type="button">Downhill</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Green</label>
+              <div class="pill-group small-pills" id="puttSpeedPills">
+                <button class="pill" data-speed="slow" type="button">Slow</button>
+                <button class="pill active" data-speed="medium" type="button">Medium</button>
+                <button class="pill" data-speed="fast" type="button">Fast</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Intent</label>
+            <div class="pill-group" id="puttIntentPills">
+              <button class="pill active" data-intent="make" type="button">Try to Make</button>
+              <button class="pill" data-intent="lag" type="button">Lag (just close)</button>
+            </div>
+            <div class="profile-row" id="puttLagRow" style="display:none;">
+              <label>Circle target</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="puttCircle" value="5" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft circle</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card" id="puttMakeResults">
+            <label class="profile-section-title">Result</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-result="Holed">✓ Holed</button>
+              <button class="result-btn miss" data-result="Lip-out">⊝ Lip-out</button>
+              <button class="result-btn miss" data-result="Short">↓ Short</button>
+              <button class="result-btn miss" data-result="Long">↑ Long / past</button>
+              <button class="result-btn miss" data-result="Left">← Missed left</button>
+              <button class="result-btn miss" data-result="Right">→ Missed right</button>
+            </div>
+          </div>
+
+          <div class="setup-card" id="puttLagResults" style="display:none;">
+            <label class="profile-section-title">Where did it finish?</label>
+            <div class="profile-row">
+              <label>Distance left</label>
+              <div style="display:flex; gap:6px;align-items:center;">
+                <input type="number" id="puttFinishDist" placeholder="ft" min="0" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft</span>
+              </div>
+            </div>
+            <div class="result-grid">
+              <button class="result-btn good" data-lag-result="Holed">✓ Holed</button>
+              <button class="result-btn" data-lag-result="In Circle">○ Inside circle</button>
+              <button class="result-btn miss" data-lag-result="Outside Circle">⊝ Outside</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="chippingView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="chipBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Chipping Drill</h2>
+              <button id="chipEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="chipRunning">0 chips logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
+            <div class="profile-row">
+              <label>Distance</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="chipDistance" placeholder="yd" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Lie</label>
+              <div class="pill-group small-pills" id="chipLiePills">
+                <button class="pill active" data-lie="fairway" type="button">Fairway</button>
+                <button class="pill" data-lie="light-rough" type="button">Light Rough</button>
+                <button class="pill" data-lie="heavy-rough" type="button">Heavy Rough</button>
+                <button class="pill" data-lie="sand" type="button">Sand</button>
+                <button class="pill" data-lie="hardpan" type="button">Hardpan</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Slope</label>
+              <div class="pill-group small-pills" id="chipSlopePills">
+                <button class="pill active" data-slope="flat" type="button">Flat</button>
+                <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                <button class="pill" data-slope="downhill" type="button">Downhill</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="chipClubPills">
+                <button class="pill" data-club="LW" type="button">LW</button>
+                <button class="pill active" data-club="SW" type="button">SW</button>
+                <button class="pill" data-club="PW" type="button">PW</button>
+                <button class="pill" data-club="9i" type="button">9i</button>
+                <button class="pill" data-club="8i" type="button">8i</button>
+                <button class="pill" data-club="7i" type="button">7i</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it stop?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-chip-result="Holed">✓ Holed</button>
+              <button class="result-btn good" data-chip-result="In 3ft">○ Inside 3 ft</button>
+              <button class="result-btn" data-chip-result="In 6ft">◔ Inside 6 ft</button>
+              <button class="result-btn miss" data-chip-result="6-15ft">⌀ 6–15 ft</button>
+              <button class="result-btn miss" data-chip-result="Past 15ft">↑ Past 15 ft</button>
+              <button class="result-btn miss" data-chip-result="Off green">⊝ Off green</button>
+              <button class="result-btn miss" data-chip-result="Chunked">✗ Chunked / fat</button>
+              <button class="result-btn miss" data-chip-result="Bladed">⤴ Bladed / thin</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="ironView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="ironBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Iron Practice</h2>
+              <button id="ironEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="ironRunning">0 shots logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shot Setup</label>
+            <div class="profile-row">
+              <label>Target</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="ironTarget" placeholder="optional" min="30" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="ironClubPills">
+                <button class="pill" data-club="3i" type="button">3i</button>
+                <button class="pill" data-club="4i" type="button">4i</button>
+                <button class="pill" data-club="5i" type="button">5i</button>
+                <button class="pill" data-club="6i" type="button">6i</button>
+                <button class="pill active" data-club="7i" type="button">7i</button>
+                <button class="pill" data-club="8i" type="button">8i</button>
+                <button class="pill" data-club="9i" type="button">9i</button>
+                <button class="pill" data-club="PW" type="button">PW</button>
+                <button class="pill" data-club="3H" type="button">3H</button>
+                <button class="pill" data-club="4H" type="button">4H</button>
+                <button class="pill" data-club="5H" type="button">5H</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Carry</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="ironCarry" placeholder="yd" min="30" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shape</label>
+            <div class="pill-group small-pills" id="ironShapePills">
+              <button class="pill active" data-shape="straight" type="button">— Straight</button>
+              <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+              <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+              <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+              <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it land?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-iron-result="On target">✓ On target</button>
+              <button class="result-btn" data-iron-result="Short">↓ Short</button>
+              <button class="result-btn" data-iron-result="Long">↑ Long</button>
+              <button class="result-btn miss" data-iron-result="Left">← Left</button>
+              <button class="result-btn miss" data-iron-result="Right">→ Right</button>
+              <button class="result-btn miss" data-iron-result="Fat">✗ Fat / chunked</button>
+              <button class="result-btn miss" data-iron-result="Thin">⤴ Thin / topped</button>
+              <button class="result-btn miss" data-iron-result="OB">⊝ OB / hazard</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="driverView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="drvBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Tee Shot Practice</h2>
+              <button id="drvEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="drvRunning">0 shots logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shot Setup</label>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="drvClubPills">
+                <button class="pill active" data-club="Driver" type="button">Driver</button>
+                <button class="pill" data-club="3W" type="button">3W</button>
+                <button class="pill" data-club="5W" type="button">5W</button>
+                <button class="pill" data-club="3H" type="button">3H</button>
+                <button class="pill" data-club="4H" type="button">4H</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Carry</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="drvCarry" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Total</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="drvTotal" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Shape</label>
+              <div class="pill-group small-pills" id="drvShapePills">
+                <button class="pill active" data-shape="straight" type="button">— Straight</button>
+                <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+                <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+                <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+                <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+                <button class="pill" data-shape="pull" type="button">← Pull</button>
+                <button class="pill" data-shape="push" type="button">→ Push</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it finish?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-drv-result="Fairway">✓ Fairway</button>
+              <button class="result-btn" data-drv-result="Light rough L">L. rough left</button>
+              <button class="result-btn" data-drv-result="Light rough R">L. rough right</button>
+              <button class="result-btn miss" data-drv-result="Heavy rough">⌀ Heavy rough</button>
+              <button class="result-btn miss" data-drv-result="Bunker">⊝ Fairway bunker</button>
+              <button class="result-btn miss" data-drv-result="Trees">↶ Trees / tree trouble</button>
+              <button class="result-btn miss" data-drv-result="OB">✗ OB / hazard</button>
+              <button class="result-btn miss" data-drv-result="Topped">⤴ Topped / thin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="videosTab" class="tab-page" style="display:none;">
+        <div class="setup-hero">
+          <h1 class="setup-hero-title">Swing Videos</h1>
+          <p class="setup-hero-sub">Capture, compare and review your swing over time.</p>
+        </div>
+
+        <div class="setup-card">
+          <label class="profile-section-title">Add a new video</label>
+          <input type="file" id="videoFileInput" accept="video/*" capture="environment" style="display:none;" />
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="videoUploadBtn" class="ai-action-btn" style="flex:1; min-width:140px;">📁 Upload video</button>
+            <button id="videoRecordBtn" class="ai-action-btn" style="flex:1; min-width:140px;">🎥 Record (mobile)</button>
+          </div>
+          <div id="videoUploadStatus" style="font-size:12px; color:var(--muted); margin-top:6px;"></div>
+        </div>
+
+        <div class="setup-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <label class="profile-section-title" style="margin:0;">Your library</label>
+            <button id="videoCompareToggle" class="btn-secondary" style="padding:6px 10px; font-size:12px;">Compare</button>
+          </div>
+          <div id="videoLibraryGrid" class="video-library-grid">
+            <div class="video-empty" id="videoEmpty">No videos yet. Upload one above to start your library.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="videoPlayerModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+          <button class="modal-close" id="videoModalClose">×</button>
+          <div id="videoModalBody"></div>
         </div>
       </div>
 

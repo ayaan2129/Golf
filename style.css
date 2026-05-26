@@ -830,6 +830,123 @@ details.profile-section ul {
 
 #startRoundBtn:active { transform: translateY(1px); }
 
+/* ========== PRACTICE PAGE ========== */
+.practice-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.practice-type-tile {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.practice-type-tile:active { transform: scale(0.97); }
+
+.practice-type-tile .ptt-icon {
+  font-size: 36px;
+  color: var(--green-deep);
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.practice-type-tile .ptt-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.practice-type-tile:nth-child(2) .ptt-icon { color: var(--gold-deep); }
+.practice-type-tile:nth-child(3) .ptt-icon { color: var(--water); }
+.practice-type-tile:nth-child(4) .ptt-icon { color: var(--crimson); }
+
+.practice-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.practice-title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.practice-running {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--fairway);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-deep);
+  text-align: center;
+}
+
+.small-pills .pill {
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.result-btn {
+  padding: 14px 10px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+}
+
+.result-btn:active { transform: scale(0.96); }
+
+.result-btn.good {
+  background: linear-gradient(135deg, var(--green-bright), var(--green-mid));
+  color: white;
+  border-color: var(--green-deep);
+}
+
+.result-btn.miss {
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-color: var(--border);
+}
+
+#puttStatsSummary, #chipStatsSummary, #ironStatsSummary, #driverStatsSummary {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+#puttStatsSummary .stat-line, #chipStatsSummary .stat-line, #ironStatsSummary .stat-line, #driverStatsSummary .stat-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+#puttStatsSummary .stat-line:last-child, #chipStatsSummary .stat-line:last-child, #ironStatsSummary .stat-line:last-child, #driverStatsSummary .stat-line:last-child { border-bottom: none; }
+#puttStatsSummary .stat-num, #chipStatsSummary .stat-num, #ironStatsSummary .stat-num, #driverStatsSummary .stat-num { font-weight: 800; color: var(--green-deep); }
+
 .section-header {
   text-align: center;
   color: white;
@@ -2085,6 +2202,19 @@ textarea { resize: vertical; }
   margin: 0;
 }
 
+.club-observed-hint {
+  background: var(--gold);
+  color: var(--ink);
+  border: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.club-observed-hint:hover { background: #d99a1c; }
+
 #handicapTrendCard svg {
   width: 100%;
   height: auto;
@@ -2484,6 +2614,150 @@ textarea { resize: vertical; }
 }
 
 .comparison-card h3 { margin: 0 0 6px; color: #0d47a1; border: none; }
+
+.video-library-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.video-card {
+  position: relative;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.video-card.selected { border-color: var(--green-bright); box-shadow: 0 0 0 2px rgba(47, 175, 62, 0.2); }
+.video-card:hover { border-color: var(--green-mid); }
+
+.video-card-thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #111;
+  object-fit: cover;
+  display: block;
+}
+
+.video-card-meta {
+  padding: 8px;
+  font-size: 12px;
+}
+
+.video-card-label {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-card-date {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.video-card-select-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--green-bright);
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.video-card.selected .video-card-select-badge { opacity: 1; }
+
+.video-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+  padding: 16px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: 0;
+  font-size: 28px;
+  color: var(--ink);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  z-index: 2;
+}
+
+.video-modal-player {
+  width: 100%;
+  border-radius: 8px;
+  background: #000;
+}
+
+.video-modal-form .profile-row { margin-top: 8px; }
+.video-modal-form input, .video-modal-form select, .video-modal-form textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.video-compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.video-compare-row video {
+  width: 100%;
+  border-radius: 6px;
+  background: #000;
+}
+.video-compare-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 4px;
+}
 
 @media (min-width: 600px) {
   body { padding: 16px; }
