@@ -162,6 +162,78 @@ body {
   font-weight: bold;
 }
 
+.cal-tournament {
+  background: #7e57c2;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.cal-tournament:hover {
+  background: #5e35b1;
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  margin: 6px 0 10px;
+}
+
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.overall-stats {
+  background: #f4faf4;
+  border: 1px solid #cce4cc;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.overall-stats.tournament {
+  background: #f3edff;
+  border-color: #b39ddb;
+}
+
+.overall-stats p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
+.overall-stats ul {
+  margin: 4px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+textarea {
+  width: 100%;
+  padding: 8px;
+  margin-top: 3px;
+  box-sizing: border-box;
+  font-size: 14px;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
+  resize: vertical;
+}
+
+.modal-content a {
+  color: #1976d2;
+  word-break: break-all;
+}
+
 .cal-today {
   outline: 2px solid #1976d2;
 }

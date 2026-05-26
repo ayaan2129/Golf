@@ -42,9 +42,18 @@
 
       <div class="calendar" id="calendar"></div>
 
+      <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#2e7d32"></div>Normal Game</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#7e57c2"></div>Tournament</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#ffeaa8"></div>Upcoming</div>
+      </div>
+
       <div class="monthly-summary" id="monthlySummary"></div>
 
       <div class="month-compare" id="monthCompare"></div>
+
+      <div class="overall-stats" id="normalGameStats"></div>
+      <div class="overall-stats" id="tournamentStats"></div>
 
       <div class="upcoming-section">
         <h3>Upcoming Rounds</h3>
@@ -146,6 +155,43 @@
           <option value="18">18 holes</option>
           <option value="9">9 holes</option>
         </select>
+      </label>
+
+      <label>Game Type
+        <select id="gameType">
+          <option value="Normal Game">Normal Game</option>
+          <option value="Tournament">Tournament</option>
+        </select>
+      </label>
+
+      <label id="tournamentNameRow" style="display:none;">Tournament Name
+        <input type="text" id="tournamentName" />
+      </label>
+
+      <label id="tournamentFormatRow" style="display:none;">Tournament Format
+        <select id="tournamentFormat">
+          <option value="">-- choose --</option>
+          <option value="Stroke play">Stroke play</option>
+          <option value="Match play">Match play</option>
+          <option value="5-club tournament">5-club tournament</option>
+          <option value="Stableford">Stableford</option>
+          <option value="Scramble">Scramble</option>
+          <option value="Practice tournament">Practice tournament</option>
+        </select>
+      </label>
+
+      <h3>Video Notes</h3>
+
+      <label>Video Link
+        <input type="url" id="videoLink" placeholder="https://..." />
+      </label>
+
+      <label>Swing Video Note
+        <textarea id="swingVideoNote" rows="2"></textarea>
+      </label>
+
+      <label>Tournament Video Note
+        <textarea id="tournamentVideoNote" rows="2"></textarea>
       </label>
     </div>
 

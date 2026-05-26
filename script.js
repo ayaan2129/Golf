@@ -52,6 +52,12 @@ const SETUP_FIELDS = [
   "teeSelect",
   "coursePar",
   "numberOfHoles",
+  "gameType",
+  "tournamentName",
+  "tournamentFormat",
+  "videoLink",
+  "swingVideoNote",
+  "tournamentVideoNote",
 ];
 
 const COURSES = {
@@ -249,6 +255,10 @@ function toggleSetupRows() {
 
   const playedIn = document.getElementById("playedIn").value;
   document.getElementById("countryRow").style.display = playedIn === "Outside India" ? "" : "none";
+
+  const gameType = document.getElementById("gameType").value;
+  document.getElementById("tournamentNameRow").style.display = gameType === "Tournament" ? "" : "none";
+  document.getElementById("tournamentFormatRow").style.display = gameType === "Tournament" ? "" : "none";
 }
 
 function updateCourseInfoFromInputs() {
@@ -851,6 +861,12 @@ function saveRoundToHistory() {
     missedShortPutts,
     holes: holeCount,
     savedAt: new Date().toISOString(),
+    gameType: document.getElementById("gameType").value || "Normal Game",
+    tournamentName: document.getElementById("tournamentName").value || "",
+    tournamentFormat: document.getElementById("tournamentFormat").value || "",
+    videoLink: document.getElementById("videoLink").value || "",
+    swingVideoNote: document.getElementById("swingVideoNote").value || "",
+    tournamentVideoNote: document.getElementById("tournamentVideoNote").value || "",
     mistakes: analysis.mistakes,
     strengths: analysis.strengths,
     practice: analysis.practice,
@@ -1028,6 +1044,7 @@ function clearCurrentRound() {
     if (!el) continue;
     if (f === "numberOfHoles") el.value = "18";
     else if (f === "playedIn") el.value = "India";
+    else if (f === "gameType") el.value = "Normal Game";
     else el.value = "";
   }
   holeCount = 18;
@@ -1056,6 +1073,9 @@ function onSetupChange(event) {
     loadAll();
   }
   if (event.target.id === "playedIn") {
+    toggleSetupRows();
+  }
+  if (event.target.id === "gameType") {
     toggleSetupRows();
   }
   if (event.target.id === "courseSelect" || event.target.id === "teeSelect") {
@@ -1356,14 +1376,33 @@ function renderCalendar(year, month) {
     cell.textContent = day;
     if (ds === todayStr) cell.classList.add("cal-today");
     if (playedMap[ds]) {
-      cell.classList.add("cal-played");
       const round = playedMap[ds];
+      if (round.gameType === "Tournament") {
+        cell.classList.add("cal-tournament");
+        cell.title = "Tournament";
+      } else {
+        cell.classList.add("cal-played");
+        cell.title = "Normal Game";
+      }
       cell.addEventListener("click", function () { showRoundDetail(round); });
     } else if (upcomingDates[ds]) {
       cell.classList.add("cal-upcoming");
     }
     cal.appendChild(cell);
   }
+}
+
+function getGameType(round) {
+  return round.gameType || "Normal Game";
+}
+
+function statsForRounds(rounds) {
+  const scores = rounds.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+  if (scores.length === 0) return { count: rounds.length, best: null, worst: null, avg: null };
+  const best = Math.min.apply(null, scores);
+  const worst = Math.max.apply(null, scores);
+  const avg = (scores.reduce(function (a, b) { return a + b; }, 0) / scores.length).toFixed(1);
+  return { count: rounds.length, best, worst, avg };
 }
 
 function renderMonthlySummary(year, month) {
@@ -1385,23 +1424,22 @@ function renderMonthlySummary(year, month) {
     return;
   }
 
-  const scores = monthRounds.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
-  if (scores.length === 0) {
-    const p = document.createElement("p");
-    p.textContent = "No completed rounds yet.";
-    div.appendChild(p);
-    return;
-  }
+  const normalRounds = monthRounds.filter(function (r) { return getGameType(r) === "Normal Game"; });
+  const tournamentRounds = monthRounds.filter(function (r) { return getGameType(r) === "Tournament"; });
+  const normal = statsForRounds(normalRounds);
+  const tour = statsForRounds(tournamentRounds);
 
-  const best = Math.min.apply(null, scores);
-  const worst = Math.max.apply(null, scores);
-  const avg = (scores.reduce(function (a, b) { return a + b; }, 0) / scores.length).toFixed(1);
+  function fmt(v) { return v === null ? "—" : v; }
 
   const lines = [
-    "Rounds played: " + monthRounds.length,
-    "Best score: " + best,
-    "Worst score: " + worst,
-    "Average score: " + avg,
+    "Total rounds played: " + monthRounds.length,
+    "Total tournaments played: " + tournamentRounds.length,
+    "Best normal score: " + fmt(normal.best),
+    "Best tournament score: " + fmt(tour.best),
+    "Average normal score: " + fmt(normal.avg),
+    "Average tournament score: " + fmt(tour.avg),
+    "Worst normal score: " + fmt(normal.worst),
+    "Worst tournament score: " + fmt(tour.worst),
   ];
 
   const byCourse = {};
@@ -1421,6 +1459,108 @@ function renderMonthlySummary(year, month) {
     p.textContent = line;
     div.appendChild(p);
   }
+}
+
+function topKeys(counts, n) {
+  const keys = Object.keys(counts);
+  keys.sort(function (a, b) { return counts[b] - counts[a]; });
+  return keys.slice(0, n);
+}
+
+function collectTopItems(rounds, key, n) {
+  const counts = {};
+  for (const r of rounds) {
+    const arr = r[key] || [];
+    for (const item of arr) {
+      counts[item] = (counts[item] || 0) + 1;
+    }
+  }
+  return topKeys(counts, n);
+}
+
+function isPressureMistake(text) {
+  const lower = (text || "").toLowerCase();
+  return lower.indexOf("penalty") !== -1 ||
+    lower.indexOf("penalties") !== -1 ||
+    lower.indexOf("short putt") !== -1 ||
+    lower.indexOf("3-putt") !== -1;
+}
+
+function renderOverallStatsBox(divId, label, rounds, isTournament) {
+  const div = document.getElementById(divId);
+  div.innerHTML = "";
+  div.className = "overall-stats" + (isTournament ? " tournament" : "");
+
+  const h = document.createElement("h3");
+  h.textContent = label;
+  div.appendChild(h);
+
+  if (rounds.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No " + (isTournament ? "tournament" : "normal") + " rounds saved yet.";
+    div.appendChild(p);
+    return;
+  }
+
+  const s = statsForRounds(rounds);
+  function fmt(v) { return v === null ? "—" : v; }
+  const summary = [
+    "Rounds saved: " + s.count,
+    "Best score: " + fmt(s.best),
+    "Worst score: " + fmt(s.worst),
+    "Average score: " + fmt(s.avg),
+  ];
+  for (const line of summary) {
+    const p = document.createElement("p");
+    p.textContent = line;
+    div.appendChild(p);
+  }
+
+  function addList(title, items, emptyText) {
+    const h4 = document.createElement("h4");
+    h4.textContent = title;
+    div.appendChild(h4);
+    const list = items.length > 0 ? items : [emptyText];
+    const ul = document.createElement("ul");
+    for (const it of list) {
+      const li = document.createElement("li");
+      li.textContent = it;
+      ul.appendChild(li);
+    }
+    div.appendChild(ul);
+  }
+
+  const topMistakes = collectTopItems(rounds, "mistakes", 3);
+  const topStrengths = collectTopItems(rounds, "strengths", 3);
+  const topPractice = collectTopItems(rounds, "practice", 3);
+
+  if (isTournament) {
+    addList("Main tournament problems", topMistakes, "No big problems yet.");
+    addList("Main tournament strengths", topStrengths, "Add more rounds to see strengths.");
+
+    const pressureCounts = {};
+    for (const r of rounds) {
+      for (const m of (r.mistakes || [])) {
+        if (isPressureMistake(m)) {
+          pressureCounts[m] = (pressureCounts[m] || 0) + 1;
+        }
+      }
+    }
+    const pressure = topKeys(pressureCounts, 3);
+    addList("Pressure mistakes", pressure, "No pressure mistakes spotted.");
+    addList("What to practise for tournaments", topPractice, "Nothing flagged - keep practising your strengths.");
+  } else {
+    addList("Main mistakes", topMistakes, "No big mistakes yet.");
+    addList("Main strengths", topStrengths, "Add more rounds to see strengths.");
+  }
+}
+
+function renderTypeStats() {
+  const history = getHistory();
+  const normal = history.filter(function (r) { return getGameType(r) === "Normal Game"; });
+  const tournament = history.filter(function (r) { return getGameType(r) === "Tournament"; });
+  renderOverallStatsBox("normalGameStats", "Normal Game Stats", normal, false);
+  renderOverallStatsBox("tournamentStats", "Tournament Stats", tournament, true);
 }
 
 function renderMonthCompare(year, month) {
@@ -1583,6 +1723,7 @@ function renderDashboard() {
   renderCalendar(currentDashYear, currentDashMonth);
   renderMonthlySummary(currentDashYear, currentDashMonth);
   renderMonthCompare(currentDashYear, currentDashMonth);
+  renderTypeStats();
   renderUpcoming();
 }
 
@@ -1593,6 +1734,18 @@ function showRoundDetail(round) {
   const title = document.createElement("h2");
   title.textContent = round.courseName + " — " + (round.date || "no date");
   body.appendChild(title);
+
+  const gameType = getGameType(round);
+  const typeLines = ["Round Type: " + gameType];
+  if (gameType === "Tournament") {
+    if (round.tournamentName) typeLines.push("Tournament: " + round.tournamentName);
+    if (round.tournamentFormat) typeLines.push("Format: " + round.tournamentFormat);
+  }
+  for (const t of typeLines) {
+    const p = document.createElement("p");
+    p.textContent = t;
+    body.appendChild(p);
+  }
 
   const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
   const summary = [
@@ -1611,6 +1764,33 @@ function showRoundDetail(round) {
     const p = document.createElement("p");
     p.textContent = s;
     body.appendChild(p);
+  }
+
+  if (round.videoLink || round.swingVideoNote || round.tournamentVideoNote) {
+    const h = document.createElement("h3");
+    h.textContent = "Video Notes";
+    body.appendChild(h);
+    if (round.videoLink) {
+      const p = document.createElement("p");
+      p.textContent = "Link: ";
+      const a = document.createElement("a");
+      a.href = round.videoLink;
+      a.textContent = round.videoLink;
+      a.target = "_blank";
+      a.rel = "noopener";
+      p.appendChild(a);
+      body.appendChild(p);
+    }
+    if (round.swingVideoNote) {
+      const p = document.createElement("p");
+      p.textContent = "Swing note: " + round.swingVideoNote;
+      body.appendChild(p);
+    }
+    if (round.tournamentVideoNote) {
+      const p = document.createElement("p");
+      p.textContent = "Tournament note: " + round.tournamentVideoNote;
+      body.appendChild(p);
+    }
   }
 
   if (round.topWeakness) {
