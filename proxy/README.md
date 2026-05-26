@@ -10,9 +10,23 @@ The Golf Tracker is hosted on GitHub Pages, which only serves static files.
 Embedding the API key in `script.js` would expose it to anyone who views
 source. The proxy keeps the credential on the server side.
 
-## Deploy (one-time, ~5 minutes)
+## Fastest path: one-click deploy
 
-You need a free Cloudflare account.
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ayaan2129/Golf/tree/main/proxy)
+
+Click the button → sign in to Cloudflare (free account) → confirm deploy.
+Cloudflare clones the repo, deploys the Worker, and gives you a
+`*.workers.dev` URL.
+
+Then add the API key:
+
+1. In the Cloudflare dashboard → Workers & Pages → `golf-grok-proxy` → **Settings → Variables**
+2. Under **Environment Variables**, add a new **Secret** named `GROK_API_KEY` with your `xai-...` key as the value
+3. Save → the next request uses the key
+
+## Manual deploy via CLI (alternative, ~5 minutes)
+
+If you prefer the terminal:
 
 ```bash
 # 1. Install wrangler (Cloudflare's CLI)
@@ -49,10 +63,23 @@ other origin (e.g. a custom domain) before deploying.
 
 ## Rotate the key later
 
+Via dashboard: Workers & Pages → `golf-grok-proxy` → Settings → Variables →
+edit the `GROK_API_KEY` secret → Save.
+
+Via CLI:
+
 ```bash
 wrangler secret put GROK_API_KEY
 # Paste the new key
-wrangler deploy
 ```
 
 Then revoke the old key on console.x.ai.
+
+## Verified locally
+
+The Worker has been smoke-tested with `wrangler dev`:
+
+- ✅ OPTIONS preflight returns 204 with correct CORS headers
+- ✅ POST with no `GROK_API_KEY` returns a clean `{"error":"..."}` 500
+- ✅ Disallowed origins do not get permissive `Access-Control-Allow-Origin`
+
