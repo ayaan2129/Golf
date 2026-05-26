@@ -4402,8 +4402,107 @@ function renderDashboard() {
   renderHandicapTrend();
   renderScoreTrend();
   renderWeatherImpact();
+  renderPracticeInsightsCard();
   renderPracticeLog();
   renderUpcoming();
+}
+
+function renderPracticeInsightsCard() {
+  const card = document.getElementById("practiceInsightsCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Practice Insights";
+  card.appendChild(h);
+
+  const pi = typeof getPuttingInsights === "function" ? getPuttingInsights() : { totalShots: 0 };
+  const ci = typeof getChippingInsights === "function" ? getChippingInsights() : { totalShots: 0 };
+  const ii = typeof getIronInsights === "function" ? getIronInsights() : { totalShots: 0 };
+  const di = typeof getDriverInsights === "function" ? getDriverInsights() : { totalShots: 0 };
+
+  const total = pi.totalShots + ci.totalShots + ii.totalShots + di.totalShots;
+  if (total === 0) {
+    const p = document.createElement("p");
+    p.textContent = "Start logging practice shots to see cross-session insights here.";
+    card.appendChild(p);
+    return;
+  }
+
+  const sub = document.createElement("p");
+  sub.style.fontSize = "13px";
+  sub.style.color = "var(--muted)";
+  sub.style.margin = "0 0 10px";
+  sub.textContent = total + " shots logged across putting / chipping / iron / driver";
+  card.appendChild(sub);
+
+  function makeSection(title, lines) {
+    if (lines.length === 0) return;
+    const wrap = document.createElement("div");
+    wrap.style.marginBottom = "12px";
+    const t = document.createElement("div");
+    t.style.fontSize = "12px";
+    t.style.fontWeight = "700";
+    t.style.color = "var(--green-deep)";
+    t.style.textTransform = "uppercase";
+    t.style.letterSpacing = "0.5px";
+    t.style.marginBottom = "4px";
+    t.textContent = title;
+    wrap.appendChild(t);
+    for (const ln of lines) {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.padding = "4px 0";
+      row.style.fontSize = "13px";
+      row.style.borderBottom = "1px solid var(--border)";
+      const left = document.createElement("span");
+      left.textContent = ln.label;
+      const right = document.createElement("span");
+      right.style.fontWeight = "700";
+      right.style.color = "var(--green-deep)";
+      right.textContent = ln.value;
+      row.appendChild(left);
+      row.appendChild(right);
+      wrap.appendChild(row);
+    }
+    card.appendChild(wrap);
+  }
+
+  if (pi.totalShots > 0) {
+    const lines = [];
+    for (const b of pi.distanceRates) if (b.count > 0) lines.push({ label: "Putts " + b.label, value: b.pct + "% (" + b.count + ")" });
+    if (pi.lag) lines.push({ label: "Lag inside 5 ft", value: pi.lag.inCirclePct + "% (" + pi.lag.count + ")" });
+    if (pi.topMiss) lines.push({ label: "Top putt miss", value: pi.topMiss });
+    makeSection("Putting", lines);
+  }
+  if (ci.totalShots > 0) {
+    const lines = [];
+    for (const b of ci.distanceRates) if (b.count > 0) lines.push({ label: "Chip " + b.label, value: b.pct + "% UD (" + b.count + ")" });
+    for (const l of ci.lieRates) lines.push({ label: "From " + l.lie, value: l.pct + "% UD (" + l.count + ")" });
+    if (ci.mishitPct != null) lines.push({ label: "Chunk/blade rate", value: ci.mishitPct + "%" });
+    makeSection("Chipping", lines);
+  }
+  if (ii.totalShots > 0) {
+    const lines = [];
+    for (const cs of ii.clubStats) {
+      const carry = cs.avgCarry != null ? cs.avgCarry + "y avg" : cs.onTargetPct + "% on tgt";
+      lines.push({ label: cs.club + " (" + cs.count + ")", value: carry });
+    }
+    if (ii.pureStrikePct != null) lines.push({ label: "Pure-strike", value: ii.pureStrikePct + "%" });
+    if (ii.topMiss) lines.push({ label: "Top iron miss", value: ii.topMiss });
+    makeSection("Irons", lines);
+  }
+  if (di.totalShots > 0) {
+    const lines = [];
+    for (const cs of di.clubStats) {
+      lines.push({ label: cs.club + " (" + cs.count + ")", value: (cs.avgCarry != null ? cs.avgCarry + "y · " : "") + cs.fairwayPct + "% FW" });
+    }
+    if (di.leftMisses + di.rightMisses > 0) {
+      const bias = di.leftMisses > di.rightMisses ? "Left-side bias" : (di.rightMisses > di.leftMisses ? "Right-side bias" : "Balanced");
+      lines.push({ label: "Miss bias", value: bias });
+    }
+    makeSection("Tee shots", lines);
+  }
 }
 
 function aiEnabled() {
