@@ -7,12 +7,152 @@ function isLoggedIn() {
 
 function showLogin() {
   document.getElementById("loginScreen").style.display = "";
+  document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "none";
+}
+
+function showWelcome() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("welcomeScreen").style.display = "";
+  document.getElementById("appScreen").style.display = "none";
+  renderWelcome();
 }
 
 function showApp() {
   document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "";
+}
+
+function renderWelcome() {
+  const nameEl = document.getElementById("welcomeName");
+  const saved = localStorage.getItem("golfRound");
+  let name = DEMO_USERNAME;
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      if (d.setup && d.setup.playerName) name = d.setup.playerName;
+    } catch (e) {}
+  }
+  nameEl.textContent = name;
+
+  const goalsDiv = document.getElementById("welcomeGoals");
+  goalsDiv.innerHTML = "";
+  const goal = suggestTeeProgression();
+  const goalP = document.createElement("p");
+  goalP.textContent = "Current Tee: " + (goal.currentTee || "—");
+  goalsDiv.appendChild(goalP);
+  const goalText = document.createElement("p");
+  goalText.textContent = "Goal: " + goal.goalText;
+  goalsDiv.appendChild(goalText);
+  if (goal.progress) {
+    const p = document.createElement("p");
+    p.textContent = goal.progress;
+    goalsDiv.appendChild(p);
+  }
+  if (goal.suggestion) {
+    const p = document.createElement("p");
+    p.style.fontWeight = "bold";
+    p.textContent = goal.suggestion;
+    goalsDiv.appendChild(p);
+  }
+
+  const mistakesUl = document.getElementById("welcomeMistakes");
+  mistakesUl.innerHTML = "";
+  const history = getHistory();
+  const recent = history.slice(-5);
+  const mistakeCounts = {};
+  for (const r of recent) {
+    for (const m of (r.mistakes || [])) mistakeCounts[m] = (mistakeCounts[m] || 0) + 1;
+  }
+  const topMistakes = topKeys(mistakeCounts, 3);
+  if (topMistakes.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No frequent mistakes yet - play more rounds.";
+    mistakesUl.appendChild(li);
+  } else {
+    for (const m of topMistakes) {
+      const li = document.createElement("li");
+      li.textContent = m;
+      mistakesUl.appendChild(li);
+    }
+  }
+
+  const strUl = document.getElementById("welcomeStrengths");
+  strUl.innerHTML = "";
+  const strengthCounts = {};
+  for (const r of recent) {
+    for (const s of (r.strengths || [])) strengthCounts[s] = (strengthCounts[s] || 0) + 1;
+  }
+  const topStrengths = topKeys(strengthCounts, 3);
+  if (topStrengths.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "Play and save rounds to discover your strengths.";
+    strUl.appendChild(li);
+  } else {
+    for (const s of topStrengths) {
+      const li = document.createElement("li");
+      li.textContent = s;
+      strUl.appendChild(li);
+    }
+  }
+
+  const courseUl = document.getElementById("welcomeCourseMistakes");
+  courseUl.innerHTML = "";
+  const rcgcRounds = history.filter(function (r) { return r.courseName === "RCGC"; });
+  const rcgcMistakes = {};
+  for (const r of rcgcRounds) {
+    for (const m of (r.mistakes || [])) rcgcMistakes[m] = (rcgcMistakes[m] || 0) + 1;
+    if (r.postBiggestMistake) {
+      rcgcMistakes[r.postBiggestMistake] = (rcgcMistakes[r.postBiggestMistake] || 0) + 1;
+    }
+  }
+  const topRcgc = topKeys(rcgcMistakes, 3);
+  if (topRcgc.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No RCGC rounds saved yet. Play one to see common mistakes here.";
+    courseUl.appendChild(li);
+  } else {
+    for (const m of topRcgc) {
+      const li = document.createElement("li");
+      li.textContent = m;
+      courseUl.appendChild(li);
+    }
+  }
+
+  const practiceUl = document.getElementById("welcomePractice");
+  practiceUl.innerHTML = "";
+  const practiceCounts = {};
+  for (const r of history) {
+    for (const p of (r.practice || [])) practiceCounts[p] = (practiceCounts[p] || 0) + 1;
+  }
+  const topPractice = topKeys(practiceCounts, 4);
+  const dailyPractice = topPractice.length > 0 ? topPractice : [
+    "10 short putts from 3 feet",
+    "20 chips from 10-20 yards",
+    "10 full swings with smooth tempo",
+  ];
+  for (const p of dailyPractice) {
+    const li = document.createElement("li");
+    li.textContent = p;
+    practiceUl.appendChild(li);
+  }
+
+  const posUl = document.getElementById("welcomePositive");
+  posUl.innerHTML = "";
+  const positiveLines = [
+    "Don't hurry - take your time on every shot.",
+    "Pick a target before every swing.",
+    "One bad shot does not ruin the round.",
+    "Trust your practice. You have done this before.",
+    "Breathe deep before you putt.",
+    "Stay positive - your next shot is the most important one.",
+  ];
+  for (const line of positiveLines) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    posUl.appendChild(li);
+  }
 }
 
 document.getElementById("loginBtn").addEventListener("click", function () {
@@ -22,9 +162,20 @@ document.getElementById("loginBtn").addEventListener("click", function () {
     localStorage.setItem("golfLoggedIn", "yes");
     document.getElementById("loginError").textContent = "";
     document.getElementById("passwordInput").value = "";
-    showApp();
+    showWelcome();
   } else {
     document.getElementById("loginError").textContent = "Wrong username or password.";
+  }
+});
+
+document.getElementById("continueBtn").addEventListener("click", function () {
+  showApp();
+});
+
+document.getElementById("welcomeLogoutBtn").addEventListener("click", function () {
+  if (confirm("Log out?")) {
+    localStorage.removeItem("golfLoggedIn");
+    showLogin();
   }
 });
 
@@ -36,7 +187,7 @@ document.getElementById("usernameInput").addEventListener("keypress", function (
   if (e.key === "Enter") document.getElementById("passwordInput").focus();
 });
 
-if (isLoggedIn()) showApp();
+if (isLoggedIn()) showWelcome();
 else showLogin();
 
 const holesContainer = document.getElementById("holes");
@@ -51,7 +202,7 @@ const SETUP_FIELDS = [
   "customCourseName",
   "teeSelect",
   "coursePar",
-  "numberOfHoles",
+  "holesMode",
   "gameType",
   "tournamentName",
   "tournamentFormat",
@@ -59,6 +210,37 @@ const SETUP_FIELDS = [
   "confidenceLevel",
   "sleepQuality",
 ];
+
+function getActiveHoles() {
+  const mode = document.getElementById("holesMode").value;
+  if (mode === "front9") return [1,2,3,4,5,6,7,8,9];
+  if (mode === "back9") return [10,11,12,13,14,15,16,17,18];
+  if (mode === "custom") {
+    const checks = document.querySelectorAll("#customHolesChecks input[type=checkbox]:checked");
+    const arr = [];
+    checks.forEach(function (c) { arr.push(Number(c.value)); });
+    arr.sort(function (a,b) { return a-b; });
+    return arr.length > 0 ? arr : [1];
+  }
+  return [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+}
+
+function buildCustomHoleChecks() {
+  const div = document.getElementById("customHolesChecks");
+  if (!div) return;
+  if (div.children.length === 18) return;
+  div.innerHTML = "";
+  for (let i = 1; i <= 18; i++) {
+    const lbl = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = i;
+    cb.dataset.holeCheck = "1";
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(i));
+    div.appendChild(lbl);
+  }
+}
 
 const POST_REVIEW_FIELDS = [
   "postFeel",
@@ -236,12 +418,16 @@ function makeShotCard(shotNumber) {
 
 function buildHoles() {
   holesContainer.innerHTML = "";
-  for (let i = 1; i <= holeCount; i++) {
+  const active = getActiveHoles();
+  holeCount = active.length > 0 ? active[active.length - 1] : 18;
+  for (let pos = 0; pos < active.length; pos++) {
+    const i = active[pos];
     holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
-    if ((i === 5 || i === 10 || i === 15) && i <= holeCount) {
+    const playedSoFar = pos + 1;
+    if (playedSoFar === 5 || playedSoFar === 10 || playedSoFar === 15) {
       holesContainer.insertAdjacentHTML(
         "beforeend",
-        `<div class="trend-check" id="trendCheck-${i}" style="display:none;"><h3>Trend Check after Hole ${i}</h3><div class="trend-lines"></div></div>`
+        `<div class="trend-check" id="trendCheck-${playedSoFar}" style="display:none;"><h3>Trend Check after ${playedSoFar} Holes</h3><div class="trend-lines"></div></div>`
       );
     }
   }
@@ -287,13 +473,16 @@ function toggleSetupRows() {
   const gameType = document.getElementById("gameType").value;
   document.getElementById("tournamentNameRow").style.display = gameType === "Tournament" ? "" : "none";
   document.getElementById("tournamentFormatRow").style.display = gameType === "Tournament" ? "" : "none";
+
+  const holesMode = document.getElementById("holesMode").value;
+  document.getElementById("customHolesRow").style.display = holesMode === "custom" ? "" : "none";
 }
 
 function updateCourseInfoFromInputs() {
   let total = 0;
   let front9 = 0;
   let back9 = 0;
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     const v = Number(document.getElementById("holeDistance-" + i).value) || 0;
     total += v;
     if (i <= 9) front9 += v;
@@ -363,7 +552,10 @@ function saveAll() {
     const el = document.getElementById(f);
     if (el) data.post[f] = el.value;
   }
-  for (let i = 1; i <= holeCount; i++) {
+  const customCBs = document.querySelectorAll("#customHolesChecks input[type=checkbox]:checked");
+  data.setup.customHoles = [];
+  customCBs.forEach(function (cb) { data.setup.customHoles.push(Number(cb.value)); });
+  for (const i of getActiveHoles()) {
     data.holes[i] = {
       par: document.getElementById("par-" + i).value,
       distance: document.getElementById("holeDistance-" + i).value,
@@ -391,9 +583,13 @@ function loadAll() {
       const el = document.getElementById(f);
       if (el && data.setup[f] !== undefined) el.value = data.setup[f];
     }
-    const stored = data.setup.numberOfHoles;
-    if (stored === "9" || stored === "18") {
-      holeCount = Number(stored);
+    if (data.setup.holesMode) {
+      buildCustomHoleChecks();
+      if (data.setup.customHoles && Array.isArray(data.setup.customHoles)) {
+        document.querySelectorAll("#customHolesChecks input[type=checkbox]").forEach(function (cb) {
+          cb.checked = data.setup.customHoles.indexOf(Number(cb.value)) !== -1;
+        });
+      }
       buildHoles();
     }
     toggleSetupRows();
@@ -407,7 +603,7 @@ function loadAll() {
   }
 
   if (data.holes) {
-    for (let i = 1; i <= holeCount; i++) {
+    for (const i of getActiveHoles()) {
       const hole = data.holes[i];
       if (!hole) continue;
 
@@ -462,7 +658,7 @@ function getCountry() {
 
 function getTotalScore() {
   let total = 0;
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     total += getShotsForHole(i).length;
   }
   return total;
@@ -583,7 +779,7 @@ function analyzeHole(i) {
 }
 
 function renderHoleAnalyses() {
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     const div = document.getElementById("holeAnalysis-" + i);
     if (!div) continue;
     div.innerHTML = "";
@@ -710,7 +906,7 @@ function updateSummary() {
   let fairwaysAnswered = 0;
   let missedShortPutts = 0;
 
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     document.getElementById("holeScore-" + i).textContent = s.score;
     totalScore += s.score;
@@ -758,7 +954,7 @@ function analyze() {
   let par3Count = 0;
   let scoredHoles = 0;
 
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     if (s.score > 0) scoredHoles += 1;
     totalScore += s.score;
@@ -850,7 +1046,7 @@ function saveRoundToHistory() {
   let missedShortPutts = 0;
   let badShots = 0;
 
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     totalScore += s.score;
     totalPutts += s.putts;
@@ -870,7 +1066,7 @@ function saveRoundToHistory() {
     const el = document.getElementById(f);
     if (el) fullData.setup[f] = el.value;
   }
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     fullData.holes[i] = {
       par: document.getElementById("par-" + i).value,
       distance: document.getElementById("holeDistance-" + i).value,
@@ -898,7 +1094,9 @@ function saveRoundToHistory() {
     fairwayPct,
     badShots,
     missedShortPutts,
-    holes: holeCount,
+    holes: getActiveHoles().length,
+    activeHoles: getActiveHoles(),
+    holesMode: document.getElementById("holesMode").value || "18",
     savedAt: new Date().toISOString(),
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
@@ -918,10 +1116,115 @@ function saveRoundToHistory() {
   };
 
   const history = JSON.parse(localStorage.getItem("roundHistory") || "[]");
+
+  const prior = findPriorSameRound(history, round);
   history.push(round);
   localStorage.setItem("roundHistory", JSON.stringify(history));
   renderHistory();
   renderDashboard();
+
+  if (prior) {
+    showComparisonModal(round, prior);
+  }
+}
+
+function findPriorSameRound(history, round) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const r = history[i];
+    if (r.courseName === round.courseName && (r.tee || "") === (round.tee || "") && r.holes === round.holes) {
+      return r;
+    }
+  }
+  return null;
+}
+
+function deleteRound(index) {
+  if (!confirm("Delete this round? This cannot be undone.")) return;
+  const history = getHistory();
+  history.splice(index, 1);
+  localStorage.setItem("roundHistory", JSON.stringify(history));
+  renderHistory();
+  renderDashboard();
+}
+
+function showComparisonModal(current, prior) {
+  const body = document.getElementById("modalBody");
+  body.innerHTML = "";
+
+  const title = document.createElement("h2");
+  title.textContent = "Compared to last " + current.courseName + (current.tee ? " " + current.tee : "") + " round";
+  body.appendChild(title);
+
+  const dateInfo = document.createElement("p");
+  dateInfo.textContent = "Previous: " + (prior.date || "—") + " | This round: " + (current.date || "—");
+  body.appendChild(dateInfo);
+
+  const strengths = [];
+  const weaknesses = [];
+
+  function diff(label, prev, curr, lower) {
+    if (prev === undefined || curr === undefined || prev === null || curr === null) return null;
+    const d = curr - prev;
+    if (Math.abs(d) < 0.5) return label + " is the same.";
+    const better = lower ? d < 0 : d > 0;
+    const text = label + " " + (better ? "improved" : "got worse") + " (" + prev + " → " + curr + ")";
+    if (better) strengths.push(text);
+    else weaknesses.push(text);
+    return text;
+  }
+
+  const lines = [];
+  lines.push(diff("Score", prior.totalScore, current.totalScore, true));
+  lines.push(diff("Putts", prior.totalPutts, current.totalPutts, true));
+  lines.push(diff("Chips", prior.totalChips, current.totalChips, true));
+  lines.push(diff("Penalties", prior.totalPenalties, current.totalPenalties, true));
+  lines.push(diff("Missed short putts", prior.missedShortPutts, current.missedShortPutts, true));
+  if (typeof prior.fairwayPct === "number" && typeof current.fairwayPct === "number") {
+    const d = current.fairwayPct - prior.fairwayPct;
+    const txt = "Fairway % " + (d >= 0 ? "improved" : "dropped") + " (" + prior.fairwayPct + "% → " + current.fairwayPct + "%)";
+    if (d >= 0) strengths.push(txt);
+    else weaknesses.push(txt);
+    lines.push(txt);
+  }
+
+  for (const line of lines) {
+    if (!line) continue;
+    const p = document.createElement("p");
+    p.textContent = line;
+    body.appendChild(p);
+  }
+
+  if (strengths.length > 0) {
+    const h = document.createElement("h3");
+    h.textContent = "Biggest improvement";
+    body.appendChild(h);
+    const p = document.createElement("p");
+    p.textContent = strengths[0];
+    body.appendChild(p);
+  }
+  if (weaknesses.length > 0) {
+    const h = document.createElement("h3");
+    h.textContent = "Biggest problem still remaining";
+    body.appendChild(h);
+    const p = document.createElement("p");
+    p.textContent = weaknesses[0];
+    body.appendChild(p);
+  }
+  if (current.mistakes && current.mistakes.length > 0) {
+    const h = document.createElement("h3");
+    h.textContent = "Main mistakes this round";
+    body.appendChild(h);
+    const ul = document.createElement("ul");
+    for (const m of current.mistakes) {
+      const li = document.createElement("li");
+      li.textContent = m;
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+
+  document.getElementById("roundDetailModal").style.display = "";
+  window.scrollTo(0, 0);
 }
 
 function renderHistory() {
@@ -945,29 +1248,54 @@ function renderHistory() {
 
   for (let i = history.length - 1; i >= 0; i--) {
     const round = history[i];
+    const idx = i;
     const card = document.createElement("div");
     card.className = "round-card";
-    card.style.cursor = "pointer";
-    card.addEventListener("click", function () { showRoundDetail(round); });
 
     const diffText = round.scoreVsPar > 0 ? "+" + round.scoreVsPar : "" + round.scoreVsPar;
+    const holesLabel = round.holesMode === "front9" ? "Front 9" :
+                       round.holesMode === "back9" ? "Back 9" :
+                       round.holesMode === "custom" ? "Custom (" + (round.holes || "?") + ")" :
+                       (round.holes || 18) + " holes";
     const lines = [
-      "Player: " + round.playerName,
-      "Date: " + (round.date || "—"),
-      "Country: " + round.country,
-      "Course: " + round.courseName + (round.tee ? " (" + round.tee + " tees)" : ""),
-      "Course Par: " + round.coursePar,
-      "Total Score: " + round.totalScore,
-      "Score vs Par: " + diffText,
-      "Total Putts: " + (round.totalPutts !== undefined ? round.totalPutts : "—"),
-      "Total Chips: " + (round.totalChips !== undefined ? round.totalChips : "—"),
-      "(Tap to see full details)",
+      "Date: " + (round.date || "—") + " — " + (round.gameType || "Normal Game"),
+      "Course: " + round.courseName + (round.tee ? " (" + round.tee + ")" : ""),
+      "Holes Played: " + holesLabel,
+      "Score: " + round.totalScore + "  |  vs Par: " + diffText,
     ];
     for (const line of lines) {
       const p = document.createElement("p");
       p.textContent = line;
       card.appendChild(p);
     }
+
+    const btns = document.createElement("div");
+    btns.className = "round-card-buttons";
+
+    const viewBtn = document.createElement("button");
+    viewBtn.className = "btn-view";
+    viewBtn.textContent = "View";
+    viewBtn.addEventListener("click", function () { showRoundDetail(round); });
+    btns.appendChild(viewBtn);
+
+    const compareBtn = document.createElement("button");
+    compareBtn.className = "btn-compare";
+    compareBtn.textContent = "Compare";
+    compareBtn.addEventListener("click", function () {
+      const earlier = getHistory().slice(0, idx);
+      const prior = findPriorSameRound(earlier, round);
+      if (prior) showComparisonModal(round, prior);
+      else alert("No earlier round at " + round.courseName + (round.tee ? " " + round.tee : "") + " (" + (round.holes || 18) + " holes) to compare.");
+    });
+    btns.appendChild(compareBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-delete";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", function () { deleteRound(idx); });
+    btns.appendChild(deleteBtn);
+
+    card.appendChild(btns);
     list.appendChild(card);
   }
 }
@@ -1085,7 +1413,7 @@ function clearCurrentRound() {
   for (const f of SETUP_FIELDS) {
     const el = document.getElementById(f);
     if (!el) continue;
-    if (f === "numberOfHoles") el.value = "18";
+    if (f === "holesMode") el.value = "18";
     else if (f === "playedIn") el.value = "India";
     else if (f === "gameType") el.value = "Normal Game";
     else el.value = "";
@@ -1114,10 +1442,16 @@ function handleChange() {
 }
 
 function onSetupChange(event) {
-  if (event.target.id === "numberOfHoles") {
-    holeCount = Number(event.target.value);
+  if (event.target.id === "holesMode") {
+    if (event.target.value === "custom") {
+      buildCustomHoleChecks();
+    }
+    toggleSetupRows();
     buildHoles();
     loadAll();
+  }
+  if (event.target.dataset && event.target.dataset.holeCheck) {
+    buildHoles();
   }
   if (event.target.id === "playedIn") {
     toggleSetupRows();
@@ -1183,7 +1517,7 @@ document.getElementById("logoutBtn").addEventListener("click", function () {
 
 function getAllHoleStatsList() {
   const list = [];
-  for (let i = 1; i <= holeCount; i++) {
+  for (const i of getActiveHoles()) {
     list.push(getHoleStats(i));
   }
   return list;
@@ -2135,6 +2469,7 @@ function closeRoundDetail() {
   document.getElementById("roundDetailModal").style.display = "none";
 }
 
+buildCustomHoleChecks();
 buildHoles();
 loadAll();
 toggleSetupRows();

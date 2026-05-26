@@ -25,6 +25,26 @@
       </div>
     </div>
 
+    <div id="welcomeScreen" style="display:none;">
+      <div class="welcome-box">
+        <h1>Welcome back, <span id="welcomeName">player</span></h1>
+        <h3>Your Goals</h3>
+        <div id="welcomeGoals"></div>
+        <h3>Frequent Mistakes</h3>
+        <ul id="welcomeMistakes"></ul>
+        <h3>Common Silly Mistakes at RCGC</h3>
+        <ul id="welcomeCourseMistakes"></ul>
+        <h3>Daily Practice</h3>
+        <ul id="welcomePractice"></ul>
+        <h3>Recent Strengths</h3>
+        <ul id="welcomeStrengths"></ul>
+        <h3>Reminders Before You Play</h3>
+        <ul id="welcomePositive"></ul>
+        <button id="continueBtn">Continue to Tracker</button>
+        <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
+      </div>
+    </div>
+
     <div id="appScreen" style="display:none;">
       <h1>Junior Golf Tracker</h1>
 
@@ -166,12 +186,19 @@
 
       <p id="courseNotice" class="course-notice" style="display:none;"></p>
 
-      <label>Number of Holes
-        <select id="numberOfHoles">
-          <option value="18">18 holes</option>
-          <option value="9">9 holes</option>
+      <label>Holes Played
+        <select id="holesMode">
+          <option value="18">Full 18</option>
+          <option value="front9">Front 9</option>
+          <option value="back9">Back 9</option>
+          <option value="custom">Custom holes</option>
         </select>
       </label>
+
+      <div id="customHolesRow" style="display:none;">
+        <p style="margin:6px 0; font-size:13px;">Tick the holes you played:</p>
+        <div id="customHolesChecks" class="custom-holes-checks"></div>
+      </div>
 
       <label>Game Type
         <select id="gameType">
