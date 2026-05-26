@@ -181,6 +181,42 @@ textarea { resize: vertical; }
   font-weight: 700;
 }
 
+.dream-card {
+  background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
+  color: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  box-shadow: 0 6px 16px rgba(27, 94, 32, 0.25);
+}
+
+.dream-card h3 {
+  color: var(--gold);
+  border: none;
+  margin: 0 0 8px;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.dream-card p {
+  margin: 6px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.dream-card strong { color: var(--gold); }
+
+.dream-card .dream-tag {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  font-weight: 800;
+  font-style: italic;
+  text-align: center;
+  color: var(--gold);
+}
+
 .page-label {
   text-align: center;
   background: white;
