@@ -67,6 +67,51 @@ function saveAccounts(arr) {
 function getCurrentUsername() {
   return window.__unscoped.get("__currentUser");
 }
+
+// One-click activation URL handler: read ?key= / ?proxy= from the URL,
+// stash them, and clean the URL bar so the credentials don't linger in
+// browser history. applyUrlActivation() is called again after login to
+// write the values under the logged-in user's localStorage namespace.
+const __urlActivation = { key: null, proxy: null };
+(function readUrlActivation() {
+  try {
+    const u = new URL(window.location.href);
+    const key = u.searchParams.get("key");
+    const proxy = u.searchParams.get("proxy");
+    if (key && /^xai-/.test(key.trim())) __urlActivation.key = key.trim();
+    if (proxy && /^https?:\/\//.test(proxy.trim())) __urlActivation.proxy = proxy.trim();
+    if (__urlActivation.key || __urlActivation.proxy) {
+      u.searchParams.delete("key");
+      u.searchParams.delete("proxy");
+      window.history.replaceState({}, "", u.pathname + (u.searchParams.toString() ? "?" + u.searchParams : "") + u.hash);
+    }
+  } catch (e) { /* non-fatal */ }
+})();
+
+function applyUrlActivationToCurrentUser() {
+  if (!isLoggedIn()) return;
+  let changed = false;
+  if (__urlActivation.key) {
+    localStorage.setItem("grokApiKey", __urlActivation.key);
+    changed = true;
+  }
+  if (__urlActivation.proxy) {
+    localStorage.setItem("aiProxyUrl", __urlActivation.proxy);
+    changed = true;
+  }
+  if (changed) {
+    localStorage.setItem("aiMode", "on");
+    __urlActivation.key = null;
+    __urlActivation.proxy = null;
+    const ki = document.getElementById("grokApiKey");
+    if (ki) ki.value = localStorage.getItem("grokApiKey") || "";
+    const pi = document.getElementById("aiProxyUrl");
+    if (pi) pi.value = localStorage.getItem("aiProxyUrl") || "";
+    const tg = document.getElementById("aiModeToggle");
+    if (tg) tg.checked = true;
+    if (typeof renderAiStatus === "function") renderAiStatus();
+  }
+}
 function setCurrentUsername(u) {
   if (u) window.__unscoped.set("__currentUser", u);
   else window.__unscoped.remove("__currentUser");
@@ -442,6 +487,7 @@ document.getElementById("loginBtn").addEventListener("click", function () {
     setCurrentUsername(match.username);
     document.getElementById("loginError").textContent = "";
     document.getElementById("passwordInput").value = "";
+    applyUrlActivationToCurrentUser();
     showWelcome();
   } else {
     document.getElementById("loginError").textContent = "Wrong username or password.";
@@ -6973,5 +7019,9 @@ if (_videoModalClose) {
 // screen to show (this used to run at the top of the file but crashed
 // when TEE_GOALS was referenced inside renderWelcome before being
 // declared).
-if (isLoggedIn()) showWelcome();
-else showLogin();
+if (isLoggedIn()) {
+  applyUrlActivationToCurrentUser();
+  showWelcome();
+} else {
+  showLogin();
+}
