@@ -1736,6 +1736,43 @@ function setClubDistance(club, distance) {
   saveProfile(p);
 }
 
+function getObservedClubCarry(club) {
+  // Maps bag-display names ("7 Iron") to practice short codes ("7i") and looks up
+  // the observed avg carry across iron + driver practice sessions.
+  const aliases = {
+    "Driver": ["Driver"],
+    "3 Wood": ["3W"],
+    "5 Wood": ["5W"],
+    "3 Hybrid": ["3H"],
+    "4 Hybrid": ["4H"],
+    "5 Hybrid": ["5H"],
+    "3 Iron": ["3i"],
+    "4 Iron": ["4i"],
+    "5 Iron": ["5i"],
+    "6 Iron": ["6i"],
+    "7 Iron": ["7i"],
+    "8 Iron": ["8i"],
+    "9 Iron": ["9i"],
+    "Pitching Wedge": ["PW"],
+    "Sand Wedge": ["SW"],
+    "Lob Wedge": ["LW"],
+  };
+  const codes = aliases[club] || [club];
+  let ii = typeof getIronInsights === "function" ? getIronInsights() : null;
+  let di = typeof getDriverInsights === "function" ? getDriverInsights() : null;
+  for (const code of codes) {
+    if (ii && ii.clubStats) {
+      const hit = ii.clubStats.find(function (c) { return c.club === code; });
+      if (hit && hit.avgCarry != null && hit.count >= 3) return { carry: hit.avgCarry, count: hit.count };
+    }
+    if (di && di.clubStats) {
+      const hit = di.clubStats.find(function (c) { return c.club === code; });
+      if (hit && hit.avgCarry != null && hit.count >= 3) return { carry: hit.avgCarry, count: hit.count };
+    }
+  }
+  return null;
+}
+
 function renderClubDistances() {
   const list = document.getElementById("clubDistancesList");
   if (!list) return;
@@ -1747,6 +1784,7 @@ function renderClubDistances() {
     list.appendChild(p);
     return;
   }
+  let anyObserved = false;
   for (const club of clubs) {
     const row = document.createElement("div");
     row.className = "club-distance-row";
@@ -1761,7 +1799,38 @@ function renderClubDistances() {
     input.addEventListener("input", function () { setClubDistance(club, input.value); });
     row.appendChild(lbl);
     row.appendChild(input);
+
+    const obs = getObservedClubCarry(club);
+    if (obs) {
+      anyObserved = true;
+      const hint = document.createElement("button");
+      hint.type = "button";
+      hint.className = "club-observed-hint";
+      hint.textContent = "Use " + obs.carry + "y (n=" + obs.count + ")";
+      hint.title = "Apply observed average from practice";
+      hint.addEventListener("click", function () {
+        input.value = obs.carry;
+        setClubDistance(club, obs.carry);
+      });
+      row.appendChild(hint);
+    }
     list.appendChild(row);
+  }
+  if (anyObserved) {
+    const applyAll = document.createElement("button");
+    applyAll.type = "button";
+    applyAll.className = "ai-action-btn";
+    applyAll.style.marginTop = "12px";
+    applyAll.style.background = "var(--green-bright)";
+    applyAll.textContent = "Apply all observed averages";
+    applyAll.addEventListener("click", function () {
+      for (const c of clubs) {
+        const o = getObservedClubCarry(c);
+        if (o) setClubDistance(c, o.carry);
+      }
+      renderClubDistances();
+    });
+    list.appendChild(applyAll);
   }
 }
 
@@ -6578,6 +6647,16 @@ function renderVideoLibrary() {
     dt.textContent = v.date + (v.club ? " · " + v.club : "");
     meta.appendChild(lbl);
     meta.appendChild(dt);
+    if (v.linkedShot) {
+      const link = document.createElement("div");
+      link.className = "video-card-date";
+      link.style.color = "var(--green-bright)";
+      link.style.marginTop = "2px";
+      const sess = (getPractice() || []).find(function (s) { return (s.savedAt || s.date) === v.linkedShot.sessionDate && s.type === v.linkedShot.sessionType; });
+      const shot = sess && sess.shots[v.linkedShot.shotIndex];
+      link.textContent = shot ? "🔗 " + describeShot(shot, sess.type) : "🔗 linked";
+      meta.appendChild(link);
+    }
     card.appendChild(meta);
     card.addEventListener("click", function () {
       if (videoCompareMode) {
@@ -6598,6 +6677,70 @@ function renderVideoLibrary() {
     });
     grid.appendChild(card);
   }
+}
+
+function describeShot(s, type) {
+  if (type === "Irons") {
+    const carry = s.carry != null ? s.carry + "y" : "?";
+    return s.club + " · " + carry + " · " + s.result;
+  }
+  if (type === "Driver") {
+    const carry = s.carry != null ? s.carry + "y" : "?";
+    return s.club + " · " + carry + " · " + s.result;
+  }
+  if (type === "Chipping") return s.club + " · " + s.distance + "y from " + s.lie + " · " + s.result;
+  if (type === "Putting") return s.distance + "ft " + (s.intent || "make") + " · " + s.result;
+  return s.result || "shot";
+}
+
+function parseLinkedShot(val) {
+  // val format: "<sessionDate>|<sessionType>|<shotIndex>"
+  const parts = val.split("|");
+  if (parts.length !== 3) return null;
+  return { sessionDate: parts[0], sessionType: parts[1], shotIndex: parseInt(parts[2], 10) };
+}
+
+function populateShotPicker(currentLink) {
+  const sel = document.getElementById("vmShotPicker");
+  if (!sel) return;
+  sel.innerHTML = "";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "— None —";
+  sel.appendChild(none);
+  const sessions = (typeof getPractice === "function" ? getPractice() : []).filter(function (s) { return Array.isArray(s.shots) && s.shots.length > 0; });
+  sessions.sort(function (a, b) { return (b.savedAt || b.date).localeCompare(a.savedAt || a.date); });
+  for (const sess of sessions.slice(0, 8)) {
+    const grp = document.createElement("optgroup");
+    grp.label = sess.date + " · " + sess.type;
+    for (let i = 0; i < sess.shots.length; i++) {
+      const o = document.createElement("option");
+      o.value = sess.savedAt + "|" + sess.type + "|" + i;
+      o.textContent = "#" + (i + 1) + " " + describeShot(sess.shots[i], sess.type);
+      grp.appendChild(o);
+    }
+    sel.appendChild(grp);
+  }
+  if (currentLink) {
+    const val = currentLink.sessionDate + "|" + currentLink.sessionType + "|" + currentLink.shotIndex;
+    // sessionDate stored as savedAt, look for that exact value
+    for (const opt of sel.querySelectorAll("option")) {
+      if (opt.value === val) { sel.value = val; return; }
+    }
+  }
+}
+
+function renderLinkedShotInfo(val) {
+  const info = document.getElementById("vmShotInfo");
+  if (!info) return;
+  if (!val) { info.textContent = "Link this video to a specific practice shot to track form vs result."; return; }
+  const link = parseLinkedShot(val);
+  if (!link) { info.textContent = ""; return; }
+  const sess = (getPractice() || []).find(function (s) { return (s.savedAt || s.date) === link.sessionDate && s.type === link.sessionType; });
+  if (!sess) { info.textContent = "Session no longer available."; return; }
+  const shot = sess.shots[link.shotIndex];
+  if (!shot) { info.textContent = ""; return; }
+  info.textContent = "Linked to " + sess.date + " · " + sess.type + " · " + describeShot(shot, sess.type);
 }
 
 async function openVideoModal(id) {
@@ -6625,6 +6768,7 @@ async function openVideoModal(id) {
     '<div class="profile-row"><label>Date</label><input type="date" id="vmDate" value="' + v.date + '" /></div>' +
     '<div class="profile-row"><label>Club</label><input type="text" id="vmClub" value="' + escapeAttr(v.club) + '" placeholder="e.g. 7i" /></div>' +
     '<div class="profile-row"><label>Notes</label><textarea id="vmNotes" rows="2">' + escapeHtml(v.notes) + '</textarea></div>' +
+    '<div class="profile-row" style="align-items:flex-start;"><label>Linked shot</label><div style="flex:1;"><select id="vmShotPicker" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px;"></select><div id="vmShotInfo" style="font-size:11px; color:var(--muted); margin-top:4px;"></div></div></div>' +
     '<div style="display:flex; gap:8px; margin-top:12px;">' +
       '<button id="vmSave" class="ai-action-btn" style="flex:1;">Save</button>' +
       '<button id="vmAnalyse" class="ai-action-btn" style="flex:1; background:#1976d2;">AI Analyse Frame</button>' +
@@ -6632,6 +6776,12 @@ async function openVideoModal(id) {
     '<button id="vmDelete" class="btn-secondary danger" style="margin-top:8px; width:100%;">Delete video</button>' +
     '<div id="vmAiOut" class="ai-output" style="margin-top:10px;"></div>';
   body.appendChild(form);
+
+  populateShotPicker(v.linkedShot);
+  document.getElementById("vmShotPicker").addEventListener("change", function () {
+    renderLinkedShotInfo(this.value);
+  });
+  renderLinkedShotInfo(document.getElementById("vmShotPicker").value);
 
   document.getElementById("vmSave").addEventListener("click", function () {
     const all = getVideoIndex();
@@ -6641,6 +6791,8 @@ async function openVideoModal(id) {
     all[i].date = document.getElementById("vmDate").value || all[i].date;
     all[i].club = document.getElementById("vmClub").value.trim();
     all[i].notes = document.getElementById("vmNotes").value.trim();
+    const pickerVal = document.getElementById("vmShotPicker").value;
+    all[i].linkedShot = pickerVal ? parseLinkedShot(pickerVal) : null;
     saveVideoIndex(all);
     renderVideoLibrary();
     closeVideoModal();
@@ -6662,8 +6814,14 @@ async function openVideoModal(id) {
     c.height = vid.videoHeight || 480;
     c.getContext("2d").drawImage(vid, 0, 0, c.width, c.height);
     const dataUrl = c.toDataURL("image/jpeg", 0.85);
+    let shotContext = v.notes || "";
+    if (v.linkedShot) {
+      const sess = (getPractice() || []).find(function (s) { return (s.savedAt || s.date) === v.linkedShot.sessionDate && s.type === v.linkedShot.sessionType; });
+      const shot = sess && sess.shots[v.linkedShot.shotIndex];
+      if (shot) shotContext += (shotContext ? " | " : "") + "Linked shot: " + describeShot(shot, sess.type);
+    }
     if (typeof analyseSwingFrame === "function") {
-      try { await analyseSwingFrame(dataUrl, v.notes, out); }
+      try { await analyseSwingFrame(dataUrl, shotContext, out); }
       catch (e) { out.textContent = "AI error: " + e.message; }
     } else {
       out.textContent = "AI analyse function not wired. Add Grok key on Stats tab.";

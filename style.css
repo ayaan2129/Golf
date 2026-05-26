@@ -2202,6 +2202,19 @@ textarea { resize: vertical; }
   margin: 0;
 }
 
+.club-observed-hint {
+  background: var(--gold);
+  color: var(--ink);
+  border: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.club-observed-hint:hover { background: #d99a1c; }
+
 #handicapTrendCard svg {
   width: 100%;
   height: auto;
