@@ -1789,6 +1789,9 @@ function initDashboard() {
 
   document.getElementById("addUpcomingBtn").addEventListener("click", addUpcomingRound);
   document.getElementById("modalClose").addEventListener("click", closeRoundDetail);
+  document.getElementById("roundDetailModal").addEventListener("click", function (e) {
+    if (e.target === this) closeRoundDetail();
+  });
 }
 
 function getHistory() {
