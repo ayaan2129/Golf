@@ -28,19 +28,36 @@
     <div id="welcomeScreen" style="display:none;">
       <div class="welcome-box">
         <h1>Welcome back, <span id="welcomeName">player</span></h1>
+
         <h3>Your Goals</h3>
         <div id="welcomeGoals"></div>
+
         <h3>Frequent Mistakes</h3>
         <ul id="welcomeMistakes"></ul>
+
         <h3>Common Silly Mistakes at RCGC</h3>
         <ul id="welcomeCourseMistakes"></ul>
+
+        <h3>Today's Focus</h3>
+        <ul id="welcomeFocus"></ul>
+
         <h3>Daily Practice</h3>
         <ul id="welcomePractice"></ul>
+
         <h3>Recent Strengths</h3>
         <ul id="welcomeStrengths"></ul>
-        <h3>Reminders Before You Play</h3>
+
+        <h3>Before You Play Checklist</h3>
+        <ul class="reminders">
+          <li>Drink water before and during the round.</li>
+          <li>Stretch your back, arms, and legs.</li>
+          <li>Warm up with 10-15 chips and short putts.</li>
+        </ul>
+
+        <h3>Positive Reminders</h3>
         <ul id="welcomePositive"></ul>
-        <button id="continueBtn">Continue to Tracker</button>
+
+        <button id="continueBtn">Go to Hole Tracker</button>
         <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
       </div>
     </div>
@@ -48,268 +65,266 @@
     <div id="appScreen" style="display:none;">
       <h1>Junior Golf Tracker</h1>
 
-    <div class="dashboard">
-      <h2>Dashboard</h2>
+      <nav class="tab-nav">
+        <button class="tab-btn" data-action="goto-welcome">Pre-Round</button>
+        <button class="tab-btn active" data-tab="trackerTab">Hole Tracker</button>
+        <button class="tab-btn" data-tab="statsTab">Stats</button>
+      </nav>
 
-      <div class="month-picker">
-        <label>Month
-          <select id="monthSelect"></select>
-        </label>
-        <label>Year
-          <select id="yearSelect"></select>
-        </label>
-      </div>
+      <div id="trackerTab" class="tab-page">
+        <div class="setup">
+          <h2>Round Setup</h2>
 
-      <div class="calendar" id="calendar"></div>
+          <label>Player Name
+            <input type="text" id="playerName" />
+          </label>
 
-      <div class="cal-legend">
-        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#2e7d32"></div>Normal Game</div>
-        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#7e57c2"></div>Tournament</div>
-        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#ffeaa8"></div>Upcoming</div>
-      </div>
+          <label>Date
+            <input type="date" id="roundDate" />
+          </label>
 
-      <div class="monthly-summary" id="monthlySummary"></div>
+          <label>Played In
+            <select id="playedIn">
+              <option value="India">India</option>
+              <option value="Outside India">Outside India</option>
+            </select>
+          </label>
 
-      <div class="month-compare" id="monthCompare"></div>
+          <label id="countryRow" style="display:none;">Country
+            <input type="text" id="country" />
+          </label>
 
-      <div class="goal-tracker" id="goalTracker"></div>
-
-      <div class="achievements" id="achievements"></div>
-
-      <div class="overall-stats" id="normalGameStats"></div>
-      <div class="overall-stats" id="tournamentStats"></div>
-
-      <div class="upcoming-section">
-        <h3>Upcoming Rounds</h3>
-
-        <div class="upcoming-form">
-          <label>Date <input type="date" id="upcomingDate" /></label>
           <label>Course
-            <select id="upcomingCourse">
+            <select id="courseSelect">
+              <option value="">-- choose --</option>
               <option value="RCGC">RCGC</option>
-              <option value="Tolly">Tolly</option>
+              <option value="Tolly">Tolly (coming soon)</option>
               <option value="Other">Other</option>
             </select>
           </label>
-          <label id="upcomingOtherRow" style="display:none;">Course Name
-            <input type="text" id="upcomingOtherName" />
+
+          <label id="customCourseRow" style="display:none;">Course Name
+            <input type="text" id="customCourseName" />
           </label>
-          <label>Tee
-            <select id="upcomingTee">
-              <option value="">Any</option>
+
+          <label id="teeRow" style="display:none;">Tee
+            <select id="teeSelect">
+              <option value="">-- choose --</option>
               <option value="Blue">Blue</option>
               <option value="White">White</option>
               <option value="Yellow">Yellow</option>
               <option value="Red">Red</option>
             </select>
           </label>
-          <label>Holes
-            <select id="upcomingHoles">
-              <option value="18">18 holes</option>
-              <option value="9">9 holes</option>
+
+          <label>Course Par
+            <input type="number" id="coursePar" min="1" />
+          </label>
+
+          <div id="courseInfo" class="course-info" style="display:none;">
+            <p>Course Par: <span id="ciCoursePar">—</span></p>
+            <p>Total Distance: <span id="ciTotalDistance">—</span> yds</p>
+            <p>Front 9: <span id="ciFront9">—</span> yds</p>
+            <p>Back 9: <span id="ciBack9">—</span> yds</p>
+          </div>
+
+          <p id="courseNotice" class="course-notice" style="display:none;"></p>
+
+          <label>Holes Played
+            <select id="holesMode">
+              <option value="18">Full 18</option>
+              <option value="front9">Front 9</option>
+              <option value="back9">Back 9</option>
+              <option value="custom">Custom holes</option>
             </select>
           </label>
-          <button id="addUpcomingBtn">Add Upcoming Round</button>
+
+          <div id="customHolesRow" style="display:none;">
+            <p style="margin:6px 0; font-size:13px;">Tick the holes you played:</p>
+            <div id="customHolesChecks" class="custom-holes-checks"></div>
+          </div>
+
+          <label>Game Type
+            <select id="gameType">
+              <option value="Normal Game">Normal Game</option>
+              <option value="Tournament">Tournament</option>
+            </select>
+          </label>
+
+          <label id="tournamentNameRow" style="display:none;">Tournament Name
+            <input type="text" id="tournamentName" />
+          </label>
+
+          <label id="tournamentFormatRow" style="display:none;">Tournament Format
+            <select id="tournamentFormat">
+              <option value="">-- choose --</option>
+              <option value="Stroke play">Stroke play</option>
+              <option value="Match play">Match play</option>
+              <option value="5-club tournament">5-club tournament</option>
+              <option value="Stableford">Stableford</option>
+              <option value="Scramble">Scramble</option>
+              <option value="Practice tournament">Practice tournament</option>
+            </select>
+          </label>
+
+          <h3>Round Readiness</h3>
+
+          <label>Energy Level
+            <select id="energyLevel">
+              <option value="">-- choose --</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+
+          <label>Confidence Level
+            <select id="confidenceLevel">
+              <option value="">-- choose --</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+
+          <label>Sleep Quality
+            <select id="sleepQuality">
+              <option value="">-- choose --</option>
+              <option value="Poor">Poor</option>
+              <option value="OK">OK</option>
+              <option value="Good">Good</option>
+            </select>
+          </label>
         </div>
 
-        <div id="upcomingList"></div>
-      </div>
-    </div>
+        <div class="summary">
+          <h2>Round Summary</h2>
+          <p id="sumScore">Total Score: 0</p>
+          <p id="sumDiff">Score vs Par: 0</p>
+          <p id="sumPutts">Total Putts: 0</p>
+          <p id="sumChips">Total Chips: 0</p>
+          <p id="sumChipsPutts">Chips + Putts: 0</p>
+          <p id="sumFairway">Fairway Hit %: 0%</p>
+          <p id="sumPenalties">Penalties: 0</p>
+          <p id="sumMissed">Missed Short Putts: 0</p>
+          <button id="saveRoundBtn">Save Round</button>
+          <button id="resetBtn">New Round</button>
+          <button id="logoutBtn">Logout</button>
+        </div>
 
-    <div class="pre-round-coach">
-      <h2>Before You Play</h2>
-      <h3>Reminders</h3>
-      <ul class="reminders">
-        <li>Drink water before and during the round.</li>
-        <li>Stretch your back, arms, and legs.</li>
-        <li>Warm up with 10-15 chips and short putts.</li>
-      </ul>
-      <h3>Today's Focus</h3>
-      <ul id="preRoundAdvice"></ul>
-    </div>
+        <div id="holes"></div>
 
-    <div class="setup">
-      <h2>Round Setup</h2>
+        <div class="coach">
+          <h2>Coach Analysis</h2>
 
-      <label>Player Name
-        <input type="text" id="playerName" />
-      </label>
+          <h3>Top Weakness</h3>
+          <p id="topWeakness">Fill in some holes to get your coach feedback.</p>
 
-      <label>Date
-        <input type="date" id="roundDate" />
-      </label>
+          <h3>Biggest Mistakes</h3>
+          <ul id="mistakesList"></ul>
 
-      <label>Played In
-        <select id="playedIn">
-          <option value="India">India</option>
-          <option value="Outside India">Outside India</option>
-        </select>
-      </label>
+          <h3>What to Practise</h3>
+          <ul id="practiceList"></ul>
 
-      <label id="countryRow" style="display:none;">Country
-        <input type="text" id="country" />
-      </label>
+          <h3>Your Strengths</h3>
+          <ul id="strengthsList"></ul>
+        </div>
 
-      <label>Course
-        <select id="courseSelect">
-          <option value="">-- choose --</option>
-          <option value="RCGC">RCGC</option>
-          <option value="Tolly">Tolly (coming soon)</option>
-          <option value="Other">Other</option>
-        </select>
-      </label>
+        <div class="post-review">
+          <h2>After Round Review</h2>
 
-      <label id="customCourseRow" style="display:none;">Course Name
-        <input type="text" id="customCourseName" />
-      </label>
+          <label>How did you feel?
+            <textarea id="postFeel" rows="2"></textarea>
+          </label>
 
-      <label id="teeRow" style="display:none;">Tee
-        <select id="teeSelect">
-          <option value="">-- choose --</option>
-          <option value="Blue">Blue</option>
-          <option value="White">White</option>
-          <option value="Yellow">Yellow</option>
-          <option value="Red">Red</option>
-        </select>
-      </label>
+          <label>Best shot of the day
+            <textarea id="postBestShot" rows="2"></textarea>
+          </label>
 
-      <label>Course Par
-        <input type="number" id="coursePar" min="1" />
-      </label>
+          <label>Biggest mistake
+            <textarea id="postBiggestMistake" rows="2"></textarea>
+          </label>
 
-      <div id="courseInfo" class="course-info" style="display:none;">
-        <p>Course Par: <span id="ciCoursePar">—</span></p>
-        <p>Total Distance: <span id="ciTotalDistance">—</span> yds</p>
-        <p>Front 9: <span id="ciFront9">—</span> yds</p>
-        <p>Back 9: <span id="ciBack9">—</span> yds</p>
+          <label>What to improve next round
+            <textarea id="postImprove" rows="2"></textarea>
+          </label>
+        </div>
       </div>
 
-      <p id="courseNotice" class="course-notice" style="display:none;"></p>
+      <div id="statsTab" class="tab-page" style="display:none;">
+        <div class="dashboard">
+          <h2>Dashboard</h2>
 
-      <label>Holes Played
-        <select id="holesMode">
-          <option value="18">Full 18</option>
-          <option value="front9">Front 9</option>
-          <option value="back9">Back 9</option>
-          <option value="custom">Custom holes</option>
-        </select>
-      </label>
+          <div class="month-picker">
+            <label>Month
+              <select id="monthSelect"></select>
+            </label>
+            <label>Year
+              <select id="yearSelect"></select>
+            </label>
+          </div>
 
-      <div id="customHolesRow" style="display:none;">
-        <p style="margin:6px 0; font-size:13px;">Tick the holes you played:</p>
-        <div id="customHolesChecks" class="custom-holes-checks"></div>
+          <div class="calendar" id="calendar"></div>
+
+          <div class="cal-legend">
+            <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#2e7d32"></div>Normal Game</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#7e57c2"></div>Tournament</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#ffeaa8"></div>Upcoming</div>
+          </div>
+
+          <div class="monthly-summary" id="monthlySummary"></div>
+
+          <div class="month-compare" id="monthCompare"></div>
+
+          <div class="goal-tracker" id="goalTracker"></div>
+
+          <div class="achievements" id="achievements"></div>
+
+          <div class="overall-stats" id="normalGameStats"></div>
+          <div class="overall-stats" id="tournamentStats"></div>
+
+          <div class="upcoming-section">
+            <h3>Upcoming Rounds</h3>
+
+            <div class="upcoming-form">
+              <label>Date <input type="date" id="upcomingDate" /></label>
+              <label>Course
+                <select id="upcomingCourse">
+                  <option value="RCGC">RCGC</option>
+                  <option value="Tolly">Tolly</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label id="upcomingOtherRow" style="display:none;">Course Name
+                <input type="text" id="upcomingOtherName" />
+              </label>
+              <label>Tee
+                <select id="upcomingTee">
+                  <option value="">Any</option>
+                  <option value="Blue">Blue</option>
+                  <option value="White">White</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Red">Red</option>
+                </select>
+              </label>
+              <label>Holes
+                <select id="upcomingHoles">
+                  <option value="18">18 holes</option>
+                  <option value="9">9 holes</option>
+                </select>
+              </label>
+              <button id="addUpcomingBtn">Add Upcoming Round</button>
+            </div>
+
+            <div id="upcomingList"></div>
+          </div>
+        </div>
+
+        <div class="previous-rounds">
+          <h2>Previous Rounds</h2>
+          <div id="roundsList"></div>
+        </div>
       </div>
-
-      <label>Game Type
-        <select id="gameType">
-          <option value="Normal Game">Normal Game</option>
-          <option value="Tournament">Tournament</option>
-        </select>
-      </label>
-
-      <label id="tournamentNameRow" style="display:none;">Tournament Name
-        <input type="text" id="tournamentName" />
-      </label>
-
-      <label id="tournamentFormatRow" style="display:none;">Tournament Format
-        <select id="tournamentFormat">
-          <option value="">-- choose --</option>
-          <option value="Stroke play">Stroke play</option>
-          <option value="Match play">Match play</option>
-          <option value="5-club tournament">5-club tournament</option>
-          <option value="Stableford">Stableford</option>
-          <option value="Scramble">Scramble</option>
-          <option value="Practice tournament">Practice tournament</option>
-        </select>
-      </label>
-
-      <h3>Round Readiness</h3>
-
-      <label>Energy Level
-        <select id="energyLevel">
-          <option value="">-- choose --</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-      </label>
-
-      <label>Confidence Level
-        <select id="confidenceLevel">
-          <option value="">-- choose --</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-      </label>
-
-      <label>Sleep Quality
-        <select id="sleepQuality">
-          <option value="">-- choose --</option>
-          <option value="Poor">Poor</option>
-          <option value="OK">OK</option>
-          <option value="Good">Good</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="summary">
-      <h2>Round Summary</h2>
-      <p id="sumScore">Total Score: 0</p>
-      <p id="sumDiff">Score vs Par: 0</p>
-      <p id="sumPutts">Total Putts: 0</p>
-      <p id="sumChips">Total Chips: 0</p>
-      <p id="sumChipsPutts">Chips + Putts: 0</p>
-      <p id="sumFairway">Fairway Hit %: 0%</p>
-      <p id="sumPenalties">Penalties: 0</p>
-      <p id="sumMissed">Missed Short Putts: 0</p>
-      <button id="saveRoundBtn">Save Round</button>
-      <button id="resetBtn">New Round</button>
-      <button id="logoutBtn">Logout</button>
-    </div>
-
-    <div id="holes"></div>
-
-    <div class="coach">
-      <h2>Coach Analysis</h2>
-
-      <h3>Top Weakness</h3>
-      <p id="topWeakness">Fill in some holes to get your coach feedback.</p>
-
-      <h3>Biggest Mistakes</h3>
-      <ul id="mistakesList"></ul>
-
-      <h3>What to Practise</h3>
-      <ul id="practiceList"></ul>
-
-      <h3>Your Strengths</h3>
-      <ul id="strengthsList"></ul>
-    </div>
-
-    <div class="post-review">
-      <h2>After Round Review</h2>
-
-      <label>How did you feel?
-        <textarea id="postFeel" rows="2"></textarea>
-      </label>
-
-      <label>Best shot of the day
-        <textarea id="postBestShot" rows="2"></textarea>
-      </label>
-
-      <label>Biggest mistake
-        <textarea id="postBiggestMistake" rows="2"></textarea>
-      </label>
-
-      <label>What to improve next round
-        <textarea id="postImprove" rows="2"></textarea>
-      </label>
-    </div>
-
-    <div class="previous-rounds">
-      <h2>Previous Rounds</h2>
-      <div id="roundsList"></div>
-    </div>
     </div>
 
     <div id="roundDetailModal" class="modal" style="display:none;">

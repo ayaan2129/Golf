@@ -153,6 +153,8 @@ function renderWelcome() {
     li.textContent = line;
     posUl.appendChild(li);
   }
+
+  renderPreRoundCoach();
 }
 
 document.getElementById("loginBtn").addEventListener("click", function () {
@@ -170,6 +172,32 @@ document.getElementById("loginBtn").addEventListener("click", function () {
 
 document.getElementById("continueBtn").addEventListener("click", function () {
   showApp();
+  switchTab("trackerTab");
+});
+
+function switchTab(tabId) {
+  const pages = document.querySelectorAll(".tab-page");
+  pages.forEach(function (p) { p.style.display = p.id === tabId ? "" : "none"; });
+  const btns = document.querySelectorAll(".tab-btn");
+  btns.forEach(function (b) {
+    if (b.dataset.tab === tabId) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+  if (tabId === "statsTab") {
+    renderDashboard();
+    renderHistory();
+  }
+  window.scrollTo(0, 0);
+}
+
+document.querySelectorAll(".tab-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    if (btn.dataset.action === "goto-welcome") {
+      showWelcome();
+      return;
+    }
+    if (btn.dataset.tab) switchTab(btn.dataset.tab);
+  });
 });
 
 document.getElementById("welcomeLogoutBtn").addEventListener("click", function () {
@@ -2231,7 +2259,8 @@ function renderAchievements() {
 }
 
 function renderPreRoundCoach() {
-  const div = document.getElementById("preRoundAdvice");
+  const div = document.getElementById("welcomeFocus");
+  if (!div) return;
   div.innerHTML = "";
   const history = getHistory();
   const advice = [];
@@ -2287,7 +2316,6 @@ function renderDashboard() {
   renderAchievements();
   renderTypeStats();
   renderUpcoming();
-  renderPreRoundCoach();
 }
 
 function showRoundDetail(round) {
