@@ -188,33 +188,49 @@ async function loadTemperatureForDate(dateStr) {
   const out = document.getElementById("defaultsTemp");
   if (!out || !dateStr) return;
   out.textContent = "Loading...";
-  const lat = 22.55;
-  const lon = 88.36;
-  const tz = "Asia%2FKolkata";
+  const courseKey = (document.getElementById("courseSelect") || {}).value || "RCGC";
+  const w = await fetchWeatherForDate(dateStr, courseKey);
+  if (!w || w.tempMax == null) {
+    out.textContent = "Could not load weather (no internet?)";
+    return;
+  }
+  const text = Math.round(w.tempMax) + "°C high · " + Math.round(w.tempMin) + "°C low · " + w.condition + (w.windKmh != null ? " · wind " + Math.round(w.windKmh) + " km/h" : "");
+  out.textContent = text;
+  localStorage.setItem("defaultsTemp", text);
+  localStorage.setItem("currentWeather", JSON.stringify(w));
+}
+
+async function fetchWeatherForDate(dateStr, courseKey) {
+  if (!dateStr) return null;
+  const loc = locationFor(courseKey);
   const today = todayISO();
   const isPast = dateStr < today;
   const base = isPast
     ? "https://archive-api.open-meteo.com/v1/archive"
     : "https://api.open-meteo.com/v1/forecast";
-  const url = base + "?latitude=" + lat + "&longitude=" + lon +
+  const url = base +
+    "?latitude=" + loc.lat + "&longitude=" + loc.lon +
     "&start_date=" + dateStr + "&end_date=" + dateStr +
-    "&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=" + tz;
+    "&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max,precipitation_sum" +
+    "&timezone=" + encodeURIComponent(loc.tz);
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error("fetch failed");
+    if (!res.ok) return null;
     const data = await res.json();
-    const max = data && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_max[0];
-    const min = data && data.daily && data.daily.temperature_2m_min && data.daily.temperature_2m_min[0];
-    const code = data && data.daily && data.daily.weathercode && data.daily.weathercode[0];
-    const condition = weatherCodeToText(code);
-    if (max == null) {
-      out.textContent = "No data for that date";
-    } else {
-      out.textContent = Math.round(max) + "°C high · " + Math.round(min) + "°C low · " + condition;
-    }
-    localStorage.setItem("defaultsTemp", out.textContent);
+    const d = data.daily || {};
+    return {
+      date: dateStr,
+      courseKey: courseKey || null,
+      locationName: loc.name,
+      tempMax: d.temperature_2m_max ? d.temperature_2m_max[0] : null,
+      tempMin: d.temperature_2m_min ? d.temperature_2m_min[0] : null,
+      code: d.weathercode ? d.weathercode[0] : null,
+      condition: weatherCodeToText(d.weathercode ? d.weathercode[0] : null),
+      windKmh: d.windspeed_10m_max ? d.windspeed_10m_max[0] : null,
+      precipMm: d.precipitation_sum ? d.precipitation_sum[0] : null,
+    };
   } catch (e) {
-    out.textContent = "Could not load (no internet?)";
+    return null;
   }
 }
 
@@ -433,6 +449,7 @@ const ACHIEVEMENTS = [
 
 const COURSES = {
   RCGC: {
+    location: { lat: 22.5337, lon: 88.3491, tz: "Asia/Kolkata", name: "Royal Calcutta GC" },
     pars: [4, 3, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4],
     tees: {
       Blue: [359, 161, 442, 570, 410, 425, 421, 401, 429, 439, 451, 394, 233, 426, 503, 354, 382, 437],
@@ -441,7 +458,19 @@ const COURSES = {
       Red: [305, 137, 332, 451, 352, 330, 299, 326, 314, 367, 351, 283, 126, 323, 403, 327, 347, 363],
     },
   },
+  Tolly: {
+    location: { lat: 22.5113, lon: 88.3464, tz: "Asia/Kolkata", name: "Tollygunge Club" },
+    pars: null,
+    tees: null,
+  },
 };
+
+const DEFAULT_COURSE_LOCATION = { lat: 22.5337, lon: 88.3491, tz: "Asia/Kolkata", name: "Kolkata" };
+
+function locationFor(courseKey) {
+  if (courseKey && COURSES[courseKey] && COURSES[courseKey].location) return COURSES[courseKey].location;
+  return DEFAULT_COURSE_LOCATION;
+}
 
 const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
 
@@ -1918,6 +1947,10 @@ function saveRoundToHistory() {
     birthday: getProfile().birthday || null,
     ageAtRound: calcAge(getProfile().birthday),
     weather: localStorage.getItem("defaultsTemp") || "",
+    weatherData: (function () {
+      try { return JSON.parse(localStorage.getItem("currentWeather") || "null"); }
+      catch (e) { return null; }
+    })(),
     totalScore,
     scoreVsPar: parForRound > 0 ? totalScore - parForRound : 0,
     totalPutts,
@@ -2299,6 +2332,8 @@ function onSetupChange(event) {
   if (event.target.id === "courseSelect" || event.target.id === "teeSelect") {
     toggleSetupRows();
     applyCourseData();
+    const d = (document.getElementById("defaultsDateInput") || {}).value;
+    if (d) loadTemperatureForDate(d);
   }
   handleChange();
 }
@@ -3218,8 +3253,102 @@ function renderDashboard() {
   renderClubStats();
   renderHandicapTrend();
   renderScoreTrend();
+  renderWeatherImpact();
   renderPracticeLog();
   renderUpcoming();
+}
+
+function renderWeatherImpact() {
+  const card = document.getElementById("weatherImpactCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Weather Impact";
+  card.appendChild(h);
+
+  const history = getHistory().filter(function (r) { return r.weatherData && r.totalScore > 0 && typeof r.scoreVsPar === "number"; });
+  if (history.length < 2) {
+    const p = document.createElement("p");
+    p.textContent = "Save 2+ rounds with weather to see how conditions affect your scoring.";
+    card.appendChild(p);
+    return;
+  }
+
+  function bucketWind(w) {
+    if (w == null) return null;
+    if (w < 10) return "Calm (<10 km/h)";
+    if (w < 20) return "Breeze (10-20)";
+    return "Windy (20+)";
+  }
+  function bucketTemp(t) {
+    if (t == null) return null;
+    if (t < 15) return "Cool (<15°C)";
+    if (t < 25) return "Mild (15-25)";
+    if (t < 32) return "Warm (25-32)";
+    return "Hot (32+)";
+  }
+  function bucketRain(p) {
+    if (p == null) return null;
+    if (p < 1) return "Dry";
+    if (p < 10) return "Light rain";
+    return "Heavy rain";
+  }
+
+  function avgFor(buckets) {
+    const out = {};
+    for (const r of history) {
+      for (const b of buckets) {
+        const key = b.fn(b.val(r));
+        if (key == null) continue;
+        if (!out[b.label]) out[b.label] = {};
+        if (!out[b.label][key]) out[b.label][key] = { count: 0, sum: 0 };
+        out[b.label][key].count += 1;
+        out[b.label][key].sum += r.scoreVsPar;
+      }
+    }
+    return out;
+  }
+
+  const data = avgFor([
+    { label: "Wind", fn: bucketWind, val: function (r) { return r.weatherData.windKmh; } },
+    { label: "Temperature", fn: bucketTemp, val: function (r) { return r.weatherData.tempMax; } },
+    { label: "Rain", fn: bucketRain, val: function (r) { return r.weatherData.precipMm; } },
+  ]);
+
+  for (const factor in data) {
+    const sub = document.createElement("h4");
+    sub.textContent = factor;
+    card.appendChild(sub);
+    const ul = document.createElement("ul");
+    ul.style.paddingLeft = "20px";
+    ul.style.fontSize = "13px";
+    for (const k in data[factor]) {
+      const b = data[factor][k];
+      const avg = (b.sum / b.count).toFixed(1);
+      const sign = b.sum / b.count >= 0 ? "+" : "";
+      const li = document.createElement("li");
+      li.textContent = k + ": avg " + sign + avg + " vs par (" + b.count + " round" + (b.count !== 1 ? "s" : "") + ")";
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+  }
+
+  // One-line insight
+  const wind = data.Wind || {};
+  if (wind["Windy (20+)"] && wind["Calm (<10 km/h)"]) {
+    const diff = (wind["Windy (20+)"].sum / wind["Windy (20+)"].count) - (wind["Calm (<10 km/h)"].sum / wind["Calm (<10 km/h)"].count);
+    if (Math.abs(diff) > 1) {
+      const p = document.createElement("p");
+      p.style.fontSize = "13px";
+      p.style.marginTop = "8px";
+      p.style.fontWeight = "bold";
+      p.style.color = diff > 0 ? "#b71c1c" : "#2e7d32";
+      p.textContent = diff > 0
+        ? "On windy days you score " + diff.toFixed(1) + " strokes higher. Practise low ball flight."
+        : "You actually score better in wind by " + Math.abs(diff).toFixed(1) + " strokes — calm-conditions complacency?";
+      card.appendChild(p);
+    }
+  }
 }
 
 function getPractice() {
@@ -3241,13 +3370,27 @@ function addPracticeSession() {
     alert("Add a duration or a focus drill to log this practice session.");
     return;
   }
+  const session = { date, area, duration, focus, notes, savedAt: new Date().toISOString(), weatherData: null };
+  // Async weather fetch; save once it returns (or save immediately and update)
   const arr = getPractice();
-  arr.push({ date, area, duration, focus, notes, savedAt: new Date().toISOString() });
+  arr.push(session);
   savePractice(arr);
   document.getElementById("practiceDuration").value = "";
   document.getElementById("practiceFocus").value = "";
   document.getElementById("practiceNotes").value = "";
   renderPracticeLog();
+
+  // Try to fetch weather and update the same session.
+  fetchWeatherForDate(date, "RCGC").then(function (w) {
+    if (!w) return;
+    const all = getPractice();
+    const idx = all.findIndex(function (s) { return s.savedAt === session.savedAt; });
+    if (idx >= 0) {
+      all[idx].weatherData = w;
+      savePractice(all);
+      renderPracticeLog();
+    }
+  });
 }
 
 function renderPracticeLog() {
@@ -3805,6 +3948,31 @@ function showRoundDetail(round) {
   for (const s of summary) {
     const p = document.createElement("p");
     p.textContent = s;
+    body.appendChild(p);
+  }
+
+  if (round.weatherData) {
+    const h = document.createElement("h3");
+    h.textContent = "Weather That Day";
+    body.appendChild(h);
+    const w = round.weatherData;
+    const lines = [];
+    if (w.tempMax != null) lines.push("Temperature: " + Math.round(w.tempMax) + "°C high / " + Math.round(w.tempMin) + "°C low");
+    if (w.condition) lines.push("Condition: " + w.condition);
+    if (w.windKmh != null) lines.push("Wind: " + Math.round(w.windKmh) + " km/h");
+    if (w.precipMm != null) lines.push("Rain: " + w.precipMm + " mm");
+    if (w.locationName) lines.push("Location: " + w.locationName);
+    for (const l of lines) {
+      const p = document.createElement("p");
+      p.textContent = l;
+      body.appendChild(p);
+    }
+  } else if (round.weather) {
+    const h = document.createElement("h3");
+    h.textContent = "Weather That Day";
+    body.appendChild(h);
+    const p = document.createElement("p");
+    p.textContent = round.weather;
     body.appendChild(p);
   }
 
