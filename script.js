@@ -5,16 +5,26 @@ function isLoggedIn() {
   return localStorage.getItem("golfLoggedIn") === "yes";
 }
 
+function setShellVisible(visible) {
+  const header = document.getElementById("appHeader");
+  const tabs = document.getElementById("bottomTabs");
+  if (header) header.style.display = visible ? "" : "none";
+  if (tabs) tabs.style.display = visible ? "" : "none";
+}
+
 function showLogin() {
   document.getElementById("loginScreen").style.display = "";
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "none";
+  setShellVisible(false);
 }
 
 function showWelcome() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "";
   document.getElementById("appScreen").style.display = "none";
+  setShellVisible(true);
+  syncBottomTabs("home");
   renderWelcome();
 }
 
@@ -22,6 +32,7 @@ function showApp() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "";
+  setShellVisible(true);
 }
 
 function renderWelcome() {
@@ -338,17 +349,21 @@ document.addEventListener("click", function (e) {
 
 function syncBottomTabs(tabId) {
   document.querySelectorAll(".bt").forEach(function (b) {
-    if (b.dataset.tab === tabId) b.classList.add("active");
+    if (b.dataset.goTab === tabId) b.classList.add("active");
     else b.classList.remove("active");
   });
 }
 
 document.querySelectorAll(".bt").forEach(function (btn) {
   btn.addEventListener("click", function () {
-    const target = btn.dataset.tab;
-    showApp();
-    switchTab(target);
-    syncBottomTabs(target);
+    const target = btn.dataset.goTab;
+    if (target === "home") {
+      showWelcome();
+    } else {
+      showApp();
+      switchTab(target);
+      syncBottomTabs(target);
+    }
   });
 });
 

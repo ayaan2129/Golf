@@ -25,6 +25,12 @@
       </div>
     </div>
 
+    <header class="app-header" id="appHeader" style="display:none;">
+      <button class="header-btn" id="headerHomeBtn" title="Home">⌂</button>
+      <h1 class="header-title">Golf Tracker</h1>
+      <button class="header-btn" id="headerLogoutBtn" title="Logout">↩</button>
+    </header>
+
     <div id="welcomeScreen" style="display:none;">
       <div class="welcome-box">
         <h2 class="page-label">Page 2 — Before You Play</h2>
@@ -109,12 +115,6 @@
     </div>
 
     <div id="appScreen" style="display:none;">
-      <header class="app-header">
-        <button class="header-btn" id="headerHomeBtn" title="Home">⌂</button>
-        <h1 class="header-title">Golf Tracker</h1>
-        <button class="header-btn" id="headerLogoutBtn" title="Logout">↩</button>
-      </header>
-
       <div class="app-body">
 
       <div id="setupTab" class="tab-page">
@@ -579,30 +579,34 @@
     </div>
 
       </div>
-
-      <nav class="bottom-tabs" id="bottomTabs">
-        <button class="bt" data-tab="setupTab">
-          <span class="bt-icon">🏌</span>
-          <span class="bt-label">Setup</span>
-        </button>
-        <button class="bt" data-tab="clubsTab">
-          <span class="bt-icon">⛳</span>
-          <span class="bt-label">Bag</span>
-        </button>
-        <button class="bt active" data-tab="trackerTab">
-          <span class="bt-icon">●</span>
-          <span class="bt-label">Track</span>
-        </button>
-        <button class="bt" data-tab="statsTab">
-          <span class="bt-icon">📊</span>
-          <span class="bt-label">Stats</span>
-        </button>
-        <button class="bt" data-tab="coachTab">
-          <span class="bt-icon">💬</span>
-          <span class="bt-label">Coach</span>
-        </button>
-      </nav>
     </div>
+
+    <nav class="bottom-tabs" id="bottomTabs" style="display:none;">
+      <button class="bt" data-go-tab="home">
+        <span class="bt-icon">⌂</span>
+        <span class="bt-label">Home</span>
+      </button>
+      <button class="bt" data-go-tab="setupTab">
+        <span class="bt-icon">⚙</span>
+        <span class="bt-label">Setup</span>
+      </button>
+      <button class="bt" data-go-tab="clubsTab">
+        <span class="bt-icon">⛳</span>
+        <span class="bt-label">Bag</span>
+      </button>
+      <button class="bt active" data-go-tab="trackerTab">
+        <span class="bt-icon">●</span>
+        <span class="bt-label">Track</span>
+      </button>
+      <button class="bt" data-go-tab="statsTab">
+        <span class="bt-icon">▦</span>
+        <span class="bt-label">Stats</span>
+      </button>
+      <button class="bt" data-go-tab="coachTab">
+        <span class="bt-icon">💬</span>
+        <span class="bt-label">Coach</span>
+      </button>
+    </nav>
 
     <div id="roundDetailModal" class="modal" style="display:none;">
       <div class="modal-content">

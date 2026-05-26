@@ -242,11 +242,7 @@ textarea { resize: vertical; }
 
 /* WELCOME SCREEN */
 #welcomeScreen {
-  min-height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 20px 12px;
+  padding: 12px 12px 90px;
   box-sizing: border-box;
 }
 
