@@ -104,95 +104,12 @@
         </div>
       </div>
     </div>
-      <div class="welcome-box">
-        <h2 class="page-label">Page 2 — Before You Play</h2>
-        <h1>Welcome back, <span id="welcomeName">player</span></h1>
-
-        <div class="dream-card">
-          <h3>Your Dream</h3>
-          <p>Your dream is to become a <strong>PRO GOLFER</strong>. You can achieve it.</p>
-          <p>Your favourite player is <strong>Rory McIlroy</strong>.</p>
-          <p>To play against him, you need to be <strong>World No. 1</strong>.</p>
-          <p class="dream-tag">Every round is one step closer.</p>
-        </div>
-
-        <div class="player-card" id="playerCard">
-          <div class="player-card-row"><span class="pc-label">Player</span><span class="pc-value" id="pcName">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Age</span><span class="pc-value" id="pcAge">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Handicap</span><span class="pc-value" id="pcHandicap">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Best score</span><span class="pc-value" id="pcBest">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Rounds played</span><span class="pc-value" id="pcRounds">0</span></div>
-          <div class="player-card-row"><span class="pc-label">Badges</span><span class="pc-value" id="pcBadges">0</span></div>
-          <p class="pc-benchmark" id="pcBenchmark"></p>
-        </div>
-
-        <div class="defaults-card">
-          <h3>Today's Defaults</h3>
-          <label>Player Name
-            <input type="text" id="displayNameInput" placeholder="Your name" />
-          </label>
-          <label>Birthday (set once, used for age)
-            <input type="date" id="birthdayInput" />
-          </label>
-          <label>Date of Round
-            <input type="date" id="defaultsDateInput" />
-          </label>
-          <p><strong>Temperature:</strong> <span id="defaultsTemp">Pick a date above</span></p>
-          <label>Handicap
-            <input type="number" id="handicapInput" step="0.1" placeholder="18" />
-          </label>
-          <p><strong>Location:</strong> India · RCGC (Kolkata)</p>
-          <p><strong>My usual bag:</strong></p>
-          <p class="defaults-clubs">Driver · 3 Wood · Hybrid (Rescue) · 6 Iron · 7 Iron · 8 Iron · 9 Iron · Pitching Wedge · Sand Wedge · 58° Lob Wedge · Putter</p>
-        </div>
-
-        <div class="thought-card">
-          <h3>Thought of the Day</h3>
-          <p id="dailyThought">—</p>
-        </div>
-
-        <h3>Your Goals</h3>
-        <div id="welcomeGoals"></div>
-
-        <h3>Frequent Mistakes</h3>
-        <ul id="welcomeMistakes"></ul>
-
-        <h3>Common Silly Mistakes at RCGC</h3>
-        <ul id="welcomeCourseMistakes"></ul>
-
-        <h3>Today's Focus</h3>
-        <ul id="welcomeFocus"></ul>
-        <button id="aiFocusBtn" class="ai-action-btn">Get AI Coach's Focus</button>
-        <div id="aiFocusOutput" class="ai-output"></div>
-
-        <h3>Daily Practice</h3>
-        <ul id="welcomePractice"></ul>
-
-        <h3>Recent Strengths</h3>
-        <ul id="welcomeStrengths"></ul>
-
-        <h3>Before You Play Checklist</h3>
-        <ul class="reminders">
-          <li>Drink water before and during the round.</li>
-          <li>Stretch your back, arms, and legs.</li>
-          <li>Warm up with 10-15 chips and short putts.</li>
-        </ul>
-
-        <h3>Positive Reminders</h3>
-        <ul id="welcomePositive"></ul>
-
-        <div class="page-nav">
-          <button id="continueBtn" class="btn-next">Next: Round Setup →</button>
-          <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
-        </div>
-      </div>
-    </div>
 
     <div id="appScreen" style="display:none;">
       <div class="app-body">
 
       <div id="setupTab" class="tab-page">
-        <h2 class="page-label">Page 3 — Round Setup</h2>
+        <h2 class="section-header">Round Setup</h2>
 
         <div class="setup">
           <h2>Round Setup</h2>
@@ -289,7 +206,7 @@
       </div>
 
       <div id="clubsTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 4 — Club Setup</h2>
+        <h2 class="section-header">My Bag</h2>
 
         <div class="clubs-card">
           <h2>What's in Your Bag?</h2>
@@ -335,7 +252,7 @@
       </div>
 
       <div id="trackerTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 5 — Hole Tracker</h2>
+        <h2 class="section-header">Playing Now</h2>
 
         <div class="mode-toggle">
           <label>Round mode:
@@ -372,7 +289,7 @@
       </div>
 
       <div id="statsTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 6 — Coach &amp; Stats</h2>
+        <h2 class="section-header">Stats &amp; History</h2>
 
         <div class="summary">
           <h2>Round Summary</h2>
@@ -705,7 +622,7 @@
       </div>
 
       <div id="coachTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 7 — Talk to Coach</h2>
+        <h2 class="section-header">Coach Chat</h2>
 
         <div class="chat-card">
           <h2>Coach Chat</h2>

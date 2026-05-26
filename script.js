@@ -480,17 +480,19 @@ document.getElementById("signupBtn").addEventListener("click", function () {
   syncDrawerActive("profileTab");
 });
 
-document.getElementById("continueBtn").addEventListener("click", function () {
-  const d = document.getElementById("defaultsDateInput");
-  if (d && d.value) {
-    localStorage.setItem("defaultsDate", d.value);
-    const roundDate = document.getElementById("roundDate");
-    if (roundDate) roundDate.value = d.value;
-  }
-  showApp();
-  switchTab("setupTab");
-  syncBottomTabs && syncBottomTabs("setupTab");
-});
+const continueBtnEl = document.getElementById("continueBtn");
+if (continueBtnEl) {
+  continueBtnEl.addEventListener("click", function () {
+    const d = document.getElementById("defaultsDateInput");
+    if (d && d.value) {
+      localStorage.setItem("defaultsDate", d.value);
+      const roundDate = document.getElementById("roundDate");
+      if (roundDate) roundDate.value = d.value;
+    }
+    showApp();
+    switchTab("setupTab");
+  });
+}
 
 const defaultsDateInputInit = document.getElementById("defaultsDateInput");
 if (defaultsDateInputInit) {
@@ -692,9 +694,10 @@ if (statsLogoutBtn) {
   });
 }
 
-document.getElementById("welcomeLogoutBtn").addEventListener("click", function () {
+const welcomeLogoutEl = document.getElementById("welcomeLogoutBtn");
+if (welcomeLogoutEl) welcomeLogoutEl.addEventListener("click", function () {
   if (confirm("Log out?")) {
-    localStorage.removeItem("golfLoggedIn");
+    setCurrentUsername(null);
     showLogin();
   }
 });
