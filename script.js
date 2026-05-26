@@ -154,6 +154,16 @@ function renderWelcome() {
     posUl.appendChild(li);
   }
 
+  const dateEl = document.getElementById("defaultsDate");
+  if (dateEl) dateEl.textContent = todayISO();
+  const thoughtEl = document.getElementById("dailyThought");
+  if (thoughtEl) thoughtEl.textContent = getDailyThought();
+  const dateInput = document.getElementById("roundDate");
+  if (dateInput && !dateInput.value) dateInput.value = todayISO();
+  const weatherTodaySel = document.getElementById("weatherToday");
+  const savedWeather = localStorage.getItem("weatherToday");
+  if (weatherTodaySel && savedWeather) weatherTodaySel.value = savedWeather;
+
   renderPreRoundCoach();
 }
 
@@ -171,9 +181,18 @@ document.getElementById("loginBtn").addEventListener("click", function () {
 });
 
 document.getElementById("continueBtn").addEventListener("click", function () {
+  const w = document.getElementById("weatherToday");
+  if (w && w.value) localStorage.setItem("weatherToday", w.value);
   showApp();
   switchTab("setupTab");
 });
+
+const weatherTodaySelInit = document.getElementById("weatherToday");
+if (weatherTodaySelInit) {
+  weatherTodaySelInit.addEventListener("change", function () {
+    localStorage.setItem("weatherToday", weatherTodaySelInit.value);
+  });
+}
 
 function switchTab(tabId) {
   const pages = document.querySelectorAll(".tab-page");
@@ -333,7 +352,36 @@ const ALL_CLUBS = [
   "Chipper", "Putter",
 ];
 
-const DEFAULT_CLUBS = ["Driver", "3 Wood", "4 Hybrid", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Sand Wedge", "Putter"];
+const DEFAULT_CLUBS = ["Driver", "3 Wood", "4 Hybrid", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Sand Wedge", "Lob Wedge", "Putter"];
+
+const THOUGHTS = [
+  "Practice doesn't make perfect. Perfect practice does.",
+  "One shot at a time. The next shot is the most important.",
+  "Stay patient - the leaderboard is decided on the back 9.",
+  "Pick a target every single shot. Always.",
+  "A bad shot is one shot - don't let it become two.",
+  "Trust your practice. You've hit this shot before.",
+  "Tempo wins more than power. Smooth swings, low scores.",
+  "Putts are half the round. Treat them like full shots.",
+  "Breathe before every swing. Calm hands, calm head.",
+  "Champions practise short putts more than long drives.",
+  "Make a smooth practice swing first. Then go.",
+  "Your worst shot is just one shot. Your best is coming.",
+  "Stay positive. Anger never made a birdie.",
+  "Walk the course. Look at the green. Plan your shot.",
+  "Rory says: focus on the process, not the result.",
+];
+
+function getDailyThought() {
+  const d = new Date();
+  const dayNumber = d.getFullYear() * 366 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return THOUGHTS[dayNumber % THOUGHTS.length];
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 
 const WEDGE_CLUBS_FULL = ["Pitching Wedge", "Gap Wedge", "Sand Wedge", "Lob Wedge", "Chipper", "PW", "GW", "SW", "LW", "Wedge"];
 

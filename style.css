@@ -221,6 +221,58 @@ textarea { resize: vertical; }
   color: var(--gold);
 }
 
+.defaults-card {
+  background: linear-gradient(180deg, #e6f4ff, #c3deff);
+  border: 2px solid var(--water);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.defaults-card h3 {
+  margin: 0 0 8px;
+  color: #0d47a1;
+  border: none;
+  text-align: center;
+  font-size: 15px;
+}
+
+.defaults-card p { margin: 4px 0; font-size: 13px; }
+.defaults-card .defaults-clubs {
+  font-weight: 700;
+  font-size: 12px;
+  color: #0d47a1;
+  background: white;
+  padding: 8px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.thought-card {
+  background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
+  color: white;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.thought-card h3 {
+  margin: 0 0 6px;
+  color: var(--gold);
+  border: none;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.thought-card p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 .chat-card {
   background: white;
   border-radius: 16px;
