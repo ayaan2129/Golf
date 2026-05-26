@@ -55,9 +55,37 @@ const SETUP_FIELDS = [
   "gameType",
   "tournamentName",
   "tournamentFormat",
-  "videoLink",
-  "swingVideoNote",
-  "tournamentVideoNote",
+  "energyLevel",
+  "confidenceLevel",
+  "sleepQuality",
+];
+
+const POST_REVIEW_FIELDS = [
+  "postFeel",
+  "postBestShot",
+  "postBiggestMistake",
+  "postImprove",
+];
+
+const TEE_GOALS = {
+  Red: { holes18: 5, holes9: 2 },
+  Yellow: { holes18: 10, holes9: 5 },
+  White: { holes18: 15, holes9: 6 },
+  Blue: { holes18: 18, holes9: 9 },
+};
+
+const TEE_ORDER = ["Red", "Yellow", "White", "Blue"];
+
+const ACHIEVEMENTS = [
+  { id: "below10", name: "Round below +10", check: function (rounds) { return rounds.some(function (r) { return typeof r.scoreVsPar === "number" && r.scoreVsPar < 10 && r.totalScore > 0; }); } },
+  { id: "below5", name: "Round below +5", check: function (rounds) { return rounds.some(function (r) { return typeof r.scoreVsPar === "number" && r.scoreVsPar < 5 && r.totalScore > 0; }); } },
+  { id: "tourUnder85", name: "Tournament under 85", check: function (rounds) { return rounds.some(function (r) { return (r.gameType === "Tournament") && r.totalScore > 0 && r.totalScore < 85; }); } },
+  { id: "firstTour", name: "First tournament saved", check: function (rounds) { return rounds.some(function (r) { return r.gameType === "Tournament"; }); } },
+  { id: "noPenaltyRound", name: "No-penalty round", check: function (rounds) { return rounds.some(function (r) { return r.totalPenalties === 0 && r.totalScore > 0; }); } },
+  { id: "fifty50Fairways", name: "50% fairways hit", check: function (rounds) { return rounds.some(function (r) { return typeof r.fairwayPct === "number" && r.fairwayPct >= 50; }); } },
+  { id: "tenUnder36", name: "10 rounds under 36 putts", check: function (rounds) { return rounds.filter(function (r) { return typeof r.totalPutts === "number" && r.totalPutts < 36; }).length >= 10; } },
+  { id: "fiveRounds", name: "5 rounds saved", check: function (rounds) { return rounds.length >= 5; } },
+  { id: "tenRounds", name: "10 rounds saved", check: function (rounds) { return rounds.length >= 10; } },
 ];
 
 const COURSES = {
@@ -326,10 +354,14 @@ function applyCourseData() {
 }
 
 function saveAll() {
-  const data = { setup: {}, holes: {} };
+  const data = { setup: {}, holes: {}, post: {} };
   for (const f of SETUP_FIELDS) {
     const el = document.getElementById(f);
     if (el) data.setup[f] = el.value;
+  }
+  for (const f of POST_REVIEW_FIELDS) {
+    const el = document.getElementById(f);
+    if (el) data.post[f] = el.value;
   }
   for (let i = 1; i <= holeCount; i++) {
     data.holes[i] = {
@@ -365,6 +397,13 @@ function loadAll() {
       buildHoles();
     }
     toggleSetupRows();
+  }
+
+  if (data.post) {
+    for (const f of POST_REVIEW_FIELDS) {
+      const el = document.getElementById(f);
+      if (el && data.post[f] !== undefined) el.value = data.post[f];
+    }
   }
 
   if (data.holes) {
@@ -864,9 +903,13 @@ function saveRoundToHistory() {
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
     tournamentFormat: document.getElementById("tournamentFormat").value || "",
-    videoLink: document.getElementById("videoLink").value || "",
-    swingVideoNote: document.getElementById("swingVideoNote").value || "",
-    tournamentVideoNote: document.getElementById("tournamentVideoNote").value || "",
+    energyLevel: document.getElementById("energyLevel").value || "",
+    confidenceLevel: document.getElementById("confidenceLevel").value || "",
+    sleepQuality: document.getElementById("sleepQuality").value || "",
+    postFeel: document.getElementById("postFeel").value || "",
+    postBestShot: document.getElementById("postBestShot").value || "",
+    postBiggestMistake: document.getElementById("postBiggestMistake").value || "",
+    postImprove: document.getElementById("postImprove").value || "",
     mistakes: analysis.mistakes,
     strengths: analysis.strengths,
     practice: analysis.practice,
@@ -1047,6 +1090,10 @@ function clearCurrentRound() {
     else if (f === "gameType") el.value = "Normal Game";
     else el.value = "";
   }
+  for (const f of POST_REVIEW_FIELDS) {
+    const el = document.getElementById(f);
+    if (el) el.value = "";
+  }
   holeCount = 18;
   buildHoles();
   toggleSetupRows();
@@ -1104,6 +1151,11 @@ setupContainer.addEventListener("input", handleChange);
 holesContainer.addEventListener("input", handleChange);
 holesContainer.addEventListener("change", handleChange);
 holesContainer.addEventListener("click", onHolesClick);
+
+const postReview = document.querySelector(".post-review");
+if (postReview) {
+  postReview.addEventListener("input", handleChange);
+}
 
 document.getElementById("saveRoundBtn").addEventListener("click", function () {
   if (getTotalScore() === 0) {
@@ -1719,12 +1771,189 @@ function renderUpcoming() {
   }
 }
 
+function getCurrentTee() {
+  const sel = document.getElementById("teeSelect").value;
+  if (sel) return sel;
+  const history = getHistory();
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].tee && TEE_GOALS[history[i].tee]) return history[i].tee;
+  }
+  return null;
+}
+
+function avgScoreVsPar(rounds) {
+  const valid = rounds.filter(function (r) {
+    return typeof r.scoreVsPar === "number" && !isNaN(r.scoreVsPar) && r.totalScore > 0;
+  });
+  if (valid.length === 0) return null;
+  let sum = 0;
+  for (const r of valid) sum += r.scoreVsPar;
+  return sum / valid.length;
+}
+
+function suggestTeeProgression() {
+  const currentTee = getCurrentTee();
+  if (!currentTee || !TEE_GOALS[currentTee]) {
+    return {
+      currentTee: null,
+      goalText: "Pick a tee in Round Setup to start tracking goals.",
+      progress: "",
+      suggestion: "",
+    };
+  }
+  const goals = TEE_GOALS[currentTee];
+  const history = getHistory();
+  const recent = history.filter(function (r) { return r.tee === currentTee; }).slice(-5);
+
+  const goalText = "18 holes: under +" + goals.holes18 + "  •  9 holes: under +" + goals.holes9;
+
+  if (recent.length === 0) {
+    return {
+      currentTee,
+      goalText,
+      progress: "No saved rounds yet at " + currentTee + " tees.",
+      suggestion: "Play and save a few rounds at " + currentTee + " tees to track progress.",
+    };
+  }
+
+  const rounds18 = recent.filter(function (r) { return Number(r.holes) === 18; });
+  const rounds9 = recent.filter(function (r) { return Number(r.holes) === 9; });
+  const avg18 = avgScoreVsPar(rounds18);
+  const avg9 = avgScoreVsPar(rounds9);
+
+  const teeIdx = TEE_ORDER.indexOf(currentTee);
+  const nextHarder = teeIdx < TEE_ORDER.length - 1 ? TEE_ORDER[teeIdx + 1] : null;
+  const nextEasier = teeIdx > 0 ? TEE_ORDER[teeIdx - 1] : null;
+
+  const meeting18 = avg18 !== null && avg18 < goals.holes18;
+  const meeting9 = avg9 !== null && avg9 < goals.holes9;
+  const struggling18 = avg18 !== null && avg18 > goals.holes18 + 5;
+  const struggling9 = avg9 !== null && avg9 > goals.holes9 + 3;
+
+  let suggestion = "Keep playing " + currentTee + " tees and aim for the goal.";
+
+  if ((meeting18 || meeting9) && nextHarder) {
+    suggestion = "You are becoming consistent from " + currentTee + " tees. Try " + nextHarder + " tees more often.";
+  } else if ((struggling18 || struggling9) && nextEasier) {
+    suggestion = "You are struggling from " + currentTee + " tees. Move forward to " + nextEasier + " tees to build confidence.";
+  }
+
+  const progressParts = [];
+  if (avg18 !== null) progressParts.push("18-hole avg: " + (avg18 >= 0 ? "+" + avg18.toFixed(1) : avg18.toFixed(1)));
+  if (avg9 !== null) progressParts.push("9-hole avg: " + (avg9 >= 0 ? "+" + avg9.toFixed(1) : avg9.toFixed(1)));
+  const progress = progressParts.length > 0 ? progressParts.join("  •  ") : "Play more rounds to see averages.";
+
+  return { currentTee, goalText, progress, suggestion };
+}
+
+function renderGoalTracker() {
+  const div = document.getElementById("goalTracker");
+  div.innerHTML = "";
+  const data = suggestTeeProgression();
+
+  const h = document.createElement("h3");
+  h.textContent = "Goal Tracker";
+  div.appendChild(h);
+
+  const tee = document.createElement("p");
+  tee.textContent = "Current Tee: " + (data.currentTee || "—");
+  div.appendChild(tee);
+
+  const goal = document.createElement("p");
+  goal.textContent = "Goal: " + data.goalText;
+  div.appendChild(goal);
+
+  if (data.progress) {
+    const prog = document.createElement("p");
+    prog.textContent = data.progress;
+    div.appendChild(prog);
+  }
+
+  if (data.suggestion) {
+    const s = document.createElement("p");
+    s.className = "goal-suggestion";
+    s.textContent = data.suggestion;
+    div.appendChild(s);
+  }
+}
+
+function renderAchievements() {
+  const div = document.getElementById("achievements");
+  div.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Achievements";
+  div.appendChild(h);
+
+  const rounds = getHistory();
+  const grid = document.createElement("div");
+  grid.className = "achievement-grid";
+  for (const a of ACHIEVEMENTS) {
+    const item = document.createElement("div");
+    item.className = "achievement" + (a.check(rounds) ? " unlocked" : "");
+    item.textContent = a.name;
+    grid.appendChild(item);
+  }
+  div.appendChild(grid);
+}
+
+function renderPreRoundCoach() {
+  const div = document.getElementById("preRoundAdvice");
+  div.innerHTML = "";
+  const history = getHistory();
+  const advice = [];
+
+  if (history.length === 0) {
+    advice.push("Welcome! Have fun and focus on smooth, easy swings.");
+    advice.push("Trust your practice - one shot at a time.");
+  } else {
+    const recent = history.slice(-3);
+    const mistakeCounts = {};
+    const strengthCounts = {};
+    for (const r of recent) {
+      for (const m of (r.mistakes || [])) mistakeCounts[m] = (mistakeCounts[m] || 0) + 1;
+      for (const s of (r.strengths || [])) strengthCounts[s] = (strengthCounts[s] || 0) + 1;
+    }
+    const topMistake = topKeys(mistakeCounts, 1)[0];
+    const topStrength = topKeys(strengthCounts, 1)[0];
+
+    if (topMistake) {
+      const lower = topMistake.toLowerCase();
+      if (lower.indexOf("short putt") !== -1 || lower.indexOf("3-putt") !== -1) {
+        advice.push("Focus on short putting today.");
+      } else if (lower.indexOf("fairway") !== -1) {
+        advice.push("Focus on tee shot accuracy - pick a target.");
+      } else if (lower.indexOf("penalty") !== -1 || lower.indexOf("penalties") !== -1) {
+        advice.push("Avoid aggressive shots early in the round.");
+      } else if (lower.indexOf("first putts") !== -1) {
+        advice.push("Slow down on long putts - judge the speed first.");
+      } else if (lower.indexOf("poor shots") !== -1 || lower.indexOf("tops") !== -1 || lower.indexOf("ball striking") !== -1) {
+        advice.push("Stay loose and make smooth contact.");
+      } else {
+        advice.push("Focus today on: " + topMistake);
+      }
+    }
+    if (topStrength) {
+      advice.push("Recent strength: " + topStrength);
+    }
+    advice.push("Believe in your swing - you have done this before.");
+  }
+
+  for (const line of advice) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    div.appendChild(li);
+  }
+}
+
 function renderDashboard() {
   renderCalendar(currentDashYear, currentDashMonth);
   renderMonthlySummary(currentDashYear, currentDashMonth);
   renderMonthCompare(currentDashYear, currentDashMonth);
+  renderGoalTracker();
+  renderAchievements();
   renderTypeStats();
   renderUpcoming();
+  renderPreRoundCoach();
 }
 
 function showRoundDetail(round) {
@@ -1766,29 +1995,43 @@ function showRoundDetail(round) {
     body.appendChild(p);
   }
 
-  if (round.videoLink || round.swingVideoNote || round.tournamentVideoNote) {
+  if (round.energyLevel || round.confidenceLevel || round.sleepQuality) {
     const h = document.createElement("h3");
-    h.textContent = "Video Notes";
+    h.textContent = "Round Readiness";
     body.appendChild(h);
-    if (round.videoLink) {
+    const lines = [];
+    if (round.energyLevel) lines.push("Energy: " + round.energyLevel);
+    if (round.confidenceLevel) lines.push("Confidence: " + round.confidenceLevel);
+    if (round.sleepQuality) lines.push("Sleep: " + round.sleepQuality);
+    for (const l of lines) {
       const p = document.createElement("p");
-      p.textContent = "Link: ";
-      const a = document.createElement("a");
-      a.href = round.videoLink;
-      a.textContent = round.videoLink;
-      a.target = "_blank";
-      a.rel = "noopener";
-      p.appendChild(a);
+      p.textContent = l;
       body.appendChild(p);
     }
-    if (round.swingVideoNote) {
+  }
+
+  if (round.postFeel || round.postBestShot || round.postBiggestMistake || round.postImprove) {
+    const h = document.createElement("h3");
+    h.textContent = "After Round Review";
+    body.appendChild(h);
+    if (round.postFeel) {
       const p = document.createElement("p");
-      p.textContent = "Swing note: " + round.swingVideoNote;
+      p.textContent = "How I felt: " + round.postFeel;
       body.appendChild(p);
     }
-    if (round.tournamentVideoNote) {
+    if (round.postBestShot) {
       const p = document.createElement("p");
-      p.textContent = "Tournament note: " + round.tournamentVideoNote;
+      p.textContent = "Best shot: " + round.postBestShot;
+      body.appendChild(p);
+    }
+    if (round.postBiggestMistake) {
+      const p = document.createElement("p");
+      p.textContent = "Biggest mistake: " + round.postBiggestMistake;
+      body.appendChild(p);
+    }
+    if (round.postImprove) {
+      const p = document.createElement("p");
+      p.textContent = "Improve next round: " + round.postImprove;
       body.appendChild(p);
     }
   }

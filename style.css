@@ -234,6 +234,99 @@ textarea {
   word-break: break-all;
 }
 
+.pre-round-coach,
+.post-review {
+  background: #fffbea;
+  border: 2px solid #c5a200;
+  border-radius: 10px;
+  padding: 15px;
+  width: 100%;
+  max-width: 340px;
+  margin: 15px auto;
+  box-sizing: border-box;
+}
+
+.pre-round-coach h2,
+.post-review h2 {
+  margin: 0 0 10px;
+  text-align: center;
+  color: #8a6d00;
+}
+
+.pre-round-coach h3 {
+  margin: 12px 0 4px;
+  color: #8a6d00;
+  font-size: 14px;
+}
+
+.pre-round-coach ul,
+.reminders {
+  margin: 4px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.goal-tracker {
+  background: #e6f4ff;
+  border: 2px solid #1976d2;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.goal-tracker h3 {
+  margin: 0 0 8px;
+  color: #1565c0;
+  font-size: 15px;
+}
+
+.goal-tracker p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.goal-tracker .goal-suggestion {
+  font-weight: bold;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.achievements {
+  background: #fff;
+  border: 2px solid #c5a200;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.achievements h3 {
+  margin: 0 0 8px;
+  color: #8a6d00;
+  font-size: 15px;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.achievement {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: #f0f0f0;
+  color: #888;
+}
+
+.achievement.unlocked {
+  background: #2e7d32;
+  color: white;
+  font-weight: bold;
+}
+
 .cal-today {
   outline: 2px solid #1976d2;
 }

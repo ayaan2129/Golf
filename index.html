@@ -52,6 +52,10 @@
 
       <div class="month-compare" id="monthCompare"></div>
 
+      <div class="goal-tracker" id="goalTracker"></div>
+
+      <div class="achievements" id="achievements"></div>
+
       <div class="overall-stats" id="normalGameStats"></div>
       <div class="overall-stats" id="tournamentStats"></div>
 
@@ -90,6 +94,18 @@
 
         <div id="upcomingList"></div>
       </div>
+    </div>
+
+    <div class="pre-round-coach">
+      <h2>Before You Play</h2>
+      <h3>Reminders</h3>
+      <ul class="reminders">
+        <li>Drink water before and during the round.</li>
+        <li>Stretch your back, arms, and legs.</li>
+        <li>Warm up with 10-15 chips and short putts.</li>
+      </ul>
+      <h3>Today's Focus</h3>
+      <ul id="preRoundAdvice"></ul>
     </div>
 
     <div class="setup">
@@ -180,18 +196,33 @@
         </select>
       </label>
 
-      <h3>Video Notes</h3>
+      <h3>Round Readiness</h3>
 
-      <label>Video Link
-        <input type="url" id="videoLink" placeholder="https://..." />
+      <label>Energy Level
+        <select id="energyLevel">
+          <option value="">-- choose --</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
       </label>
 
-      <label>Swing Video Note
-        <textarea id="swingVideoNote" rows="2"></textarea>
+      <label>Confidence Level
+        <select id="confidenceLevel">
+          <option value="">-- choose --</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
       </label>
 
-      <label>Tournament Video Note
-        <textarea id="tournamentVideoNote" rows="2"></textarea>
+      <label>Sleep Quality
+        <select id="sleepQuality">
+          <option value="">-- choose --</option>
+          <option value="Poor">Poor</option>
+          <option value="OK">OK</option>
+          <option value="Good">Good</option>
+        </select>
       </label>
     </div>
 
@@ -226,6 +257,26 @@
 
       <h3>Your Strengths</h3>
       <ul id="strengthsList"></ul>
+    </div>
+
+    <div class="post-review">
+      <h2>After Round Review</h2>
+
+      <label>How did you feel?
+        <textarea id="postFeel" rows="2"></textarea>
+      </label>
+
+      <label>Best shot of the day
+        <textarea id="postBestShot" rows="2"></textarea>
+      </label>
+
+      <label>Biggest mistake
+        <textarea id="postBiggestMistake" rows="2"></textarea>
+      </label>
+
+      <label>What to improve next round
+        <textarea id="postImprove" rows="2"></textarea>
+      </label>
     </div>
 
     <div class="previous-rounds">
