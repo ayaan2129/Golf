@@ -316,6 +316,85 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 
+.clubs-card {
+  background: linear-gradient(180deg, white, #f4faf4);
+  border-radius: 16px;
+  padding: 16px;
+  width: 100%;
+  max-width: 340px;
+  margin: 12px auto;
+  box-sizing: border-box;
+  box-shadow: var(--card-shadow);
+  border-top: 5px solid var(--green-mid);
+}
+
+.clubs-card h2 {
+  text-align: center;
+  color: var(--green-deep);
+  margin: 0 0 8px;
+}
+
+.clubs-card p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.clubs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.club-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 4px;
+  background: white;
+  border: 2px solid var(--grass);
+  border-radius: 10px;
+  color: var(--green-deep);
+  cursor: pointer;
+  user-select: none;
+}
+
+.club-pill input { display: none; }
+
+.club-pill.checked {
+  background: linear-gradient(180deg, var(--green-mid), var(--green-deep));
+  color: white;
+  border-color: var(--green-deep);
+  box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3);
+}
+
+.clubs-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.clubs-action-btn {
+  flex: 1;
+  padding: 8px;
+  background: var(--gold-soft);
+  border: 1.5px solid var(--gold);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+#setupLogoutBtn, #clubsLogoutBtn {
+  background: #f3f3f3;
+  color: var(--crimson);
+}
+
 .hole-step { animation: fadeSlide 0.25s ease-out; }
 
 @keyframes fadeSlide {

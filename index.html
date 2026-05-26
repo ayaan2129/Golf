@@ -67,15 +67,15 @@
         <ul id="welcomePositive"></ul>
 
         <div class="page-nav">
-          <button id="continueBtn" class="btn-next">Next: Hole Tracker →</button>
+          <button id="continueBtn" class="btn-next">Next: Round Setup →</button>
           <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
         </div>
       </div>
     </div>
 
     <div id="appScreen" style="display:none;">
-      <div id="trackerTab" class="tab-page">
-        <h2 class="page-label">Page 3 — Hole Tracker</h2>
+      <div id="setupTab" class="tab-page">
+        <h2 class="page-label">Page 3 — Round Setup</h2>
 
         <div class="setup">
           <h2>Round Setup</h2>
@@ -202,6 +202,37 @@
           </label>
         </div>
 
+        <div class="page-nav">
+          <button class="btn-back" data-go="welcome">← Back: Pre-Round</button>
+          <button class="btn-next" data-go="clubsTab">Next: Club Setup →</button>
+          <button id="setupLogoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <div id="clubsTab" class="tab-page" style="display:none;">
+        <h2 class="page-label">Page 4 — Club Setup</h2>
+
+        <div class="clubs-card">
+          <h2>What's in Your Bag?</h2>
+          <p>Tick every club you're carrying today. The shot screens will only show these clubs.</p>
+          <div id="clubsGrid" class="clubs-grid"></div>
+          <div class="clubs-actions">
+            <button id="clubsSelectAll" type="button" class="clubs-action-btn">Select All</button>
+            <button id="clubsClearAll" type="button" class="clubs-action-btn">Clear All</button>
+            <button id="clubsDefault" type="button" class="clubs-action-btn">Standard Bag</button>
+          </div>
+        </div>
+
+        <div class="page-nav">
+          <button class="btn-back" data-go="setupTab">← Back: Round Setup</button>
+          <button class="btn-next" data-go="trackerTab">Next: Start Round →</button>
+          <button id="clubsLogoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <div id="trackerTab" class="tab-page" style="display:none;">
+        <h2 class="page-label">Page 5 — Hole Tracker</h2>
+
         <div class="hole-progress-bar">
           <div id="holeProgressFill" class="hole-progress-fill"></div>
         </div>
@@ -215,14 +246,14 @@
         </div>
 
         <div class="page-nav">
-          <button class="btn-back" data-go="welcome">← Back: Pre-Round</button>
-          <button class="btn-next" data-go="statsTab">Next: Coach &amp; Stats →</button>
+          <button class="btn-back" data-go="clubsTab">← Back: Clubs</button>
+          <button class="btn-next" data-go="statsTab">Finish: Coach &amp; Stats →</button>
           <button id="logoutBtn">Logout</button>
         </div>
       </div>
 
       <div id="statsTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 4 — Coach &amp; Stats</h2>
+        <h2 class="page-label">Page 6 — Coach &amp; Stats</h2>
 
         <div class="summary">
           <h2>Round Summary</h2>
@@ -362,7 +393,7 @@
       </div>
 
       <div id="coachTab" class="tab-page" style="display:none;">
-        <h2 class="page-label">Page 5 — Talk to Coach</h2>
+        <h2 class="page-label">Page 7 — Talk to Coach</h2>
 
         <div class="chat-card">
           <h2>Coach Chat</h2>

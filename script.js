@@ -172,7 +172,7 @@ document.getElementById("loginBtn").addEventListener("click", function () {
 
 document.getElementById("continueBtn").addEventListener("click", function () {
   showApp();
-  switchTab("trackerTab");
+  switchTab("setupTab");
 });
 
 function switchTab(tabId) {
@@ -196,7 +196,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "trackerTab" || target === "statsTab" || target === "coachTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab") {
     showApp();
     switchTab(target);
   }
@@ -324,6 +324,56 @@ const COURSES = {
 
 const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
 
+const ALL_CLUBS = [
+  "Driver", "3 Wood", "5 Wood", "Hybrid",
+  "1 Iron", "2 Iron", "3 Iron", "4 Iron", "5 Iron",
+  "6 Iron", "7 Iron", "8 Iron", "9 Iron",
+  "PW", "GW", "SW", "LW", "Putter",
+];
+
+const DEFAULT_CLUBS = ["Driver", "3 Wood", "Hybrid", "7 Iron", "8 Iron", "9 Iron", "PW", "SW", "Putter"];
+
+function getSelectedClubs() {
+  const raw = localStorage.getItem("selectedClubs");
+  if (!raw) return DEFAULT_CLUBS.slice();
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch (e) {}
+  return DEFAULT_CLUBS.slice();
+}
+
+function saveSelectedClubs(arr) {
+  localStorage.setItem("selectedClubs", JSON.stringify(arr));
+}
+
+function buildClubsGrid() {
+  const grid = document.getElementById("clubsGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const selected = getSelectedClubs();
+  for (const club of ALL_CLUBS) {
+    const lbl = document.createElement("label");
+    lbl.className = "club-pill" + (selected.indexOf(club) !== -1 ? " checked" : "");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = club;
+    cb.checked = selected.indexOf(club) !== -1;
+    cb.addEventListener("change", function () {
+      if (cb.checked) lbl.classList.add("checked");
+      else lbl.classList.remove("checked");
+      const arr = [];
+      document.querySelectorAll("#clubsGrid input[type=checkbox]:checked").forEach(function (c) {
+        arr.push(c.value);
+      });
+      saveSelectedClubs(arr);
+    });
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(club));
+    grid.appendChild(lbl);
+  }
+}
+
 let holeCount = 18;
 
 function sumArray(arr) {
@@ -388,12 +438,7 @@ function makeShotCard(shotNumber) {
       <label>Club
         <select data-shot-field="club">
           <option value="">-- choose --</option>
-          <option value="Driver">Driver</option>
-          <option value="Wood">Wood</option>
-          <option value="Hybrid">Hybrid</option>
-          <option value="Iron">Iron</option>
-          <option value="Wedge">Wedge</option>
-          <option value="Putter">Putter</option>
+          ${getSelectedClubs().map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join("")}
         </select>
       </label>
 
@@ -778,9 +823,10 @@ function computeHoleStats(par, shots, firstPuttResult, missedShortStr) {
   let penalties = 0;
   let badShots = 0;
   let goodShots = 0;
+  const WEDGE_CLUBS = ["PW", "GW", "SW", "LW", "Wedge"];
   for (const s of shots) {
     if (s.club === "Putter") putts += 1;
-    if (s.club === "Wedge") chips += 1;
+    if (WEDGE_CLUBS.indexOf(s.club) !== -1) chips += 1;
     if (s.result === "Penalty") penalties += 1;
     if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
     if (s.quality === "Good shot") goodShots += 1;
@@ -816,9 +862,10 @@ function getHoleStats(i) {
   let penalties = 0;
   let badShots = 0;
   let goodShots = 0;
+  const WEDGE_CLUBS = ["PW", "GW", "SW", "LW", "Wedge"];
   for (const s of shots) {
     if (s.club === "Putter") putts += 1;
-    if (s.club === "Wedge") chips += 1;
+    if (WEDGE_CLUBS.indexOf(s.club) !== -1) chips += 1;
     if (s.result === "Penalty") penalties += 1;
     if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
     if (s.quality === "Good shot") goodShots += 1;
@@ -2863,6 +2910,45 @@ if (nextHoleBtn) {
 
 const savedIdx = Number(localStorage.getItem("currentHoleIndex"));
 if (!isNaN(savedIdx) && savedIdx >= 0) currentHoleIndex = savedIdx;
+
+buildClubsGrid();
+
+const clubsSelectAll = document.getElementById("clubsSelectAll");
+const clubsClearAll = document.getElementById("clubsClearAll");
+const clubsDefault = document.getElementById("clubsDefault");
+if (clubsSelectAll) {
+  clubsSelectAll.addEventListener("click", function () {
+    saveSelectedClubs(ALL_CLUBS.slice());
+    buildClubsGrid();
+  });
+}
+if (clubsClearAll) {
+  clubsClearAll.addEventListener("click", function () {
+    saveSelectedClubs([]);
+    buildClubsGrid();
+  });
+}
+if (clubsDefault) {
+  clubsDefault.addEventListener("click", function () {
+    saveSelectedClubs(DEFAULT_CLUBS.slice());
+    buildClubsGrid();
+  });
+}
+
+[
+  "setupLogoutBtn",
+  "clubsLogoutBtn",
+].forEach(function (id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("click", function () {
+      if (confirm("Log out?")) {
+        localStorage.removeItem("golfLoggedIn");
+        showLogin();
+      }
+    });
+  }
+});
 
 buildCustomHoleChecks();
 buildHoles();
