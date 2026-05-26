@@ -1565,12 +1565,13 @@ function saveRoundToHistory() {
   }
   for (const i of getActiveHoles()) {
     fullData.holes[i] = {
-      par: document.getElementById("par-" + i).value,
-      distance: document.getElementById("holeDistance-" + i).value,
+      par: (document.getElementById("par-" + i) || {}).value || "",
+      distance: (document.getElementById("holeDistance-" + i) || {}).value || "",
       shots: getShotsForHole(i),
-      firstPuttDistance: document.getElementById("firstPuttDistance-" + i).value,
-      firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
-      missedShortPutt: document.getElementById("missedShortPutt-" + i).value,
+      putts: getPuttsForHole(i),
+      firstPuttDistance: (document.getElementById("firstPuttDistance-" + i) || {}).value || "",
+      firstPuttResult: (document.getElementById("firstPuttResult-" + i) || {}).value || "",
+      missedShortPutt: (document.getElementById("missedShortPutt-" + i) || {}).value || "",
     };
   }
 
@@ -1598,9 +1599,9 @@ function saveRoundToHistory() {
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
     tournamentFormat: document.getElementById("tournamentFormat").value || "",
-    energyLevel: document.getElementById("energyLevel").value || "",
-    confidenceLevel: document.getElementById("confidenceLevel").value || "",
-    sleepQuality: document.getElementById("sleepQuality").value || "",
+    energyLevel: (document.getElementById("energyLevel") || {}).value || "",
+    confidenceLevel: (document.getElementById("confidenceLevel") || {}).value || "",
+    sleepQuality: (document.getElementById("sleepQuality") || {}).value || "",
     postFeel: document.getElementById("postFeel").value || "",
     postBestShot: document.getElementById("postBestShot").value || "",
     postBiggestMistake: document.getElementById("postBiggestMistake").value || "",
@@ -2016,6 +2017,15 @@ function onHolesInput(event) {
 
 setupContainer.addEventListener("change", onSetupChange);
 setupContainer.addEventListener("input", handleChange);
+
+const teeSelectEl = document.getElementById("teeSelect");
+if (teeSelectEl) {
+  teeSelectEl.addEventListener("change", function () {
+    toggleSetupRows();
+    applyCourseData();
+    handleChange();
+  });
+}
 holesContainer.addEventListener("input", function (e) { onHolesInput(e); handleChange(); });
 holesContainer.addEventListener("change", function (e) { onHolesInput(e); handleChange(); });
 holesContainer.addEventListener("click", onHolesClick);
@@ -2824,7 +2834,102 @@ function renderDashboard() {
   renderGoalTracker();
   renderAchievements();
   renderTypeStats();
+  renderClubStats();
   renderUpcoming();
+}
+
+function gatherAllShots() {
+  const allShots = [];
+  const history = getHistory();
+  for (const r of history) {
+    if (r.fullData && r.fullData.holes) {
+      for (const hKey in r.fullData.holes) {
+        const h = r.fullData.holes[hKey];
+        if (Array.isArray(h.shots)) {
+          for (const s of h.shots) allShots.push(s);
+        }
+      }
+    }
+  }
+  for (const i of getActiveHoles()) {
+    for (const s of getShotsForHole(i)) allShots.push(s);
+  }
+  return allShots;
+}
+
+function renderClubStats() {
+  const card = document.getElementById("clubStatsCard");
+  if (!card) return;
+  card.innerHTML = "";
+
+  const h = document.createElement("h3");
+  h.textContent = "Club Stats (all rounds + current)";
+  card.appendChild(h);
+
+  const shots = gatherAllShots().filter(function (s) { return s.club; });
+  if (shots.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "Add shots in a round to start building per-club stats.";
+    card.appendChild(p);
+    return;
+  }
+
+  const byClub = {};
+  for (const s of shots) {
+    const c = s.club;
+    if (!byClub[c]) byClub[c] = { count: 0, distances: [], misses: {} };
+    byClub[c].count += 1;
+    const d = Number(s.distanceHit);
+    if (!isNaN(d) && d > 0) byClub[c].distances.push(d);
+    const dir = s.direction;
+    if (dir && dir !== "Straight") {
+      byClub[c].misses[dir] = (byClub[c].misses[dir] || 0) + 1;
+    }
+  }
+
+  const table = document.createElement("table");
+  table.className = "club-stats-table";
+  const thead = document.createElement("thead");
+  thead.innerHTML = "<tr><th>Club</th><th>Used</th><th>Avg</th><th>Long</th><th>Short</th><th>Top miss</th></tr>";
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+
+  const clubs = Object.keys(byClub).sort(function (a, b) { return byClub[b].count - byClub[a].count; });
+  for (const c of clubs) {
+    const data = byClub[c];
+    const tr = document.createElement("tr");
+    let avg = "—", longest = "—", shortest = "—";
+    if (data.distances.length > 0) {
+      avg = Math.round(data.distances.reduce(function (s, v) { return s + v; }, 0) / data.distances.length);
+      longest = Math.max.apply(null, data.distances);
+      shortest = Math.min.apply(null, data.distances);
+    }
+    let topMiss = "—";
+    let topMissCount = 0;
+    for (const dir in data.misses) {
+      if (data.misses[dir] > topMissCount) {
+        topMiss = dir;
+        topMissCount = data.misses[dir];
+      }
+    }
+    tr.innerHTML =
+      "<td class=\"club-name\">" + c + "</td>" +
+      "<td>" + data.count + "</td>" +
+      "<td>" + avg + "</td>" +
+      "<td>" + longest + "</td>" +
+      "<td>" + shortest + "</td>" +
+      "<td>" + topMiss + "</td>";
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  card.appendChild(table);
+
+  const note = document.createElement("p");
+  note.style.fontSize = "12px";
+  note.style.marginTop = "8px";
+  note.style.color = "#8a6d00";
+  note.textContent = "Distances in yards. Top miss = your most common direction other than Straight.";
+  card.appendChild(note);
 }
 
 function showRoundDetail(round) {
