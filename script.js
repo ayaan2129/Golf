@@ -1,5 +1,5 @@
-const DEMO_USERNAME = "Ayaan";
-const DEMO_PASSWORD = "Golf123";
+const DEMO_USERNAME = "ayaan";
+const DEMO_PASSWORD = "Golf@123";
 
 function isLoggedIn() {
   return localStorage.getItem("golfLoggedIn") === "yes";
