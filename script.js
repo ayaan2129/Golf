@@ -258,6 +258,15 @@ function switchTab(tabId) {
     if (b.dataset.tab === tabId) b.classList.add("active");
     else b.classList.remove("active");
   });
+  if (tabId === "clubsTab") {
+    buildClubsGrid();
+  }
+  if (tabId === "trackerTab") {
+    if (!holesContainer || holesContainer.children.length === 0) {
+      buildHoles();
+    }
+    showHole(currentHoleIndex);
+  }
   if (tabId === "statsTab") {
     renderDashboard();
     renderHistory();
@@ -3226,9 +3235,19 @@ if (nextHoleBtn) {
 const savedIdx = Number(localStorage.getItem("currentHoleIndex"));
 if (!isNaN(savedIdx) && savedIdx >= 0) currentHoleIndex = savedIdx;
 
-if (!localStorage.getItem("selectedClubs")) {
-  saveSelectedClubs(DEFAULT_CLUBS.slice());
-}
+(function ensureDefaultClubs() {
+  const raw = localStorage.getItem("selectedClubs");
+  let needsDefaults = !raw;
+  if (!needsDefaults) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length === 0) needsDefaults = true;
+    } catch (e) {
+      needsDefaults = true;
+    }
+  }
+  if (needsDefaults) saveSelectedClubs(DEFAULT_CLUBS.slice());
+})();
 buildClubsGrid();
 
 const clubsSelectAll = document.getElementById("clubsSelectAll");
