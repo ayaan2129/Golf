@@ -311,8 +311,13 @@ document.getElementById("usernameInput").addEventListener("keypress", function (
   if (e.key === "Enter") document.getElementById("passwordInput").focus();
 });
 
-if (isLoggedIn()) showWelcome();
-else showLogin();
+// Initial visibility is set at the END of this file so all const
+// declarations (TEE_GOALS, currentDashYear, etc.) are initialized
+// before renderWelcome runs. Just show login screen immediately
+// so the user sees something during script load.
+document.getElementById("loginScreen").style.display = "";
+document.getElementById("welcomeScreen").style.display = "none";
+document.getElementById("appScreen").style.display = "none";
 
 const holesContainer = document.getElementById("holes");
 const setupContainer = document.querySelector(".setup");
@@ -3425,3 +3430,10 @@ renderHistory();
 initDashboard();
 renderDashboard();
 initChat();
+
+// Now that all constants and functions are initialized, decide which
+// screen to show (this used to run at the top of the file but crashed
+// when TEE_GOALS was referenced inside renderWelcome before being
+// declared).
+if (isLoggedIn()) showWelcome();
+else showLogin();
