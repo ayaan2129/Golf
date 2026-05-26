@@ -325,13 +325,34 @@ const COURSES = {
 const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
 
 const ALL_CLUBS = [
-  "Driver", "3 Wood", "5 Wood", "Hybrid",
-  "1 Iron", "2 Iron", "3 Iron", "4 Iron", "5 Iron",
-  "6 Iron", "7 Iron", "8 Iron", "9 Iron",
-  "PW", "GW", "SW", "LW", "Putter",
+  "Driver", "Mini Driver",
+  "2 Wood", "3 Wood", "4 Wood", "5 Wood", "7 Wood", "9 Wood",
+  "1 Hybrid", "2 Hybrid", "3 Hybrid", "4 Hybrid", "5 Hybrid", "6 Hybrid", "7 Hybrid",
+  "1 Iron", "2 Iron", "3 Iron", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron",
+  "Pitching Wedge", "Gap Wedge", "Sand Wedge", "Lob Wedge",
+  "Chipper", "Putter",
 ];
 
-const DEFAULT_CLUBS = ["Driver", "3 Wood", "Hybrid", "7 Iron", "8 Iron", "9 Iron", "PW", "SW", "Putter"];
+const DEFAULT_CLUBS = ["Driver", "3 Wood", "4 Hybrid", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Sand Wedge", "Putter"];
+
+const WEDGE_CLUBS_FULL = ["Pitching Wedge", "Gap Wedge", "Sand Wedge", "Lob Wedge", "Chipper", "PW", "GW", "SW", "LW", "Wedge"];
+
+function getCustomClubs() {
+  try {
+    const raw = localStorage.getItem("customClubs");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) { return []; }
+}
+
+function saveCustomClubs(arr) {
+  localStorage.setItem("customClubs", JSON.stringify(arr));
+}
+
+function getAllAvailableClubs() {
+  return ALL_CLUBS.concat(getCustomClubs());
+}
 
 const MAX_CLUBS = 14;
 
@@ -369,7 +390,7 @@ function buildClubsGrid() {
   }
   updateClubsCounter();
 
-  for (const club of ALL_CLUBS) {
+  for (const club of getAllAvailableClubs()) {
     const lbl = document.createElement("label");
     const isChecked = selected.indexOf(club) !== -1;
     lbl.className = "club-pill" + (isChecked ? " checked" : "");
@@ -440,29 +461,29 @@ function makeHoleCard(n) {
 
       <p class="hole-score">Shots so far: <span id="holeScore-${n}">0</span></p>
 
-      <h3>Putting</h3>
+      <div class="putting-section" id="puttingSection-${n}" style="display:none;">
+        <h3>Putting</h3>
+        <div class="putts-list" id="puttsList-${n}"></div>
+        <button type="button" class="add-putt-btn" data-hole="${n}">+ Add Putt</button>
 
-      <label>First Putt Distance (feet)
-        <input type="number" id="firstPuttDistance-${n}" min="0" />
-      </label>
+        <label>First Putt Result
+          <select id="firstPuttResult-${n}">
+            <option value="">-- choose --</option>
+            <option value="Short">Short</option>
+            <option value="Long">Long</option>
+            <option value="Good">Good</option>
+            <option value="Holed">Holed</option>
+          </select>
+        </label>
 
-      <label>First Putt Result
-        <select id="firstPuttResult-${n}">
-          <option value="">-- choose --</option>
-          <option value="Short">Short</option>
-          <option value="Long">Long</option>
-          <option value="Good">Good</option>
-          <option value="Holed">Holed</option>
-        </select>
-      </label>
-
-      <label>Missed Short Putt?
-        <select id="missedShortPutt-${n}">
-          <option value="">-- choose --</option>
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-        </select>
-      </label>
+        <label>Missed Short Putt?
+          <select id="missedShortPutt-${n}">
+            <option value="">-- choose --</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </label>
+      </div>
 
       <div class="hole-analysis" id="holeAnalysis-${n}"></div>
     </div>
@@ -526,11 +547,14 @@ function makeShotCard(shotNumber) {
       <label>Result
         <select data-shot-field="result">
           <option value="">-- choose --</option>
-          <option value="On fairway">On fairway</option>
-          <option value="On green">On green</option>
-          <option value="Near hole">Near hole</option>
-          <option value="Far from hole">Far from hole</option>
+          <option value="Fairway">Fairway</option>
+          <option value="Rough">Rough</option>
+          <option value="Bunker">Bunker</option>
+          <option value="Green">Green</option>
           <option value="Penalty">Penalty</option>
+          <option value="Out of Bounds">Out of Bounds</option>
+          <option value="Water">Water</option>
+          <option value="Lost Ball">Lost Ball</option>
           <option value="Holed">Holed</option>
         </select>
       </label>
@@ -541,6 +565,102 @@ function makeShotCard(shotNumber) {
 }
 
 let currentHoleIndex = 0;
+
+function makePuttCard(puttNumber) {
+  return `
+    <div class="putt-card">
+      <h4>Putt <span class="putt-number">${puttNumber}</span></h4>
+
+      <label>Distance (feet)
+        <input type="number" data-putt-field="distance" min="0" />
+      </label>
+
+      <label>Result
+        <select data-putt-field="result">
+          <option value="">-- choose --</option>
+          <option value="Holed">Holed</option>
+          <option value="Short">Short</option>
+          <option value="Long">Long</option>
+          <option value="Left">Left</option>
+          <option value="Right">Right</option>
+          <option value="Good lag">Good lag</option>
+        </select>
+      </label>
+
+      <button type="button" class="remove-putt-btn">Remove Putt</button>
+    </div>
+  `;
+}
+
+function addPutt(holeNum) {
+  const list = document.getElementById("puttsList-" + holeNum);
+  if (!list) return;
+  const count = list.querySelectorAll(".putt-card").length;
+  list.insertAdjacentHTML("beforeend", makePuttCard(count + 1));
+}
+
+function renumberPutts(list) {
+  list.querySelectorAll(".putt-card").forEach(function (card, idx) {
+    card.querySelector(".putt-number").textContent = idx + 1;
+  });
+}
+
+function getPuttsForHole(holeNum) {
+  const list = document.getElementById("puttsList-" + holeNum);
+  if (!list) return [];
+  const cards = list.querySelectorAll(".putt-card");
+  const arr = [];
+  for (const card of cards) {
+    const putt = {};
+    card.querySelectorAll("[data-putt-field]").forEach(function (f) {
+      putt[f.dataset.puttField] = f.value;
+    });
+    arr.push(putt);
+  }
+  return arr;
+}
+
+function updatePuttingVisibility(holeNum) {
+  const section = document.getElementById("puttingSection-" + holeNum);
+  if (!section) return;
+  const shots = getShotsForHole(holeNum);
+  const reachedGreen = shots.some(function (s) {
+    return s.result === "Green" || s.result === "On green" || s.result === "Reached Green";
+  });
+  section.style.display = reachedGreen ? "" : "none";
+}
+
+function recomputeDistancesForHole(holeNum) {
+  const holeDistEl = document.getElementById("holeDistance-" + holeNum);
+  const holeDist = Number(holeDistEl && holeDistEl.value) || 0;
+  const list = document.getElementById("shotsList-" + holeNum);
+  if (!list) return;
+  const cards = list.querySelectorAll(".shot-card");
+  let remaining = holeDist;
+  cards.forEach(function (card, idx) {
+    const leftEl = card.querySelector("[data-shot-field='distanceLeft']");
+    const hitEl = card.querySelector("[data-shot-field='distanceHit']");
+    if (leftEl) {
+      if (idx === 0) {
+        if (!leftEl.value || leftEl.dataset.auto === "1") {
+          if (holeDist > 0) {
+            leftEl.value = holeDist;
+            leftEl.dataset.auto = "1";
+          }
+        }
+      } else {
+        if (!leftEl.value || leftEl.dataset.auto === "1") {
+          if (remaining > 0) {
+            leftEl.value = Math.max(0, remaining);
+            leftEl.dataset.auto = "1";
+          }
+        }
+      }
+    }
+    const hit = Number(hitEl && hitEl.value) || 0;
+    remaining = remaining - hit;
+  });
+}
 
 function buildHoles() {
   holesContainer.innerHTML = "";
@@ -745,11 +865,13 @@ function saveAll() {
   data.setup.customHoles = [];
   customCBs.forEach(function (cb) { data.setup.customHoles.push(Number(cb.value)); });
   for (const i of getActiveHoles()) {
+    const fpdEl = document.getElementById("firstPuttDistance-" + i);
     data.holes[i] = {
       par: document.getElementById("par-" + i).value,
       distance: document.getElementById("holeDistance-" + i).value,
       shots: getShotsForHole(i),
-      firstPuttDistance: document.getElementById("firstPuttDistance-" + i).value,
+      putts: getPuttsForHole(i),
+      firstPuttDistance: fpdEl ? fpdEl.value : "",
       firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
       missedShortPutt: document.getElementById("missedShortPutt-" + i).value,
     };
@@ -824,6 +946,22 @@ function loadAll() {
           }
         }
       }
+
+      const puttsList = document.getElementById("puttsList-" + i);
+      if (puttsList && Array.isArray(hole.putts)) {
+        puttsList.innerHTML = "";
+        for (let p = 0; p < hole.putts.length; p++) {
+          puttsList.insertAdjacentHTML("beforeend", makePuttCard(p + 1));
+          const cards = puttsList.querySelectorAll(".putt-card");
+          const card = cards[cards.length - 1];
+          for (const key in hole.putts[p]) {
+            const field = card.querySelector('[data-putt-field="' + key + '"]');
+            if (field) field.value = hole.putts[p][key];
+          }
+        }
+      }
+
+      updatePuttingVisibility(i);
     }
   }
 }
@@ -895,17 +1033,17 @@ function computeHoleStats(par, shots, firstPuttResult, missedShortStr) {
 function getHoleStats(i) {
   const par = Number(document.getElementById("par-" + i).value) || 0;
   const shots = getShotsForHole(i);
-  const score = shots.length;
-  let putts = 0;
+  const puttsArr = getPuttsForHole(i);
+  const score = shots.length + puttsArr.length;
+  let putts = puttsArr.length;
   let chips = 0;
   let penalties = 0;
   let badShots = 0;
   let goodShots = 0;
-  const WEDGE_CLUBS = ["PW", "GW", "SW", "LW", "Wedge"];
   for (const s of shots) {
     if (s.club === "Putter") putts += 1;
-    if (WEDGE_CLUBS.indexOf(s.club) !== -1) chips += 1;
-    if (s.result === "Penalty") penalties += 1;
+    if (WEDGE_CLUBS_FULL.indexOf(s.club) !== -1) chips += 1;
+    if (s.result === "Penalty" || s.result === "Out of Bounds" || s.result === "Water" || s.result === "Lost Ball") penalties += 1;
     if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
     if (s.quality === "Good shot") goodShots += 1;
   }
@@ -913,7 +1051,7 @@ function getHoleStats(i) {
   let fwAns = 0;
   if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
     fwAns = 1;
-    if (shots[0].result === "On fairway") fwHit = 1;
+    if (shots[0].result === "Fairway" || shots[0].result === "On fairway") fwHit = 1;
   }
   const firstPuttResult = document.getElementById("firstPuttResult-" + i).value;
   const missedShort = document.getElementById("missedShortPutt-" + i).value === "Yes";
@@ -1719,20 +1857,55 @@ function onHolesClick(event) {
   if (event.target.matches(".add-shot-btn")) {
     const holeNum = event.target.dataset.hole;
     addShot(holeNum);
+    recomputeDistancesForHole(holeNum);
     handleChange();
   } else if (event.target.matches(".remove-shot-btn")) {
     const card = event.target.closest(".shot-card");
     const shotsList = card.parentElement;
+    const holeCard = card.closest(".hole-card");
+    const holeNum = holeCard ? holeCard.querySelector(".add-shot-btn").dataset.hole : null;
     card.remove();
     renumberShots(shotsList);
+    if (holeNum) recomputeDistancesForHole(holeNum);
     handleChange();
+  } else if (event.target.matches(".add-putt-btn")) {
+    const holeNum = event.target.dataset.hole;
+    addPutt(holeNum);
+    handleChange();
+  } else if (event.target.matches(".remove-putt-btn")) {
+    const card = event.target.closest(".putt-card");
+    const list = card.parentElement;
+    card.remove();
+    renumberPutts(list);
+    handleChange();
+  }
+}
+
+function onHolesInput(event) {
+  if (event.target.dataset && event.target.dataset.shotField === "distanceLeft") {
+    event.target.dataset.auto = "0";
+  }
+  const t = event.target;
+  if (t.dataset && (t.dataset.shotField === "distanceHit" || t.dataset.shotField === "result")) {
+    const holeCard = t.closest(".hole-card");
+    if (holeCard) {
+      const btn = holeCard.querySelector(".add-shot-btn");
+      if (btn) {
+        recomputeDistancesForHole(btn.dataset.hole);
+        updatePuttingVisibility(btn.dataset.hole);
+      }
+    }
+  }
+  if (t.id && t.id.indexOf("holeDistance-") === 0) {
+    const num = t.id.split("-")[1];
+    recomputeDistancesForHole(num);
   }
 }
 
 setupContainer.addEventListener("change", onSetupChange);
 setupContainer.addEventListener("input", handleChange);
-holesContainer.addEventListener("input", handleChange);
-holesContainer.addEventListener("change", handleChange);
+holesContainer.addEventListener("input", function (e) { onHolesInput(e); handleChange(); });
+holesContainer.addEventListener("change", function (e) { onHolesInput(e); handleChange(); });
 holesContainer.addEventListener("click", onHolesClick);
 
 const postReview = document.querySelector(".post-review");
@@ -2970,6 +3143,28 @@ if (clubsClearAll) {
 if (clubsDefault) {
   clubsDefault.addEventListener("click", function () {
     saveSelectedClubs(DEFAULT_CLUBS.slice());
+    buildClubsGrid();
+  });
+}
+
+const addCustomBtn = document.getElementById("addCustomClubBtn");
+const customInput = document.getElementById("customClubInput");
+if (addCustomBtn && customInput) {
+  addCustomBtn.addEventListener("click", function () {
+    const name = customInput.value.trim();
+    if (!name) return;
+    const all = getAllAvailableClubs();
+    if (all.indexOf(name) === -1) {
+      const custom = getCustomClubs();
+      custom.push(name);
+      saveCustomClubs(custom);
+    }
+    customInput.value = "";
+    const sel = getSelectedClubs();
+    if (sel.indexOf(name) === -1 && sel.length < MAX_CLUBS) {
+      sel.push(name);
+      saveSelectedClubs(sel);
+    }
     buildClubsGrid();
   });
 }

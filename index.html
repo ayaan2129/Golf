@@ -81,7 +81,7 @@
           <h2>Round Setup</h2>
 
           <label>Player Name
-            <input type="text" id="playerName" />
+            <input type="text" id="playerName" value="Ayaan" />
           </label>
 
           <label>Date
@@ -217,6 +217,10 @@
           <p>Pick the clubs you're carrying. Max 14 (golf rule).</p>
           <p id="clubsCounter" class="clubs-counter">0 / 14 clubs selected</p>
           <div id="clubsGrid" class="clubs-grid"></div>
+          <div class="custom-club-row">
+            <input type="text" id="customClubInput" placeholder="Add custom club name..." />
+            <button id="addCustomClubBtn" type="button">+ Add</button>
+          </div>
           <div class="clubs-actions">
             <button id="clubsSelectAll" type="button" class="clubs-action-btn">Select All</button>
             <button id="clubsClearAll" type="button" class="clubs-action-btn">Clear All</button>
