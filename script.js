@@ -3440,8 +3440,8 @@ function buildDemoHole(par, dist, shots, putts) {
   return { par: String(par), distance: String(dist), shots: shots, putts: putts.map(function (p) { return { distance: String(p[0]), result: p[1] }; }), firstPuttDistance: "", firstPuttResult: "", missedShortPutt: "" };
 }
 
-function seedDemoData() {
-  if (!confirm("This will add 4 demo rounds + 6 practice sessions for Ayaan, plus set bag/distances/birthday. Existing data stays. Continue?")) return;
+function seedDemoData(silent) {
+  if (!silent && !confirm("This will add 4 demo rounds + 6 practice sessions for Ayaan, plus set bag/distances/birthday. Existing data stays. Continue?")) return;
   // Profile
   const profile = getProfile();
   profile.handicap = 18;
@@ -3627,15 +3627,28 @@ function seedDemoData() {
   const existingP = JSON.parse(localStorage.getItem("practiceSessions") || "[]");
   localStorage.setItem("practiceSessions", JSON.stringify(existingP.concat(practices)));
 
-  alert("Seeded 4 demo rounds and 6 practice sessions. Refresh the page to see them everywhere.");
-  renderHistory();
-  renderDashboard();
-  renderPlayerCard();
+  if (!silent) alert("Seeded 4 demo rounds and 6 practice sessions. Refresh the page to see them everywhere.");
+  try { renderHistory(); } catch (e) {}
+  try { renderDashboard(); } catch (e) {}
+  try { renderPlayerCard(); } catch (e) {}
+}
+
+function autoSeedIfNeeded() {
+  if (localStorage.getItem("demoSeeded")) return;
+  if (localStorage.getItem("roundHistory")) return;
+  try {
+    seedDemoData(true);
+    localStorage.setItem("demoSeeded", "yes");
+  } catch (e) {
+    // Silent fail - seeding is best-effort
+  }
 }
 
 function wipeAllLocalData() {
   if (!confirm("This deletes ALL local data including saved rounds, practice, profile, AI key. Are you sure?")) return;
   localStorage.clear();
+  // Set a sentinel so the demo data does NOT auto-reseed after a wipe.
+  localStorage.setItem("demoSeeded", "wiped");
   alert("All local data wiped. Refresh the page.");
   location.reload();
 }
@@ -5087,6 +5100,7 @@ if (addCustomBtn && customInput) {
 });
 
 buildCustomHoleChecks();
+autoSeedIfNeeded();
 buildHoles();
 loadAll();
 toggleSetupRows();
