@@ -1,0 +1,9 @@
+# Cloudflare Worker local cache (created by wrangler dev / deploy)
+.wrangler/
+
+# Node
+node_modules/
+
+# Editor
+.DS_Store
+*.swp
