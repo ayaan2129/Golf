@@ -27,7 +27,7 @@ function showApp() {
 function renderWelcome() {
   const nameEl = document.getElementById("welcomeName");
   const saved = localStorage.getItem("golfRound");
-  let name = DEMO_USERNAME;
+  let name = DEMO_USERNAME ? DEMO_USERNAME.charAt(0).toUpperCase() + DEMO_USERNAME.slice(1) : "Player";
   if (saved) {
     try {
       const d = JSON.parse(saved);
