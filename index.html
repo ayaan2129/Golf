@@ -46,38 +46,61 @@
     </div>
 
     <header class="app-header" id="appHeader" style="display:none;">
-      <button class="header-btn" id="headerHomeBtn" title="Home">⌂</button>
+      <button class="header-btn" id="menuBtn" title="Menu">☰</button>
       <h1 class="header-title">Golf Tracker</h1>
-      <button class="header-btn" id="headerLogoutBtn" title="Logout">↩</button>
+      <button class="header-btn" id="headerHomeBtn" title="Home">⌂</button>
     </header>
+
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <aside class="side-drawer" id="sideDrawer">
+      <div class="drawer-header">
+        <h2 id="drawerWelcome">Menu</h2>
+        <button class="header-btn" id="closeDrawerBtn" title="Close">×</button>
+      </div>
+      <button class="drawer-item active" data-go-tab="home">⌂  Home</button>
+      <button class="drawer-item" data-go-tab="setupTab">⚙  New Round Setup</button>
+      <button class="drawer-item" data-go-tab="trackerTab">⛳  Current Round</button>
+      <button class="drawer-item" data-go-tab="statsTab">▦  Stats &amp; History</button>
+      <button class="drawer-item" data-go-tab="coachTab">💬  Coach</button>
+      <button class="drawer-item" data-go-tab="profileTab">◯  My Profile</button>
+      <div class="drawer-divider"></div>
+      <button class="drawer-item" id="drawerLogout" style="color:#b71c1c;">↩  Logout</button>
+    </aside>
 
     <div id="welcomeScreen" style="display:none;">
       <div class="home-dashboard">
         <h1 class="home-greeting">Hi, <span id="welcomeName">Player</span></h1>
         <p class="home-sub" id="homeSub">—</p>
 
-        <div class="home-cta">
-          <button class="home-cta-btn" id="homeStartBtn">Start a Round →</button>
+        <div class="home-stats-row">
+          <div class="home-stat"><div class="home-stat-num" id="homeHandicap">—</div><div class="home-stat-lbl">Handicap</div></div>
+          <div class="home-stat"><div class="home-stat-num" id="homeBest">—</div><div class="home-stat-lbl">Best</div></div>
+          <div class="home-stat"><div class="home-stat-num" id="homeRounds">0</div><div class="home-stat-lbl">Rounds</div></div>
         </div>
 
-        <div class="home-tile" id="homeLastRound">
+        <div class="home-cta">
+          <button class="home-cta-btn" id="homeStartBtn">Start a Round →</button>
+          <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice</button>
+        </div>
+
+        <div class="home-tile home-place">
+          <h3>Today at <span id="homeCourse">RCGC</span></h3>
+          <p id="homeWeatherText">—</p>
+        </div>
+
+        <div class="home-tile">
           <h3>Last Round</h3>
           <p id="homeLastRoundText">No rounds saved yet.</p>
         </div>
 
-        <div class="home-tile" id="homeWeather">
-          <h3>Today's Weather (RCGC)</h3>
-          <p id="homeWeatherText">—</p>
-        </div>
-
-        <div class="home-tile" id="homeFocus">
-          <h3>Today's Focus</h3>
-          <p id="homeFocusText">—</p>
-        </div>
-
-        <div class="home-tile" id="homeThought">
-          <h3>Coach's Thought</h3>
+        <div class="home-tile" id="homeMoral">
+          <h3>Today's Boost</h3>
           <p id="homeThoughtText">—</p>
+        </div>
+
+        <div class="home-tile">
+          <h3>Coach's Focus Today</h3>
+          <p id="homeFocusText">—</p>
         </div>
       </div>
     </div>
@@ -720,7 +743,7 @@
       </div>
     </div>
 
-    <nav class="bottom-tabs" id="bottomTabs" style="display:none;">
+    <nav class="bottom-tabs" id="bottomTabs" style="display:none !important;">
       <button class="bt active" data-go-tab="home">
         <span class="bt-icon">⌂</span>
         <span class="bt-label">Home</span>

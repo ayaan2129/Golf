@@ -88,6 +88,127 @@ body { padding: 0; }
   overflow-y: auto;
 }
 
+.side-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  background: white;
+  z-index: 200;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease-out;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+
+.side-drawer.open { transform: translateX(0); }
+
+.drawer-header {
+  background: linear-gradient(180deg, var(--green-deep), var(--green-mid));
+  color: white;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  color: white;
+  -webkit-text-fill-color: white;
+  background: none;
+  font-size: 16px;
+}
+
+.drawer-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 16px 18px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #eee;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.drawer-item.active {
+  background: var(--fairway);
+  border-left: 5px solid var(--green-mid);
+  color: var(--green-deep);
+}
+
+.drawer-item:active { background: #f0f0f0; }
+
+.drawer-divider { height: 1px; background: #ddd; margin: 8px 0; }
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.home-stats-row {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 14px 8px;
+  margin: 10px 0 14px;
+  box-shadow: var(--card-shadow);
+}
+
+.home-stat { text-align: center; flex: 1; }
+
+.home-stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--green-deep);
+}
+
+.home-stat-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.home-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px auto;
+  max-width: 340px;
+}
+
+.home-cta-btn.secondary {
+  background: white;
+  color: var(--green-deep);
+  border: 2px solid var(--green-mid);
+  font-size: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  padding: 14px;
+}
+
+.home-place {
+  background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
+  color: white;
+}
+
+.home-place h3, .home-place p { color: white; }
+
 .bottom-tabs {
   position: fixed;
   bottom: 0;

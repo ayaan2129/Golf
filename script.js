@@ -102,10 +102,24 @@ function renderHomeDashboard() {
   const greet = document.getElementById("welcomeName");
   if (greet) greet.textContent = name;
 
+  const drawerWelcome = document.getElementById("drawerWelcome");
+  if (drawerWelcome) drawerWelcome.textContent = name;
+
   const today = new Date();
   const dayStr = today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const sub = document.getElementById("homeSub");
   if (sub) sub.textContent = dayStr;
+
+  const history = getHistory();
+  const hcEl = document.getElementById("homeHandicap");
+  if (hcEl) hcEl.textContent = profile.handicap != null ? profile.handicap : "—";
+  const bestEl = document.getElementById("homeBest");
+  if (bestEl) {
+    const scores = history.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    bestEl.textContent = scores.length > 0 ? Math.min.apply(null, scores) : "—";
+  }
+  const roundsEl = document.getElementById("homeRounds");
+  if (roundsEl) roundsEl.textContent = history.length;
 
   const wxText = document.getElementById("homeWeatherText");
   if (wxText) {
@@ -114,15 +128,25 @@ function renderHomeDashboard() {
     if (w) {
       wxText.textContent = Math.round(w.tempMax || 0) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
     } else {
-      wxText.textContent = "Pick a date in Setup to fetch.";
+      // Auto-fetch today's weather for the default course
+      const t = todayISO();
+      const def = (document.getElementById("courseSelect") || {}).value || "RCGC";
+      loadTemperatureForDate(t);
+      const c = document.getElementById("homeCourse");
+      if (c) c.textContent = def;
+      wxText.textContent = "Loading...";
     }
+  }
+  const courseEl = document.getElementById("homeCourse");
+  if (courseEl) {
+    const defaultCourse = (history.length > 0 ? history[history.length - 1].courseName : "RCGC") || "RCGC";
+    courseEl.textContent = defaultCourse;
   }
 
   const lastEl = document.getElementById("homeLastRoundText");
   if (lastEl) {
-    const history = getHistory();
     if (history.length === 0) {
-      lastEl.textContent = "No rounds saved yet.";
+      lastEl.textContent = "No rounds yet — tap Start a Round.";
     } else {
       const r = history[history.length - 1];
       const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
@@ -132,18 +156,36 @@ function renderHomeDashboard() {
 
   const fEl = document.getElementById("homeFocusText");
   if (fEl) {
-    const recent = getHistory().slice(-3);
+    const recent = history.slice(-3);
     const allMistakes = [];
     for (const r of recent) for (const m of (r.mistakes || [])) allMistakes.push(m);
     if (allMistakes.length > 0) {
       fEl.textContent = "Work on: " + allMistakes[0];
     } else {
-      fEl.textContent = "Have fun, stay smooth.";
+      fEl.textContent = "Pick a target every shot. Stay smooth.";
     }
   }
 
   const tEl = document.getElementById("homeThoughtText");
   if (tEl) tEl.textContent = getDailyThought();
+
+  syncDrawerActive("home");
+}
+
+function syncDrawerActive(target) {
+  document.querySelectorAll(".drawer-item").forEach(function (b) {
+    if (b.dataset.goTab === target) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+}
+
+function openDrawer() {
+  document.getElementById("sideDrawer").classList.add("open");
+  document.getElementById("drawerBackdrop").classList.add("open");
+}
+function closeDrawer() {
+  document.getElementById("sideDrawer").classList.remove("open");
+  document.getElementById("drawerBackdrop").classList.remove("open");
 }
 
 function showWelcome() {
@@ -432,8 +474,10 @@ document.getElementById("signupBtn").addEventListener("click", function () {
   document.getElementById("signupUsername").value = "";
   document.getElementById("signupPassword").value = "";
   document.getElementById("signupDisplayName").value = "";
-  alert("Account created! Welcome, " + displayName + ".");
-  showWelcome();
+  alert("Account created! Welcome, " + displayName + ". Next: set your birthday, handicap, bag, and yardages in Profile.");
+  showApp();
+  switchTab("profileTab");
+  syncDrawerActive("profileTab");
 });
 
 document.getElementById("continueBtn").addEventListener("click", function () {
@@ -566,7 +610,51 @@ if (homeStart) {
   homeStart.addEventListener("click", function () {
     showApp();
     switchTab("setupTab");
-    syncBottomTabs("setupTab");
+    syncDrawerActive("setupTab");
+  });
+}
+const homePractice = document.getElementById("homePracticeBtn");
+if (homePractice) {
+  homePractice.addEventListener("click", function () {
+    showApp();
+    switchTab("statsTab");
+    syncDrawerActive("statsTab");
+    setTimeout(function () {
+      const practiceCard = document.querySelector(".practice-section");
+      if (practiceCard) practiceCard.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+  });
+}
+
+const menuBtn = document.getElementById("menuBtn");
+if (menuBtn) menuBtn.addEventListener("click", openDrawer);
+const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeDrawer);
+const drawerBackdrop = document.getElementById("drawerBackdrop");
+if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
+
+document.querySelectorAll(".drawer-item").forEach(function (item) {
+  item.addEventListener("click", function () {
+    const target = item.dataset.goTab;
+    if (target === "home") {
+      showWelcome();
+    } else if (target) {
+      showApp();
+      switchTab(target);
+    }
+    syncDrawerActive(target);
+    closeDrawer();
+  });
+});
+
+const drawerLogout = document.getElementById("drawerLogout");
+if (drawerLogout) {
+  drawerLogout.addEventListener("click", function () {
+    closeDrawer();
+    if (confirm("Log out?")) {
+      setCurrentUsername(null);
+      showLogin();
+    }
   });
 }
 
