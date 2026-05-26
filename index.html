@@ -22,6 +22,26 @@
 
         <button id="loginBtn">Login</button>
         <p id="loginError" class="login-error"></p>
+
+        <p style="text-align:center; margin-top:14px; font-size:13px;">
+          Don't have an account?
+          <a href="#" id="openSignupBtn" style="color:var(--green-deep); font-weight:800;">Sign up</a>
+        </p>
+
+        <div id="signupBox" style="display:none; margin-top:14px; border-top:1px solid #ddd; padding-top:12px;">
+          <h2 style="text-align:center; margin:0 0 8px;">Create Account</h2>
+          <label>Display Name (your name)
+            <input type="text" id="signupDisplayName" placeholder="e.g. Ayaan" />
+          </label>
+          <label>Username (for login)
+            <input type="text" id="signupUsername" placeholder="lowercase, no spaces" />
+          </label>
+          <label>Password
+            <input type="password" id="signupPassword" />
+          </label>
+          <button id="signupBtn">Create Account &amp; Login</button>
+          <p id="signupError" class="login-error"></p>
+        </div>
       </div>
     </div>
 
@@ -45,7 +65,7 @@
         </div>
 
         <div class="player-card" id="playerCard">
-          <div class="player-card-row"><span class="pc-label">Player</span><span class="pc-value">Ayaan</span></div>
+          <div class="player-card-row"><span class="pc-label">Player</span><span class="pc-value" id="pcName">—</span></div>
           <div class="player-card-row"><span class="pc-label">Age</span><span class="pc-value" id="pcAge">—</span></div>
           <div class="player-card-row"><span class="pc-label">Handicap</span><span class="pc-value" id="pcHandicap">—</span></div>
           <div class="player-card-row"><span class="pc-label">Best score</span><span class="pc-value" id="pcBest">—</span></div>
@@ -56,7 +76,9 @@
 
         <div class="defaults-card">
           <h3>Today's Defaults</h3>
-          <p><strong>Player:</strong> Ayaan</p>
+          <label>Player Name
+            <input type="text" id="displayNameInput" placeholder="Your name" />
+          </label>
           <label>Birthday (set once, used for age)
             <input type="date" id="birthdayInput" />
           </label>

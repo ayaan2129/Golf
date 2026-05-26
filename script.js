@@ -1,8 +1,84 @@
-const DEMO_USERNAME = "ayaan";
-const DEMO_PASSWORD = "Golf@123";
+// ===== Multi-user storage namespace =====
+// All localStorage keys are auto-prefixed by the currently logged-in user
+// so accounts share the device but never see each other's data.
+(function setupStorageNamespace() {
+  const CUR_KEY = "__currentUser";
+  const ACC_KEY = "accounts";
+  const SKIP = [CUR_KEY, ACC_KEY];
+  const origGet = localStorage.getItem.bind(localStorage);
+  const origSet = localStorage.setItem.bind(localStorage);
+  const origRm = localStorage.removeItem.bind(localStorage);
+
+  // One-time migration: if accounts doesn't exist, create the default Ayaan
+  // account and move any existing unprefixed data into u_ayaan_*.
+  if (!origGet(ACC_KEY)) {
+    const initialAccount = {
+      username: "ayaan",
+      password: "Golf@123",
+      displayName: "Ayaan",
+      createdAt: new Date().toISOString(),
+    };
+    origSet(ACC_KEY, JSON.stringify([initialAccount]));
+    const keysToMigrate = [
+      "roundHistory", "playerProfile", "upcomingRounds", "practiceSessions",
+      "selectedClubs", "customClubs", "currentHoleIndex", "roundMode",
+      "defaultsDate", "defaultsTemp", "currentWeather",
+      "grokApiKey", "aiMode", "demoSeeded", "golfRound", "weatherToday",
+      "golfLoggedIn",
+    ];
+    for (const k of keysToMigrate) {
+      const v = origGet(k);
+      if (v !== null) {
+        origSet("u_ayaan_" + k, v);
+        origRm(k);
+      }
+    }
+  }
+
+  function prefix() {
+    const u = origGet(CUR_KEY);
+    return "u_" + (u || "_anon") + "_";
+  }
+
+  localStorage.getItem = function (k) {
+    if (SKIP.indexOf(k) !== -1) return origGet(k);
+    return origGet(prefix() + k);
+  };
+  localStorage.setItem = function (k, v) {
+    if (SKIP.indexOf(k) !== -1) return origSet(k, v);
+    return origSet(prefix() + k, v);
+  };
+  localStorage.removeItem = function (k) {
+    if (SKIP.indexOf(k) !== -1) return origRm(k);
+    return origRm(prefix() + k);
+  };
+
+  // Expose unscoped helpers for accounts management
+  window.__unscoped = { get: origGet, set: origSet, remove: origRm };
+})();
+
+function getAccounts() {
+  const raw = window.__unscoped.get("accounts");
+  try { return JSON.parse(raw || "[]"); } catch (e) { return []; }
+}
+function saveAccounts(arr) {
+  window.__unscoped.set("accounts", JSON.stringify(arr));
+}
+function getCurrentUsername() {
+  return window.__unscoped.get("__currentUser");
+}
+function setCurrentUsername(u) {
+  if (u) window.__unscoped.set("__currentUser", u);
+  else window.__unscoped.remove("__currentUser");
+}
+function currentAccount() {
+  const u = getCurrentUsername();
+  if (!u) return null;
+  return getAccounts().find(function (a) { return a.username === u; }) || null;
+}
 
 function isLoggedIn() {
-  return localStorage.getItem("golfLoggedIn") === "yes";
+  return !!getCurrentUsername();
 }
 
 function setShellVisible(visible) {
@@ -38,7 +114,9 @@ function showApp() {
 function renderWelcome() {
   const nameEl = document.getElementById("welcomeName");
   const saved = localStorage.getItem("golfRound");
-  let name = DEMO_USERNAME ? DEMO_USERNAME.charAt(0).toUpperCase() + DEMO_USERNAME.slice(1) : "Player";
+  const profileNow = getProfile();
+  const acct = currentAccount();
+  let name = profileNow.displayName || (acct && acct.displayName) || "Player";
   if (saved) {
     try {
       const d = JSON.parse(saved);
@@ -187,6 +265,11 @@ function renderWelcome() {
     if (p.birthday) birthdayInput.value = p.birthday;
   }
 
+  const displayInput = document.getElementById("displayNameInput");
+  if (displayInput) {
+    displayInput.value = name;
+  }
+
   renderPlayerCard();
 
   const dateInput = document.getElementById("roundDate");
@@ -260,16 +343,45 @@ function weatherCodeToText(code) {
 }
 
 document.getElementById("loginBtn").addEventListener("click", function () {
-  const u = document.getElementById("usernameInput").value.trim();
+  const u = document.getElementById("usernameInput").value.trim().toLowerCase();
   const p = document.getElementById("passwordInput").value;
-  if (u === DEMO_USERNAME && p === DEMO_PASSWORD) {
-    localStorage.setItem("golfLoggedIn", "yes");
+  const match = getAccounts().find(function (a) { return a.username === u && a.password === p; });
+  if (match) {
+    setCurrentUsername(match.username);
     document.getElementById("loginError").textContent = "";
     document.getElementById("passwordInput").value = "";
     showWelcome();
   } else {
     document.getElementById("loginError").textContent = "Wrong username or password.";
   }
+});
+
+document.getElementById("openSignupBtn").addEventListener("click", function (e) {
+  e.preventDefault();
+  const box = document.getElementById("signupBox");
+  box.style.display = box.style.display === "none" ? "" : "none";
+});
+
+document.getElementById("signupBtn").addEventListener("click", function () {
+  const errEl = document.getElementById("signupError");
+  errEl.textContent = "";
+  const displayName = (document.getElementById("signupDisplayName").value || "").trim();
+  const username = (document.getElementById("signupUsername").value || "").trim().toLowerCase();
+  const password = document.getElementById("signupPassword").value;
+  if (!displayName) { errEl.textContent = "Add your name."; return; }
+  if (!/^[a-z0-9_.-]{2,20}$/.test(username)) { errEl.textContent = "Username: 2-20 chars, lowercase letters, digits, . _ -"; return; }
+  if (!password || password.length < 4) { errEl.textContent = "Password must be at least 4 characters."; return; }
+  const accounts = getAccounts();
+  if (accounts.find(function (a) { return a.username === username; })) { errEl.textContent = "That username is taken."; return; }
+  accounts.push({ username, password, displayName, createdAt: new Date().toISOString() });
+  saveAccounts(accounts);
+  setCurrentUsername(username);
+  document.getElementById("signupBox").style.display = "none";
+  document.getElementById("signupUsername").value = "";
+  document.getElementById("signupPassword").value = "";
+  document.getElementById("signupDisplayName").value = "";
+  alert("Account created! Welcome, " + displayName + ".");
+  showWelcome();
 });
 
 document.getElementById("continueBtn").addEventListener("click", function () {
@@ -305,6 +417,15 @@ const birthdayInputInit = document.getElementById("birthdayInput");
 if (birthdayInputInit) {
   birthdayInputInit.addEventListener("change", function () {
     setProfileField("birthday", birthdayInputInit.value || null);
+    renderPlayerCard();
+  });
+}
+
+const displayNameInit = document.getElementById("displayNameInput");
+if (displayNameInit) {
+  displayNameInit.addEventListener("input", function () {
+    const v = (displayNameInit.value || "").trim();
+    setProfileField("displayName", v);
     renderPlayerCard();
   });
 }
@@ -375,7 +496,7 @@ const headerLogout = document.getElementById("headerLogoutBtn");
 if (headerLogout) {
   headerLogout.addEventListener("click", function () {
     if (confirm("Log out?")) {
-      localStorage.removeItem("golfLoggedIn");
+      setCurrentUsername(null);
       showLogin();
     }
   });
@@ -385,7 +506,7 @@ const statsLogoutBtn = document.getElementById("statsLogoutBtn");
 if (statsLogoutBtn) {
   statsLogoutBtn.addEventListener("click", function () {
     if (confirm("Log out?")) {
-      localStorage.removeItem("golfLoggedIn");
+      setCurrentUsername(null);
       showLogin();
     }
   });
@@ -598,6 +719,11 @@ function ageBenchmarkText(age, history) {
 
 function renderPlayerCard() {
   const profile = getProfile();
+  const acct = currentAccount();
+  const nameEl = document.getElementById("pcName");
+  if (nameEl) nameEl.textContent = profile.displayName || (acct && acct.displayName) || "Player";
+  const greetEl = document.getElementById("welcomeName");
+  if (greetEl) greetEl.textContent = profile.displayName || (acct && acct.displayName) || "Player";
   const ageEl = document.getElementById("pcAge");
   if (ageEl) {
     const age = calcAge(profile.birthday);
