@@ -2677,6 +2677,10 @@ function initDashboard() {
   if (courseBtn) courseBtn.addEventListener("click", generateCourseStrategy);
   const swingBtn = document.getElementById("analyzeSwingBtn");
   if (swingBtn) swingBtn.addEventListener("click", analyzeSwingPhoto);
+  const seedBtn = document.getElementById("seedDemoBtn");
+  if (seedBtn) seedBtn.addEventListener("click", seedDemoData);
+  const wipeBtn = document.getElementById("wipeDemoBtn");
+  if (wipeBtn) wipeBtn.addEventListener("click", wipeAllLocalData);
 
   const focusBtn = document.getElementById("aiFocusBtn");
   if (focusBtn) focusBtn.addEventListener("click", generateTodaysFocus);
@@ -3427,6 +3431,213 @@ async function generatePracticePlan() {
   } catch (e) {
     setAiOutput(out, "Error: " + e.message);
   }
+}
+
+function buildDemoShot(club, distHit, lie, dir, q, res) {
+  return { club, distanceHit: String(distHit), distanceLeft: "", lie, direction: dir, quality: q, result: res };
+}
+function buildDemoHole(par, dist, shots, putts) {
+  return { par: String(par), distance: String(dist), shots: shots, putts: putts.map(function (p) { return { distance: String(p[0]), result: p[1] }; }), firstPuttDistance: "", firstPuttResult: "", missedShortPutt: "" };
+}
+
+function seedDemoData() {
+  if (!confirm("This will add 4 demo rounds + 6 practice sessions for Ayaan, plus set bag/distances/birthday. Existing data stays. Continue?")) return;
+  // Profile
+  const profile = getProfile();
+  profile.handicap = 18;
+  profile.birthday = "2013-08-15";
+  profile.clubDistances = profile.clubDistances || {};
+  Object.assign(profile.clubDistances, {
+    "Driver": 215, "3 Wood": 195, "4 Hybrid": 175,
+    "6 Iron": 150, "7 Iron": 135, "8 Iron": 120, "9 Iron": 105,
+    "Pitching Wedge": 90, "Sand Wedge": 55, "Lob Wedge": 35,
+  });
+  saveProfile(profile);
+  saveSelectedClubs(["Driver", "3 Wood", "4 Hybrid", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Sand Wedge", "Lob Wedge", "Putter"]);
+
+  // 4 demo rounds at RCGC White over 6 weeks
+  const RCGC_PAR = [4,3,4,5,4,4,4,4,4,4,4,4,3,4,5,4,4,4];
+  const RCGC_W = [350,150,388,521,396,420,388,368,396,426,422,341,196,404,494,347,367,429];
+
+  function buildRound(dateStr, scoresOverPar, weather) {
+    // Build hole data: for each hole, generate shots+putts that hit the target score
+    const holes = {};
+    for (let i = 1; i <= 18; i++) {
+      const par = RCGC_PAR[i - 1];
+      const dist = RCGC_W[i - 1];
+      const over = scoresOverPar[i - 1];
+      const target = par + over;
+      // Shot composition: most strokes from tee-iron-pitch, then putts
+      // Simple model: target - 2 swings, 2 putts (unless score very low/high)
+      let swings = Math.max(1, target - 2);
+      let puttsN = 2;
+      if (target <= par - 1) { swings = par - 2; puttsN = 1; }
+      if (target <= 2) { swings = 1; puttsN = 1; }
+      const shots = [];
+      // Tee shot
+      let tee = par >= 4 ? ["Driver", 215, "Tee", over <= 0 ? "Straight" : (i % 2 === 0 ? "Right" : "Left"), over <= 0 ? "Good shot" : "Weak shot", over <= 0 ? "Fairway" : (over >= 2 ? "Rough" : "Fairway")] :
+                          ["7 Iron", 135, "Tee", over <= 0 ? "Straight" : "Right", over <= 0 ? "Good shot" : "Weak shot", over <= 0 ? "Green" : "Rough"];
+      if (over >= 3 && par >= 4) tee = ["Driver", 200, "Tee", "Right", "Slice", "Penalty"];
+      shots.push(buildDemoShot(tee[0], tee[1], tee[2], tee[3], tee[4], tee[5]));
+      if (tee[5] === "Penalty") {
+        // Rehit
+        shots.push(buildDemoShot("Driver", 200, "Tee", "Straight", "Good shot", "Fairway"));
+        swings = Math.max(swings, 4);
+      }
+      // Fill rest with iron/wedge until on green
+      while (shots.length < swings - 1) {
+        shots.push(buildDemoShot("7 Iron", 135, "Fairway", "Straight", "Good shot", "Fairway"));
+      }
+      // Approach: last swing lands green or rough
+      const onGreen = over <= 1;
+      const lastClub = par === 3 ? "7 Iron" : (i % 3 === 0 ? "Pitching Wedge" : "9 Iron");
+      const lastResult = onGreen ? "Green" : "Rough";
+      // If we still need a swing
+      if (shots.length < swings) {
+        shots.push(buildDemoShot(lastClub, 100, "Fairway", onGreen ? "Straight" : "Long", onGreen ? "Good shot" : "Weak shot", lastResult));
+      }
+      // If not on green and we have a swing budget, add chip
+      if (!onGreen) {
+        shots.push(buildDemoShot("Sand Wedge", 30, "Rough", "Straight", "Good shot", "Green"));
+        // Adjust putts to keep target total
+        const used = shots.length;
+        puttsN = Math.max(1, target - used);
+      }
+      const putts = [];
+      for (let p = 0; p < puttsN; p++) {
+        const isLast = p === puttsN - 1;
+        const dist = isLast ? 3 : (15 - p * 5);
+        const r = isLast ? "Holed" : (p === 0 ? "Long" : "Short");
+        putts.push([dist, r]);
+      }
+      holes[i] = buildDemoHole(par, dist, shots, putts);
+    }
+    // Now compute totals from the hole data
+    let totalScore = 0, totalPutts = 0, totalChips = 0, totalPenalties = 0;
+    let fwHit = 0, fwAns = 0, girHit = 0, girAns = 0, scrSave = 0, scrAns = 0;
+    let badShots = 0;
+    for (let i = 1; i <= 18; i++) {
+      const h = holes[i];
+      const stats = getHoleStatsFromSavedHole(h);
+      totalScore += stats.score;
+      totalPutts += stats.putts;
+      totalChips += stats.chips;
+      totalPenalties += stats.penalties;
+      fwHit += stats.fwHit; fwAns += stats.fwAns;
+      girHit += stats.gir; girAns += stats.girAns;
+      scrSave += stats.scrambleSave; scrAns += stats.scrambleAns;
+      badShots += stats.badShots;
+    }
+    const coursePar = 72;
+    const mistakes = [], strengths = [], practice = [], blunders = [];
+    if (totalPenalties >= 1) mistakes.push("Penalty strokes lost: " + totalPenalties + ".");
+    const fwPct = fwAns > 0 ? Math.round(fwHit / fwAns * 100) : null;
+    if (fwPct !== null && fwPct < 60) mistakes.push("Missed fairways: " + fwPct + "%.");
+    if (totalPutts > 36) mistakes.push("Too many putts: " + totalPutts + ".");
+    if (fwPct !== null && fwPct >= 70) strengths.push("Good fairway: " + fwPct + "%.");
+    return {
+      playerName: "Ayaan",
+      date: dateStr,
+      country: "India",
+      courseName: "RCGC",
+      tee: "White",
+      coursePar,
+      parPlayed: coursePar,
+      handicap: 18,
+      birthday: "2013-08-15",
+      ageAtRound: 12,
+      weather: weather.summary,
+      weatherData: weather,
+      totalScore,
+      scoreVsPar: totalScore - coursePar,
+      totalPutts,
+      totalChips,
+      totalPenalties,
+      fairwayPct: fwPct,
+      girPct: girAns > 0 ? Math.round(girHit / girAns * 100) : null,
+      scramblePct: scrAns > 0 ? Math.round(scrSave / scrAns * 100) : null,
+      badShots,
+      missedShortPutts: 0,
+      holes: 18,
+      activeHoles: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+      holesMode: "18",
+      roundMode: "full",
+      savedAt: new Date(dateStr).toISOString(),
+      gameType: "Normal Game",
+      tournamentName: "",
+      tournamentFormat: "",
+      energyLevel: "",
+      confidenceLevel: "",
+      sleepQuality: "",
+      postFeel: "",
+      postBestShot: "",
+      postBiggestMistake: "",
+      postImprove: "",
+      mistakes, strengths, practice, blunders,
+      topWeakness: mistakes[0] || "No big weakness today",
+      fullData: {
+        setup: { playerName: "Ayaan", courseSelect: "RCGC", teeSelect: "White", holesMode: "18", gameType: "Normal Game", coursePar: "72" },
+        holes,
+      },
+    };
+  }
+
+  // Round 1 - 6 weeks ago, +18 (rough day)
+  const r1Over = [1,2,2,3,1,2,1,1,2,2,1,1,2,3,1,1,2,1];
+  // Round 2 - 4 weeks ago, +14
+  const r2Over = [1,1,2,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1];
+  // Round 3 - 2 weeks ago, +11
+  const r3Over = [1,0,2,2,1,1,1,1,1,1,1,1,1,2,0,1,1,1];
+  // Round 4 - 5 days ago, +8
+  const r4Over = [1,0,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1];
+
+  const wxSunny = { date: "", locationName: "RCGC", tempMax: 31, tempMin: 22, code: 1, condition: "Partly cloudy", windKmh: 8, precipMm: 0, summary: "31°C high · 22°C low · Partly cloudy" };
+  const wxWindy = { date: "", locationName: "RCGC", tempMax: 28, tempMin: 18, code: 3, condition: "Overcast", windKmh: 24, precipMm: 0, summary: "28°C · windy 24 kmh" };
+  const wxHot = { date: "", locationName: "RCGC", tempMax: 36, tempMin: 26, code: 0, condition: "Clear", windKmh: 6, precipMm: 0, summary: "36°C hot" };
+  const wxLightRain = { date: "", locationName: "RCGC", tempMax: 27, tempMin: 21, code: 61, condition: "Rain", windKmh: 12, precipMm: 4, summary: "27°C · light rain" };
+
+  const now = new Date();
+  function daysAgo(n) {
+    const d = new Date(now.getTime() - n * 24 * 3600 * 1000);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  const d1 = daysAgo(42), d2 = daysAgo(28), d3 = daysAgo(14), d4 = daysAgo(5);
+  wxSunny.date = d1; wxWindy.date = d2; wxHot.date = d3; wxLightRain.date = d4;
+
+  const rounds = [
+    buildRound(d1, r1Over, wxSunny),
+    buildRound(d2, r2Over, wxWindy),
+    buildRound(d3, r3Over, wxHot),
+    buildRound(d4, r4Over, wxLightRain),
+  ];
+
+  const existing = JSON.parse(localStorage.getItem("roundHistory") || "[]");
+  const merged = existing.concat(rounds);
+  localStorage.setItem("roundHistory", JSON.stringify(merged));
+
+  // Practice sessions
+  const practices = [
+    { date: daysAgo(40), area: "Putting", duration: 30, focus: "3-foot circle drill", notes: "Holed 4 of 5 last attempt", savedAt: new Date().toISOString() },
+    { date: daysAgo(35), area: "Range", duration: 45, focus: "7-iron half swings", notes: "Cleaner contact", savedAt: new Date().toISOString() },
+    { date: daysAgo(20), area: "Chipping", duration: 30, focus: "Sand wedge 15-25 yards", notes: "", savedAt: new Date().toISOString() },
+    { date: daysAgo(10), area: "Range", duration: 60, focus: "Driver tempo work", notes: "Less right miss", savedAt: new Date().toISOString() },
+    { date: daysAgo(6), area: "Putting", duration: 30, focus: "Lag putts 30+ feet", notes: "Most ended within 4 ft", savedAt: new Date().toISOString() },
+    { date: daysAgo(2), area: "Mixed", duration: 90, focus: "Short game routine", notes: "Range + chip + putt", savedAt: new Date().toISOString() },
+  ];
+  const existingP = JSON.parse(localStorage.getItem("practiceSessions") || "[]");
+  localStorage.setItem("practiceSessions", JSON.stringify(existingP.concat(practices)));
+
+  alert("Seeded 4 demo rounds and 6 practice sessions. Refresh the page to see them everywhere.");
+  renderHistory();
+  renderDashboard();
+  renderPlayerCard();
+}
+
+function wipeAllLocalData() {
+  if (!confirm("This deletes ALL local data including saved rounds, practice, profile, AI key. Are you sure?")) return;
+  localStorage.clear();
+  alert("All local data wiped. Refresh the page.");
+  location.reload();
 }
 
 async function generateHoleTip() {
