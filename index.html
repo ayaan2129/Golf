@@ -662,6 +662,11 @@
             <label class="profile-section-title">Recent Chipping Stats</label>
             <div id="chipStatsSummary">Log some chips to see your up-and-down rate.</div>
           </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Iron Stats</label>
+            <div id="ironStatsSummary">Log some iron shots to see your yardage gapping.</div>
+          </div>
         </div>
 
         <div id="puttingView" style="display:none;">
@@ -814,6 +819,76 @@
               <button class="result-btn miss" data-chip-result="Off green">⊝ Off green</button>
               <button class="result-btn miss" data-chip-result="Chunked">✗ Chunked / fat</button>
               <button class="result-btn miss" data-chip-result="Bladed">⤴ Bladed / thin</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="ironView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="ironBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Iron Practice</h2>
+              <button id="ironEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="ironRunning">0 shots logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shot Setup</label>
+            <div class="profile-row">
+              <label>Target</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="ironTarget" placeholder="optional" min="30" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="ironClubPills">
+                <button class="pill" data-club="3i" type="button">3i</button>
+                <button class="pill" data-club="4i" type="button">4i</button>
+                <button class="pill" data-club="5i" type="button">5i</button>
+                <button class="pill" data-club="6i" type="button">6i</button>
+                <button class="pill active" data-club="7i" type="button">7i</button>
+                <button class="pill" data-club="8i" type="button">8i</button>
+                <button class="pill" data-club="9i" type="button">9i</button>
+                <button class="pill" data-club="PW" type="button">PW</button>
+                <button class="pill" data-club="3H" type="button">3H</button>
+                <button class="pill" data-club="4H" type="button">4H</button>
+                <button class="pill" data-club="5H" type="button">5H</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Carry</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="ironCarry" placeholder="yd" min="30" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shape</label>
+            <div class="pill-group small-pills" id="ironShapePills">
+              <button class="pill active" data-shape="straight" type="button">— Straight</button>
+              <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+              <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+              <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+              <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it land?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-iron-result="On target">✓ On target</button>
+              <button class="result-btn" data-iron-result="Short">↓ Short</button>
+              <button class="result-btn" data-iron-result="Long">↑ Long</button>
+              <button class="result-btn miss" data-iron-result="Left">← Left</button>
+              <button class="result-btn miss" data-iron-result="Right">→ Right</button>
+              <button class="result-btn miss" data-iron-result="Fat">✗ Fat / chunked</button>
+              <button class="result-btn miss" data-iron-result="Thin">⤴ Thin / topped</button>
+              <button class="result-btn miss" data-iron-result="OB">⊝ OB / hazard</button>
             </div>
           </div>
         </div>

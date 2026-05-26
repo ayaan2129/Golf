@@ -562,6 +562,7 @@ function switchTab(tabId) {
   if (tabId === "practiceTab") {
     renderPuttingStatsSummary();
     renderChippingStatsSummary();
+    renderIronStatsSummary();
   }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
@@ -1015,6 +1016,152 @@ function renderChippingStatsSummary() {
   el.innerHTML = html || "No chips logged yet.";
 }
 
+const ironState = {
+  active: false,
+  sessionStart: null,
+  shots: [],
+  conditions: { club: "7i", shape: "straight", target: null },
+};
+
+const IRON_GOOD_RESULTS = ["On target"];
+const IRON_ACCEPTABLE_RESULTS = ["On target", "Short", "Long"]; // distance errors only, no side miss
+
+function setIronPill(group, key, value) {
+  document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset[key] === value);
+  });
+  ironState.conditions[key] = value;
+}
+
+function startIronDrill() {
+  ironState.active = true;
+  ironState.sessionStart = new Date().toISOString();
+  ironState.shots = [];
+  document.getElementById("practicePickerView").style.display = "none";
+  document.getElementById("ironView").style.display = "";
+  updateIronRunningStat();
+}
+
+function endIronDrill() {
+  if (!ironState.active) return;
+  if (ironState.shots.length > 0) {
+    const arr = getPractice();
+    const ended = new Date();
+    const startedAt = new Date(ironState.sessionStart);
+    const durationMin = Math.max(1, Math.round((ended - startedAt) / 60000));
+    arr.push({
+      date: todayISO(),
+      area: "Irons",
+      type: "Irons",
+      duration: durationMin,
+      focus: "Drill — " + ironState.shots.length + " shots",
+      notes: "",
+      savedAt: ended.toISOString(),
+      shots: ironState.shots.slice(),
+    });
+    savePractice(arr);
+  }
+  ironState.active = false;
+  ironState.shots = [];
+  document.getElementById("ironView").style.display = "none";
+  document.getElementById("practicePickerView").style.display = "";
+  renderIronStatsSummary();
+  renderPracticeLog();
+}
+
+function updateIronRunningStat() {
+  const el = document.getElementById("ironRunning");
+  if (!el) return;
+  const n = ironState.shots.length;
+  if (n === 0) { el.textContent = "0 shots logged"; return; }
+  const good = ironState.shots.filter(function (s) { return IRON_GOOD_RESULTS.indexOf(s.result) !== -1; }).length;
+  el.textContent = n + " shots · " + good + " on target · " + Math.round(good / n * 100) + "%";
+}
+
+function recordIron(result) {
+  const target = Number(document.getElementById("ironTarget").value) || null;
+  const carry = Number(document.getElementById("ironCarry").value) || null;
+  const shot = {
+    timestamp: new Date().toISOString(),
+    club: ironState.conditions.club,
+    target: target,
+    carry: carry,
+    shape: ironState.conditions.shape,
+    result: result,
+  };
+  ironState.shots.push(shot);
+  updateIronRunningStat();
+  // Clear carry input so next shot is fresh
+  document.getElementById("ironCarry").value = "";
+}
+
+function getIronInsights() {
+  const sessions = getPractice().filter(function (s) { return s.type === "Irons" && Array.isArray(s.shots); });
+  const allShots = [];
+  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
+  // Per-club stats
+  const byClub = {};
+  for (const sh of allShots) {
+    if (!byClub[sh.club]) byClub[sh.club] = [];
+    byClub[sh.club].push(sh);
+  }
+  const clubStats = [];
+  const clubOrder = ["3i","4i","5i","6i","7i","8i","9i","PW","3H","4H","5H"];
+  for (const c of clubOrder) {
+    if (!byClub[c]) continue;
+    const set = byClub[c];
+    const carries = set.map(function (s) { return s.carry; }).filter(function (v) { return typeof v === "number" && v > 0; });
+    const avg = carries.length ? Math.round(carries.reduce(function (a, b) { return a + b; }, 0) / carries.length) : null;
+    const min = carries.length ? Math.min.apply(null, carries) : null;
+    const max = carries.length ? Math.max.apply(null, carries) : null;
+    const good = set.filter(function (sh) { return IRON_GOOD_RESULTS.indexOf(sh.result) !== -1; }).length;
+    clubStats.push({
+      club: c,
+      count: set.length,
+      avgCarry: avg,
+      minCarry: min,
+      maxCarry: max,
+      onTargetPct: Math.round(good / set.length * 100),
+    });
+  }
+  // Miss directions
+  const misses = allShots.filter(function (sh) { return IRON_GOOD_RESULTS.indexOf(sh.result) === -1; });
+  let topMiss = null;
+  if (misses.length > 0) {
+    const c = {};
+    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
+    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+  }
+  // Shape distribution
+  const shapeCounts = {};
+  for (const sh of allShots) shapeCounts[sh.shape] = (shapeCounts[sh.shape] || 0) + 1;
+  // Pure-strike (not fat/thin/OB)
+  const pure = allShots.filter(function (sh) { return ["Fat", "Thin", "OB"].indexOf(sh.result) === -1; }).length;
+  const pureStrikePct = allShots.length > 0 ? Math.round(pure / allShots.length * 100) : null;
+  return { totalShots: allShots.length, sessions: sessions.length, clubStats, topMiss, shapeCounts, pureStrikePct };
+}
+
+function renderIronStatsSummary() {
+  const el = document.getElementById("ironStatsSummary");
+  if (!el) return;
+  const ins = getIronInsights();
+  if (ins.totalShots === 0) {
+    el.innerHTML = "Log some iron shots to see your yardage gapping.";
+    return;
+  }
+  let html = "";
+  for (const cs of ins.clubStats) {
+    if (cs.avgCarry != null) {
+      html += '<div class="stat-line"><span>' + cs.club + " (" + cs.count + ")</span><span class=\"stat-num\">" + cs.avgCarry + " y avg</span></div>";
+    } else {
+      html += '<div class="stat-line"><span>' + cs.club + " (" + cs.count + ")</span><span class=\"stat-num\">" + cs.onTargetPct + "% on tgt</span></div>";
+    }
+  }
+  if (ins.pureStrikePct != null) html += '<div class="stat-line"><span>Pure-strike rate</span><span class="stat-num">' + ins.pureStrikePct + "%</span></div>";
+  if (ins.topMiss) html += '<div class="stat-line"><span>Most common miss</span><span class="stat-num">' + ins.topMiss + "</span></div>";
+  el.innerHTML = html || "No iron shots logged yet.";
+}
+
 document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
   tile.addEventListener("click", function () {
     const t = tile.dataset.prac;
@@ -1022,11 +1169,27 @@ document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
       startPuttingDrill();
     } else if (t === "chipping") {
       startChippingDrill();
+    } else if (t === "iron") {
+      startIronDrill();
     } else {
-      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next. Putting and chipping are live now.");
+      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next.");
     }
   });
 });
+
+document.querySelectorAll("#ironClubPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setIronPill("ironClubPills", "club", p.dataset.club); });
+});
+document.querySelectorAll("#ironShapePills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setIronPill("ironShapePills", "shape", p.dataset.shape); });
+});
+document.querySelectorAll("#ironView .result-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () { recordIron(btn.dataset.ironResult); });
+});
+const ironBackBtn = document.getElementById("ironBackBtn");
+if (ironBackBtn) ironBackBtn.addEventListener("click", endIronDrill);
+const ironEndBtn = document.getElementById("ironEndBtn");
+if (ironEndBtn) ironEndBtn.addEventListener("click", endIronDrill);
 
 document.querySelectorAll("#chipLiePills .pill").forEach(function (p) {
   p.addEventListener("click", function () { setChipPill("chipLiePills", "lie", p.dataset.lie); });
@@ -4197,6 +4360,18 @@ function aiBaseContext() {
       }
       if (ci.topMiss) lines.push("  - Most common chip miss: " + ci.topMiss);
       if (ci.mishitPct != null) lines.push("  - Chunk/blade rate: " + ci.mishitPct + "%");
+    }
+  }
+  if (typeof getIronInsights === "function") {
+    const ii = getIronInsights();
+    if (ii.totalShots > 0) {
+      lines.push("Iron practice — " + ii.totalShots + " shots across " + ii.sessions + " sessions:");
+      for (const cs of ii.clubStats) {
+        const carryStr = cs.avgCarry != null ? cs.avgCarry + "y avg (" + cs.minCarry + "-" + cs.maxCarry + ")" : "no carry data";
+        lines.push("  - " + cs.club + " (" + cs.count + " shots): " + carryStr + ", " + cs.onTargetPct + "% on target");
+      }
+      if (ii.pureStrikePct != null) lines.push("  - Pure-strike rate: " + ii.pureStrikePct + "%");
+      if (ii.topMiss) lines.push("  - Most common iron miss: " + ii.topMiss);
     }
   }
   return lines.join("\n");
