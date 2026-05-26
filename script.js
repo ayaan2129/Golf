@@ -154,17 +154,68 @@ function renderWelcome() {
     posUl.appendChild(li);
   }
 
-  const dateEl = document.getElementById("defaultsDate");
-  if (dateEl) dateEl.textContent = todayISO();
   const thoughtEl = document.getElementById("dailyThought");
   if (thoughtEl) thoughtEl.textContent = getDailyThought();
+
+  const defaultsDateInput = document.getElementById("defaultsDateInput");
+  if (defaultsDateInput) {
+    const stored = localStorage.getItem("defaultsDate");
+    defaultsDateInput.value = stored || todayISO();
+    loadTemperatureForDate(defaultsDateInput.value);
+  }
+
   const dateInput = document.getElementById("roundDate");
   if (dateInput && !dateInput.value) dateInput.value = todayISO();
-  const weatherTodaySel = document.getElementById("weatherToday");
-  const savedWeather = localStorage.getItem("weatherToday");
-  if (weatherTodaySel && savedWeather) weatherTodaySel.value = savedWeather;
 
   renderPreRoundCoach();
+}
+
+async function loadTemperatureForDate(dateStr) {
+  const out = document.getElementById("defaultsTemp");
+  if (!out || !dateStr) return;
+  out.textContent = "Loading...";
+  const lat = 22.55;
+  const lon = 88.36;
+  const tz = "Asia%2FKolkata";
+  const today = todayISO();
+  const isPast = dateStr < today;
+  const base = isPast
+    ? "https://archive-api.open-meteo.com/v1/archive"
+    : "https://api.open-meteo.com/v1/forecast";
+  const url = base + "?latitude=" + lat + "&longitude=" + lon +
+    "&start_date=" + dateStr + "&end_date=" + dateStr +
+    "&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=" + tz;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("fetch failed");
+    const data = await res.json();
+    const max = data && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_max[0];
+    const min = data && data.daily && data.daily.temperature_2m_min && data.daily.temperature_2m_min[0];
+    const code = data && data.daily && data.daily.weathercode && data.daily.weathercode[0];
+    const condition = weatherCodeToText(code);
+    if (max == null) {
+      out.textContent = "No data for that date";
+    } else {
+      out.textContent = Math.round(max) + "°C high · " + Math.round(min) + "°C low · " + condition;
+    }
+    localStorage.setItem("defaultsTemp", out.textContent);
+  } catch (e) {
+    out.textContent = "Could not load (no internet?)";
+  }
+}
+
+function weatherCodeToText(code) {
+  if (code == null) return "—";
+  if (code === 0) return "Clear";
+  if (code === 1 || code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code === 45 || code === 48) return "Fog";
+  if (code >= 51 && code <= 57) return "Drizzle";
+  if (code >= 61 && code <= 67) return "Rain";
+  if (code >= 71 && code <= 77) return "Snow";
+  if (code >= 80 && code <= 82) return "Showers";
+  if (code >= 95 && code <= 99) return "Thunderstorm";
+  return "Mild";
 }
 
 document.getElementById("loginBtn").addEventListener("click", function () {
@@ -181,16 +232,21 @@ document.getElementById("loginBtn").addEventListener("click", function () {
 });
 
 document.getElementById("continueBtn").addEventListener("click", function () {
-  const w = document.getElementById("weatherToday");
-  if (w && w.value) localStorage.setItem("weatherToday", w.value);
+  const d = document.getElementById("defaultsDateInput");
+  if (d && d.value) {
+    localStorage.setItem("defaultsDate", d.value);
+    const roundDate = document.getElementById("roundDate");
+    if (roundDate) roundDate.value = d.value;
+  }
   showApp();
   switchTab("setupTab");
 });
 
-const weatherTodaySelInit = document.getElementById("weatherToday");
-if (weatherTodaySelInit) {
-  weatherTodaySelInit.addEventListener("change", function () {
-    localStorage.setItem("weatherToday", weatherTodaySelInit.value);
+const defaultsDateInputInit = document.getElementById("defaultsDateInput");
+if (defaultsDateInputInit) {
+  defaultsDateInputInit.addEventListener("change", function () {
+    localStorage.setItem("defaultsDate", defaultsDateInputInit.value);
+    loadTemperatureForDate(defaultsDateInputInit.value);
   });
 }
 
