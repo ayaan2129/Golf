@@ -5007,6 +5007,25 @@ async function generateTodaysFocus() {
   catch (e) { setAiOutput(out, "Error: " + e.message); }
 }
 
+async function analyseSwingFrame(dataUrl, notes, outEl) {
+  if (!outEl) return;
+  outEl.textContent = "Analysing frame...";
+  const sys = "You are a golf swing coach for a 12-year-old budding pro. From the video frame, give 3-5 specific observations on grip, posture, alignment, takeaway, top-of-backswing, or impact. Be honest, kind, specific. No emojis.";
+  const messages = [{
+    role: "user",
+    content: [
+      { type: "text", text: "Analyse this swing frame. " + (notes ? "Player note: " + notes : "") + "\nPlayer context:\n" + aiBaseContext() },
+      { type: "image_url", image_url: { url: dataUrl } }
+    ]
+  }];
+  try {
+    const reply = await callGrok(sys, messages, { model: "grok-2-vision-1212" });
+    outEl.textContent = reply;
+  } catch (e) {
+    outEl.textContent = "Error: " + (e.message || e);
+  }
+}
+
 async function analyzeSwingPhoto() {
   const out = "aiSwingOutput";
   setAiOutput(out, "Analysing swing...");
