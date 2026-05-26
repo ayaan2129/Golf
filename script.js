@@ -83,9 +83,7 @@ function isLoggedIn() {
 
 function setShellVisible(visible) {
   const header = document.getElementById("appHeader");
-  const tabs = document.getElementById("bottomTabs");
   if (header) header.style.display = visible ? "" : "none";
-  if (tabs) tabs.style.display = visible ? "" : "none";
 }
 
 function showLogin() {
@@ -903,10 +901,15 @@ function ageBenchmarkText(age, history) {
 function renderPlayerCard() {
   const profile = getProfile();
   const acct = currentAccount();
+  const displayName = profile.displayName || (acct && acct.displayName) || "Player";
   const nameEl = document.getElementById("pcName");
-  if (nameEl) nameEl.textContent = profile.displayName || (acct && acct.displayName) || "Player";
+  if (nameEl) nameEl.textContent = displayName;
   const greetEl = document.getElementById("welcomeName");
-  if (greetEl) greetEl.textContent = profile.displayName || (acct && acct.displayName) || "Player";
+  if (greetEl) greetEl.textContent = displayName;
+  const avatarEl = document.getElementById("profileAvatar");
+  if (avatarEl) avatarEl.textContent = (displayName || "P").charAt(0).toUpperCase();
+  const usernameEl = document.getElementById("profileUsername");
+  if (usernameEl) usernameEl.textContent = "@" + (getCurrentUsername() || "");
   const ageEl = document.getElementById("pcAge");
   if (ageEl) {
     const age = calcAge(profile.birthday);

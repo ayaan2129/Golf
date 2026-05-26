@@ -534,91 +534,90 @@
       </div>
 
       <div id="profileTab" class="tab-page" style="display:none;">
-        <h2 class="section-header">My Profile</h2>
+        <div class="profile-hero">
+          <div class="profile-avatar" id="profileAvatar">A</div>
+          <h1 class="profile-name" id="pcName">Player</h1>
+          <p class="profile-username" id="profileUsername">@—</p>
+        </div>
 
-        <div class="setup-card">
-          <h3>Account</h3>
-          <label>Display Name
+        <div class="profile-stats">
+          <div class="profile-stat"><div class="profile-stat-num" id="pcHandicap">—</div><div class="profile-stat-lbl">Handicap</div></div>
+          <div class="profile-stat"><div class="profile-stat-num" id="pcBest">—</div><div class="profile-stat-lbl">Best</div></div>
+          <div class="profile-stat"><div class="profile-stat-num" id="pcRounds">0</div><div class="profile-stat-lbl">Rounds</div></div>
+          <div class="profile-stat"><div class="profile-stat-num" id="pcBadges">0</div><div class="profile-stat-lbl">Badges</div></div>
+        </div>
+
+        <p class="pc-benchmark" id="pcBenchmark"></p>
+
+        <div class="profile-section">
+          <h3 class="profile-section-title">Personal</h3>
+          <div class="profile-row">
+            <label>Display Name</label>
             <input type="text" id="displayNameInput" placeholder="Your name" />
-          </label>
-          <p id="profileUsername" class="muted">Username: —</p>
-        </div>
-
-        <div class="setup-card">
-          <h3>About Me</h3>
-          <label>Birthday
+          </div>
+          <div class="profile-row">
+            <label>Birthday</label>
             <input type="date" id="birthdayInput" />
-          </label>
-          <label>Handicap
+          </div>
+          <div class="profile-row">
+            <label>Age</label>
+            <span class="profile-row-value" id="pcAge">—</span>
+          </div>
+          <div class="profile-row">
+            <label>Handicap</label>
             <input type="number" id="handicapInput" step="0.1" placeholder="18" />
-          </label>
-          <p id="profileAge" class="muted">Age: —</p>
+          </div>
         </div>
 
-        <div class="dream-card" style="margin: 12px 0;">
-          <h3>Your Dream</h3>
-          <p>Your dream is to become a <strong>PRO GOLFER</strong>. You can achieve it.</p>
-          <label style="color:white;">Favourite Player
+        <div class="profile-section">
+          <h3 class="profile-section-title">Goals</h3>
+          <div class="profile-row">
+            <label>Favourite Player</label>
             <input type="text" id="favPlayerInput" placeholder="Rory McIlroy" />
-          </label>
-          <label style="color:white;">Big Goal
+          </div>
+          <div class="profile-row">
+            <label>Big Goal</label>
             <input type="text" id="bigGoalInput" placeholder="World No. 1" />
-          </label>
-          <p class="dream-tag">Every round is one step closer.</p>
+          </div>
         </div>
 
-        <div class="player-card" id="playerCard">
-          <div class="player-card-row"><span class="pc-label">Player</span><span class="pc-value" id="pcName">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Age</span><span class="pc-value" id="pcAge">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Handicap</span><span class="pc-value" id="pcHandicap">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Best score</span><span class="pc-value" id="pcBest">—</span></div>
-          <div class="player-card-row"><span class="pc-label">Rounds played</span><span class="pc-value" id="pcRounds">0</span></div>
-          <div class="player-card-row"><span class="pc-label">Badges</span><span class="pc-value" id="pcBadges">0</span></div>
-          <p class="pc-benchmark" id="pcBenchmark"></p>
+        <div class="profile-section">
+          <h3 class="profile-section-title">AI Coach</h3>
+          <div class="profile-row">
+            <label>Grok API Key</label>
+            <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
+          </div>
+          <div class="profile-row profile-row-toggle">
+            <label>Use AI for chat &amp; reports</label>
+            <input type="checkbox" id="aiModeToggle" />
+          </div>
+          <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
         </div>
 
-        <details class="setup-card">
-          <summary><strong>Coach's view of me</strong> (auto-updates after rounds)</summary>
-          <h3>Your Goals (tee progression)</h3>
+        <details class="profile-section">
+          <summary class="profile-section-title">Coach's insights about me ▾</summary>
           <div id="welcomeGoals"></div>
-          <h3>Frequent Mistakes</h3>
+          <h4>Frequent Mistakes</h4>
           <ul id="welcomeMistakes"></ul>
-          <h3>Common Silly Mistakes at RCGC</h3>
+          <h4>Common Silly Mistakes at RCGC</h4>
           <ul id="welcomeCourseMistakes"></ul>
-          <h3>Today's Focus</h3>
+          <h4>Today's Focus</h4>
           <ul id="welcomeFocus"></ul>
-          <button id="aiFocusBtn" class="ai-action-btn">Get AI Coach's Focus</button>
+          <button id="aiFocusBtn" class="btn-secondary">Get AI Coach's Focus</button>
           <div id="aiFocusOutput" class="ai-output"></div>
-          <h3>Daily Practice</h3>
+          <h4>Daily Practice</h4>
           <ul id="welcomePractice"></ul>
-          <h3>Recent Strengths</h3>
+          <h4>Recent Strengths</h4>
           <ul id="welcomeStrengths"></ul>
-          <h3>Before You Play Checklist</h3>
-          <ul class="reminders">
-            <li>Drink water before and during the round.</li>
-            <li>Stretch your back, arms, and legs.</li>
-            <li>Warm up with 10-15 chips and short putts.</li>
-          </ul>
-          <h3>Positive Reminders</h3>
+          <h4>Positive Reminders</h4>
           <ul id="welcomePositive"></ul>
         </details>
 
-        <div class="ai-card">
-          <h3>AI Coach Settings</h3>
-          <p style="font-size:13px; margin:0 0 8px;">Paste a Grok API key (from console.x.ai) to switch the coach to AI. Stored only on this device.</p>
-          <label>Grok API Key
-            <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
-          </label>
-          <label>
-            <input type="checkbox" id="aiModeToggle" style="width:auto; margin-right:6px;" />
-            Use AI for chat &amp; reports
-          </label>
-          <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
-          <button id="seedDemoBtn" class="ai-action-btn" style="background:#1976d2; color:white;">Seed demo data (Ayaan)</button>
-          <button id="wipeDemoBtn" class="ai-action-btn" style="background:#444; color:#eee; margin-top:6px;">Wipe ALL local data</button>
+        <div class="profile-actions">
+          <button id="seedDemoBtn" class="btn-secondary">Load Demo Data</button>
+          <button id="wipeDemoBtn" class="btn-secondary danger">Wipe All Data</button>
+          <button id="profileLogoutBtn" class="btn-danger">Logout</button>
         </div>
-
-        <button id="profileLogoutBtn" class="ai-action-btn" style="background:#b71c1c; color:white; margin-top:8px;">Logout</button>
       </div>
 
       <div id="coachTab" class="tab-page" style="display:none;">
@@ -660,32 +659,6 @@
       </div>
     </div>
 
-    <nav class="bottom-tabs" id="bottomTabs" style="display:none !important;">
-      <button class="bt active" data-go-tab="home">
-        <span class="bt-icon">⌂</span>
-        <span class="bt-label">Home</span>
-      </button>
-      <button class="bt" data-go-tab="setupTab">
-        <span class="bt-icon">⚙</span>
-        <span class="bt-label">Setup</span>
-      </button>
-      <button class="bt" data-go-tab="trackerTab">
-        <span class="bt-icon">⛳</span>
-        <span class="bt-label">Play</span>
-      </button>
-      <button class="bt" data-go-tab="statsTab">
-        <span class="bt-icon">▦</span>
-        <span class="bt-label">Stats</span>
-      </button>
-      <button class="bt" data-go-tab="coachTab">
-        <span class="bt-icon">💬</span>
-        <span class="bt-label">Coach</span>
-      </button>
-      <button class="bt" data-go-tab="profileTab">
-        <span class="bt-icon">◯</span>
-        <span class="bt-label">Profile</span>
-      </button>
-    </nav>
 
     <div id="roundDetailModal" class="modal" style="display:none;">
       <div class="modal-content">
