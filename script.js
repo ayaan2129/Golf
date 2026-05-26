@@ -69,7 +69,7 @@ const POST_REVIEW_FIELDS = [
 
 const TEE_GOALS = {
   Red: { holes18: 5, holes9: 2 },
-  Yellow: { holes18: 10, holes9: 5 },
+  Yellow: { holes18: 5, holes9: 3 },
   White: { holes18: 15, holes9: 6 },
   Blue: { holes18: 18, holes9: 9 },
 };
