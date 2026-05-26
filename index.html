@@ -10,7 +10,7 @@
     <div id="loginScreen" class="login-screen">
       <div class="login-box">
         <h1>Junior Golf Tracker</h1>
-        <h2>Login</h2>
+        <h2>Page 1 — Login</h2>
 
         <label>Username
           <input type="text" id="usernameInput" autocomplete="username" />
@@ -27,6 +27,7 @@
 
     <div id="welcomeScreen" style="display:none;">
       <div class="welcome-box">
+        <h2 class="page-label">Page 2 — Before You Play</h2>
         <h1>Welcome back, <span id="welcomeName">player</span></h1>
 
         <h3>Your Goals</h3>
@@ -57,21 +58,17 @@
         <h3>Positive Reminders</h3>
         <ul id="welcomePositive"></ul>
 
-        <button id="continueBtn">Go to Hole Tracker</button>
-        <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
+        <div class="page-nav">
+          <button id="continueBtn" class="btn-next">Next: Hole Tracker →</button>
+          <button id="welcomeLogoutBtn" class="welcome-logout">Logout</button>
+        </div>
       </div>
     </div>
 
     <div id="appScreen" style="display:none;">
-      <h1>Junior Golf Tracker</h1>
-
-      <nav class="tab-nav">
-        <button class="tab-btn" data-action="goto-welcome">Pre-Round</button>
-        <button class="tab-btn active" data-tab="trackerTab">Hole Tracker</button>
-        <button class="tab-btn" data-tab="statsTab">Stats</button>
-      </nav>
-
       <div id="trackerTab" class="tab-page">
+        <h2 class="page-label">Page 3 — Hole Tracker</h2>
+
         <div class="setup">
           <h2>Round Setup</h2>
 
@@ -209,10 +206,19 @@
           <p id="sumMissed">Missed Short Putts: 0</p>
           <button id="saveRoundBtn">Save Round</button>
           <button id="resetBtn">New Round</button>
-          <button id="logoutBtn">Logout</button>
         </div>
 
         <div id="holes"></div>
+
+        <div class="page-nav">
+          <button class="btn-back" data-go="welcome">← Back: Pre-Round</button>
+          <button class="btn-next" data-go="statsTab">Next: Coach &amp; Stats →</button>
+          <button id="logoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <div id="statsTab" class="tab-page" style="display:none;">
+        <h2 class="page-label">Page 4 — Coach &amp; Stats</h2>
 
         <div class="coach">
           <h2>Coach Analysis</h2>
@@ -223,8 +229,14 @@
           <h3>Biggest Mistakes</h3>
           <ul id="mistakesList"></ul>
 
+          <h3>Biggest Blunders This Round</h3>
+          <ul id="blundersList"></ul>
+
           <h3>What to Practise</h3>
           <ul id="practiceList"></ul>
+
+          <h3>How to Improve</h3>
+          <ul id="improveList"></ul>
 
           <h3>Your Strengths</h3>
           <ul id="strengthsList"></ul>
@@ -249,9 +261,7 @@
             <textarea id="postImprove" rows="2"></textarea>
           </label>
         </div>
-      </div>
 
-      <div id="statsTab" class="tab-page" style="display:none;">
         <div class="dashboard">
           <h2>Dashboard</h2>
 
@@ -323,6 +333,12 @@
         <div class="previous-rounds">
           <h2>Previous Rounds</h2>
           <div id="roundsList"></div>
+        </div>
+
+        <div class="page-nav">
+          <button class="btn-back" data-go="trackerTab">← Back: Hole Tracker</button>
+          <button class="btn-back" data-go="welcome">Pre-Round Page</button>
+          <button id="statsLogoutBtn">Logout</button>
         </div>
       </div>
     </div>

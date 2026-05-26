@@ -190,15 +190,27 @@ function switchTab(tabId) {
   window.scrollTo(0, 0);
 }
 
-document.querySelectorAll(".tab-btn").forEach(function (btn) {
+document.querySelectorAll("[data-go]").forEach(function (btn) {
   btn.addEventListener("click", function () {
-    if (btn.dataset.action === "goto-welcome") {
+    const target = btn.dataset.go;
+    if (target === "welcome") {
       showWelcome();
-      return;
+    } else if (target === "trackerTab" || target === "statsTab") {
+      showApp();
+      switchTab(target);
     }
-    if (btn.dataset.tab) switchTab(btn.dataset.tab);
   });
 });
+
+const statsLogoutBtn = document.getElementById("statsLogoutBtn");
+if (statsLogoutBtn) {
+  statsLogoutBtn.addEventListener("click", function () {
+    if (confirm("Log out?")) {
+      localStorage.removeItem("golfLoggedIn");
+      showLogin();
+    }
+  });
+}
 
 document.getElementById("welcomeLogoutBtn").addEventListener("click", function () {
   if (confirm("Log out?")) {
@@ -1044,13 +1056,69 @@ function analyze() {
     topWeakness = weaknesses[0].text;
   }
 
+  const blunders = collectBlunders();
+  const improve = buildImproveAdvice(mistakes);
+
   renderList("mistakesList", mistakes, "No big mistakes yet - keep going!");
+  renderList("blundersList", blunders, "No blunders this round!");
   renderList("practiceList", practice, "Play more rounds to find what to practise.");
+  renderList("improveList", improve, "Fill in shots to get improvement tips.");
   renderList("strengthsList", strengths, "Fill in more holes to see your strengths.");
   document.getElementById("topWeakness").textContent = topWeakness;
 
   renderHoleAnalyses();
   renderTrendChecks();
+}
+
+function collectBlunders() {
+  const blunders = [];
+  for (const i of getActiveHoles()) {
+    const s = getHoleStats(i);
+    if (s.score === 0) continue;
+    if (s.penalties > 0) blunders.push("Hole " + i + ": " + s.penalties + " penalty stroke(s).");
+    if (s.putts >= 3) blunders.push("Hole " + i + ": 3-putt (" + s.putts + " putts).");
+    if (s.missedShort) blunders.push("Hole " + i + ": missed a short putt.");
+    if (s.par > 0 && s.score >= s.par + 3) blunders.push("Hole " + i + ": " + (s.score - s.par) + " over par.");
+  }
+  return blunders.slice(0, 5);
+}
+
+function buildImproveAdvice(mistakes) {
+  const tips = [];
+  const seen = {};
+  function add(key, text) {
+    if (seen[key]) return;
+    seen[key] = true;
+    tips.push(text);
+  }
+  for (const m of mistakes) {
+    const lower = m.toLowerCase();
+    if (lower.indexOf("short putt") !== -1) {
+      add("shortputt", "Drill: place 5 balls in a circle 3 feet from the hole. Don't leave until you hole all 5 in a row.");
+    }
+    if (lower.indexOf("3-putt") !== -1) {
+      add("threeputt", "Drill: roll 10 lag putts from 30 feet to a coin. Focus on speed, not the line.");
+    }
+    if (lower.indexOf("fairway") !== -1) {
+      add("fairway", "Use a club you trust off the tee. Aim at a small target, not the whole fairway.");
+    }
+    if (lower.indexOf("penalty") !== -1 || lower.indexOf("penalties") !== -1) {
+      add("penalty", "Pick a safe line. Aim 10 yards inside trouble. Take one less club when you're not sure.");
+    }
+    if (lower.indexOf("first putts too short") !== -1) {
+      add("puttshort", "Practice: hit putts past the hole on purpose. A putt short of the hole never goes in.");
+    }
+    if (lower.indexOf("first putts too long") !== -1) {
+      add("puttlong", "Slow your backswing. Use shoulders, not wrists, for long putts.");
+    }
+    if (lower.indexOf("poor shots") !== -1 || lower.indexOf("tops") !== -1 || lower.indexOf("ball striking") !== -1) {
+      add("strike", "Slow your tempo. Practice half-swings with your 7-iron until contact is clean.");
+    }
+  }
+  if (tips.length === 0) {
+    tips.push("Keep practising your strengths - chip 20 balls and putt 20 short putts each day.");
+  }
+  return tips;
 }
 
 function renderList(id, items, emptyText) {

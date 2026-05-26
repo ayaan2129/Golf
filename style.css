@@ -485,6 +485,64 @@ textarea {
   color: white;
 }
 
+.page-label {
+  text-align: center;
+  color: #2e7d32;
+  background: #fff;
+  border: 2px solid #2e7d32;
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 100%;
+  max-width: 320px;
+  margin: 8px auto;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.page-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  margin: 24px auto 40px;
+  padding: 0 4px;
+}
+
+.page-nav button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-next {
+  background: #2e7d32;
+  color: white;
+}
+
+.btn-next:hover {
+  background: #1b5e20;
+}
+
+.btn-back {
+  background: white;
+  color: #2e7d32;
+  border: 2px solid #2e7d32 !important;
+}
+
+.btn-back:hover {
+  background: #f0fff0;
+}
+
+.page-nav #logoutBtn,
+.page-nav #statsLogoutBtn {
+  background: #eee;
+  color: #b71c1c;
+}
+
 .cal-today {
   outline: 2px solid #1976d2;
 }
