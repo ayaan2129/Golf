@@ -32,7 +32,102 @@ html, body {
   min-height: 100vh;
 }
 
-body { padding: 12px 12px 40px; }
+body { padding: 0; }
+
+#appScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, var(--green-deep), var(--green-mid));
+  color: white;
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+}
+
+.header-title {
+  margin: 0;
+  color: white;
+  -webkit-text-fill-color: white;
+  background: none;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.header-btn {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-btn:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.app-body {
+  flex: 1;
+  padding: 12px 12px 90px;
+  overflow-y: auto;
+}
+
+.bottom-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #d0d8d0;
+  display: flex;
+  z-index: 100;
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bt {
+  flex: 1;
+  padding: 8px 4px 6px;
+  background: white;
+  border: none;
+  border-top: 3px solid transparent;
+  font-size: 11px;
+  color: #6b7c6b;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: color 0.15s;
+}
+
+.bt-icon { font-size: 18px; line-height: 1; }
+.bt-label { font-size: 10px; font-weight: 800; }
+
+.bt.active {
+  color: var(--green-deep);
+  border-top-color: var(--green-mid);
+  background: linear-gradient(180deg, rgba(46, 125, 50, 0.08), white);
+}
+
+.bt:active { background: #f0f0f0; }
 
 h1 {
   color: var(--green-deep);

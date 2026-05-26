@@ -270,6 +270,7 @@ document.getElementById("continueBtn").addEventListener("click", function () {
   }
   showApp();
   switchTab("setupTab");
+  syncBottomTabs && syncBottomTabs("setupTab");
 });
 
 const defaultsDateInputInit = document.getElementById("defaultsDateInput");
@@ -331,8 +332,39 @@ document.addEventListener("click", function (e) {
   } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab") {
     showApp();
     switchTab(target);
+    syncBottomTabs(target);
   }
 });
+
+function syncBottomTabs(tabId) {
+  document.querySelectorAll(".bt").forEach(function (b) {
+    if (b.dataset.tab === tabId) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+}
+
+document.querySelectorAll(".bt").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    const target = btn.dataset.tab;
+    showApp();
+    switchTab(target);
+    syncBottomTabs(target);
+  });
+});
+
+const headerHome = document.getElementById("headerHomeBtn");
+if (headerHome) {
+  headerHome.addEventListener("click", function () { showWelcome(); });
+}
+const headerLogout = document.getElementById("headerLogoutBtn");
+if (headerLogout) {
+  headerLogout.addEventListener("click", function () {
+    if (confirm("Log out?")) {
+      localStorage.removeItem("golfLoggedIn");
+      showLogin();
+    }
+  });
+}
 
 const statsLogoutBtn = document.getElementById("statsLogoutBtn");
 if (statsLogoutBtn) {
