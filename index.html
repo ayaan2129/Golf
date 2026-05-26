@@ -402,8 +402,12 @@
 
           <div class="ai-card">
             <h3>AI Coach Settings</h3>
-            <p style="font-size:13px; margin:0 0 8px;">Paste a Grok API key (from console.x.ai) to switch the coach from rule-based to AI. Stored only on this device.</p>
-            <label>Grok API Key
+            <p style="font-size:13px; margin:0 0 8px;">Two ways to enable the AI Coach. Pick one.</p>
+            <label>AI Proxy URL (recommended — keeps key on the server)
+              <input type="text" id="aiProxyUrl" placeholder="https://...workers.dev" autocomplete="off" />
+            </label>
+            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Deploy the Cloudflare Worker in <code>proxy/</code> (see proxy/README.md), then paste its URL here. The xAI key stays on the worker as an env secret.</p>
+            <label>Or: Grok API Key (key stored on this device only)
               <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
             </label>
             <label>

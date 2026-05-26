@@ -3820,15 +3820,31 @@ function initDashboard() {
   document.getElementById("addUpcomingBtn").addEventListener("click", addUpcomingRound);
 
   const grokKeyInput = document.getElementById("grokApiKey");
+  const proxyUrlInput = document.getElementById("aiProxyUrl");
   const aiToggle = document.getElementById("aiModeToggle");
   if (grokKeyInput) {
     grokKeyInput.value = localStorage.getItem("grokApiKey") || "";
     grokKeyInput.addEventListener("input", function () {
-      localStorage.setItem("grokApiKey", grokKeyInput.value.trim());
+      const v = grokKeyInput.value.trim();
+      if (v) localStorage.setItem("grokApiKey", v);
+      else localStorage.removeItem("grokApiKey");
+      renderAiStatus();
+    });
+  }
+  if (proxyUrlInput) {
+    proxyUrlInput.value = localStorage.getItem("aiProxyUrl") || "";
+    proxyUrlInput.addEventListener("input", function () {
+      const v = proxyUrlInput.value.trim();
+      if (v) localStorage.setItem("aiProxyUrl", v);
+      else localStorage.removeItem("aiProxyUrl");
       renderAiStatus();
     });
   }
   if (aiToggle) {
+    // Auto-on the first time the user enters any credential
+    if (localStorage.getItem("aiMode") === null && (getProxyUrl() || getGrokKey())) {
+      localStorage.setItem("aiMode", "on");
+    }
     aiToggle.checked = localStorage.getItem("aiMode") === "on";
     aiToggle.addEventListener("change", function () {
       localStorage.setItem("aiMode", aiToggle.checked ? "on" : "off");
@@ -4578,16 +4594,23 @@ function renderPracticeInsightsCard() {
 }
 
 function aiEnabled() {
-  return localStorage.getItem("aiMode") === "on" && !!localStorage.getItem("grokApiKey");
+  if (localStorage.getItem("aiMode") !== "on") return false;
+  // Proxy doesn't need a local key; direct api.x.ai calls do.
+  return !!getProxyUrl() || !!getGrokKey();
 }
 
 function getGrokKey() {
   return localStorage.getItem("grokApiKey") || "";
 }
 
+function getProxyUrl() {
+  return (localStorage.getItem("aiProxyUrl") || "").trim();
+}
+
 async function callGrok(systemPrompt, userPrompt, opts) {
+  const proxyUrl = getProxyUrl();
   const key = getGrokKey();
-  if (!key) throw new Error("Set a Grok API key first.");
+  if (!proxyUrl && !key) throw new Error("Set an AI Proxy URL or a Grok API key first.");
   const messages = [];
   if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
   if (Array.isArray(userPrompt)) {
@@ -4600,12 +4623,12 @@ async function callGrok(systemPrompt, userPrompt, opts) {
     messages,
     temperature: (opts && opts.temperature !== undefined) ? opts.temperature : 0.5,
   };
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
+  const url = proxyUrl || "https://api.x.ai/v1/chat/completions";
+  const headers = { "Content-Type": "application/json" };
+  if (!proxyUrl) headers["Authorization"] = "Bearer " + key;
+  const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + key,
-    },
+    headers: headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -5182,10 +5205,12 @@ function renderAiStatus() {
   const el = document.getElementById("aiStatus");
   if (!el) return;
   if (aiEnabled()) {
-    el.textContent = "AI coach ON — Grok will answer chat + generate reports.";
+    el.textContent = getProxyUrl()
+      ? "AI coach ON — routing through your proxy (key stays on server)."
+      : "AI coach ON — calling Grok directly with your local key.";
     el.classList.add("on");
   } else {
-    el.textContent = "AI coach off — using rule-based responses. Add Grok API key to enable.";
+    el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
     el.classList.remove("on");
   }
 }
