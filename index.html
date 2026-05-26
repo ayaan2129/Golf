@@ -38,10 +38,23 @@
           <p class="dream-tag">Every round is one step closer.</p>
         </div>
 
+        <div class="player-card" id="playerCard">
+          <div class="player-card-row"><span class="pc-label">Player</span><span class="pc-value">Ayaan</span></div>
+          <div class="player-card-row"><span class="pc-label">Age</span><span class="pc-value" id="pcAge">—</span></div>
+          <div class="player-card-row"><span class="pc-label">Handicap</span><span class="pc-value" id="pcHandicap">—</span></div>
+          <div class="player-card-row"><span class="pc-label">Best score</span><span class="pc-value" id="pcBest">—</span></div>
+          <div class="player-card-row"><span class="pc-label">Rounds played</span><span class="pc-value" id="pcRounds">0</span></div>
+          <div class="player-card-row"><span class="pc-label">Badges</span><span class="pc-value" id="pcBadges">0</span></div>
+          <p class="pc-benchmark" id="pcBenchmark"></p>
+        </div>
+
         <div class="defaults-card">
           <h3>Today's Defaults</h3>
           <p><strong>Player:</strong> Ayaan</p>
-          <label>Date
+          <label>Birthday (set once, used for age)
+            <input type="date" id="birthdayInput" />
+          </label>
+          <label>Date of Round
             <input type="date" id="defaultsDateInput" />
           </label>
           <p><strong>Temperature:</strong> <span id="defaultsTemp">Pick a date above</span></p>

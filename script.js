@@ -170,6 +170,14 @@ function renderWelcome() {
     if (p.handicap != null) hcapInput.value = p.handicap;
   }
 
+  const birthdayInput = document.getElementById("birthdayInput");
+  if (birthdayInput) {
+    const p = getProfile();
+    if (p.birthday) birthdayInput.value = p.birthday;
+  }
+
+  renderPlayerCard();
+
   const dateInput = document.getElementById("roundDate");
   if (dateInput && !dateInput.value) dateInput.value = todayISO();
 
@@ -261,6 +269,15 @@ if (hcapInputInit) {
   hcapInputInit.addEventListener("input", function () {
     const v = hcapInputInit.value === "" ? null : Number(hcapInputInit.value);
     setProfileField("handicap", v);
+    renderPlayerCard();
+  });
+}
+
+const birthdayInputInit = document.getElementById("birthdayInput");
+if (birthdayInputInit) {
+  birthdayInputInit.addEventListener("change", function () {
+    setProfileField("birthday", birthdayInputInit.value || null);
+    renderPlayerCard();
   });
 }
 
@@ -466,6 +483,74 @@ function getDailyThought() {
 function todayISO() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function calcAge(birthDateStr) {
+  if (!birthDateStr) return null;
+  const today = new Date();
+  const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age;
+}
+
+function ageBenchmarkText(age, history) {
+  if (age == null) return "";
+  let bench;
+  if (age <= 9) bench = { low: 110, high: 130 };
+  else if (age <= 12) bench = { low: 90, high: 110 };
+  else if (age <= 15) bench = { low: 78, high: 100 };
+  else bench = { low: 72, high: 90 };
+  let recentBest = null;
+  for (const r of history) {
+    if (r.totalScore > 0) {
+      if (recentBest === null || r.totalScore < recentBest) recentBest = r.totalScore;
+    }
+  }
+  let line = "At age " + age + ", junior players typically shoot " + bench.low + "–" + bench.high + " for 18 holes.";
+  if (recentBest !== null) {
+    if (recentBest < bench.low) line += " Your best (" + recentBest + ") is BELOW that range — you're ahead of the curve!";
+    else if (recentBest <= bench.high) line += " Your best (" + recentBest + ") is right in the junior range — keep grinding.";
+    else line += " Your best is " + recentBest + " — keep playing, you'll close on " + bench.high + " soon.";
+  } else {
+    line += " Save a round to see how you compare.";
+  }
+  return line;
+}
+
+function renderPlayerCard() {
+  const profile = getProfile();
+  const ageEl = document.getElementById("pcAge");
+  if (ageEl) {
+    const age = calcAge(profile.birthday);
+    ageEl.textContent = age != null ? (age + " years") : "Set birthday";
+  }
+  const hcEl = document.getElementById("pcHandicap");
+  if (hcEl) hcEl.textContent = profile.handicap != null ? profile.handicap : "Set handicap";
+
+  const history = getHistory();
+  const bestEl = document.getElementById("pcBest");
+  if (bestEl) {
+    const scores = history.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    bestEl.textContent = scores.length > 0 ? Math.min.apply(null, scores) : "—";
+  }
+  const roundsEl = document.getElementById("pcRounds");
+  if (roundsEl) roundsEl.textContent = history.length;
+
+  const badgesEl = document.getElementById("pcBadges");
+  if (badgesEl) {
+    let unlocked = 0;
+    for (const a of ACHIEVEMENTS) if (a.check(history)) unlocked += 1;
+    badgesEl.textContent = unlocked + " / " + ACHIEVEMENTS.length;
+  }
+
+  const benchEl = document.getElementById("pcBenchmark");
+  if (benchEl) {
+    const age = calcAge(profile.birthday);
+    benchEl.textContent = ageBenchmarkText(age, history);
+  }
 }
 
 const WEDGE_CLUBS_FULL = ["Pitching Wedge", "Gap Wedge", "Sand Wedge", "Lob Wedge", "Chipper", "PW", "GW", "SW", "LW", "Wedge"];
@@ -1746,6 +1831,8 @@ function saveRoundToHistory() {
     coursePar,
     parPlayed: parForRound,
     handicap: (getProfile().handicap !== undefined ? getProfile().handicap : null),
+    birthday: getProfile().birthday || null,
+    ageAtRound: calcAge(getProfile().birthday),
     weather: localStorage.getItem("defaultsTemp") || "",
     totalScore,
     scoreVsPar: parForRound > 0 ? totalScore - parForRound : 0,
