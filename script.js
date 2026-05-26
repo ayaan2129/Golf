@@ -1183,50 +1183,10 @@ function getTotalScore() {
   return total;
 }
 
-function computeHoleStats(par, shots, firstPuttResult, missedShortStr) {
+function computeHoleStats(par, shots, firstPuttResult, missedShortStr, savedPutts) {
   par = Number(par) || 0;
   shots = shots || [];
-  const score = shots.length;
-  let putts = 0;
-  let chips = 0;
-  let penalties = 0;
-  let badShots = 0;
-  let goodShots = 0;
-  const WEDGE_CLUBS = ["PW", "GW", "SW", "LW", "Wedge"];
-  for (const s of shots) {
-    if (s.club === "Putter") putts += 1;
-    if (WEDGE_CLUBS.indexOf(s.club) !== -1) chips += 1;
-    if (s.result === "Penalty") penalties += 1;
-    if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
-    if (s.quality === "Good shot") goodShots += 1;
-  }
-  let fwHit = 0;
-  let fwAns = 0;
-  if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
-    fwAns = 1;
-    if (shots[0].result === "On fairway") fwHit = 1;
-  }
-  return {
-    par,
-    shots,
-    score,
-    putts,
-    chips,
-    penalties,
-    badShots,
-    goodShots,
-    fwHit,
-    fwAns,
-    firstPuttResult: firstPuttResult || "",
-    missedShort: missedShortStr === "Yes",
-  };
-}
-
-function getHoleStats(i) {
-  const par = Number(document.getElementById("par-" + i).value) || 0;
-  const shots = getShotsForHole(i);
-  const puttsArr = getPuttsForHole(i);
-  const score = shots.length + puttsArr.length;
+  const puttsArr = savedPutts || [];
   let putts = puttsArr.length;
   let chips = 0;
   let penalties = 0;
@@ -1239,14 +1199,85 @@ function getHoleStats(i) {
     if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
     if (s.quality === "Good shot") goodShots += 1;
   }
+  const score = shots.length + puttsArr.length + penalties;
   let fwHit = 0;
   let fwAns = 0;
   if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
     fwAns = 1;
     if (shots[0].result === "Fairway" || shots[0].result === "On fairway") fwHit = 1;
   }
-  const firstPuttResult = document.getElementById("firstPuttResult-" + i).value;
-  const missedShort = document.getElementById("missedShortPutt-" + i).value === "Yes";
+  let gir = 0;
+  let girAns = 0;
+  if (par >= 3 && shots.length > 0) {
+    girAns = 1;
+    const greenIdx = shots.findIndex(function (s) {
+      return s.result === "Green" || s.result === "On green" || s.result === "Holed";
+    });
+    if (greenIdx !== -1 && (greenIdx + 1) <= (par - 2)) gir = 1;
+  }
+  let scrambleAns = 0;
+  let scrambleSave = 0;
+  if (girAns === 1 && gir === 0 && score > 0) {
+    scrambleAns = 1;
+    if (score <= par) scrambleSave = 1;
+  }
+  return {
+    par, shots, score, putts, chips, penalties, badShots, goodShots,
+    fwHit, fwAns, gir, girAns, scrambleAns, scrambleSave,
+    firstPuttResult: firstPuttResult || "",
+    missedShort: missedShortStr === "Yes",
+  };
+}
+
+function getHoleStats(i) {
+  const par = Number(document.getElementById("par-" + i).value) || 0;
+  const shots = getShotsForHole(i);
+  const puttsArr = getPuttsForHole(i);
+  let putts = puttsArr.length;
+  let chips = 0;
+  let penalties = 0;
+  let badShots = 0;
+  let goodShots = 0;
+  for (const s of shots) {
+    if (s.club === "Putter") putts += 1;
+    if (WEDGE_CLUBS_FULL.indexOf(s.club) !== -1) chips += 1;
+    if (s.result === "Penalty" || s.result === "Out of Bounds" || s.result === "Water" || s.result === "Lost Ball") penalties += 1;
+    if (BAD_QUALITIES.indexOf(s.quality) !== -1) badShots += 1;
+    if (s.quality === "Good shot") goodShots += 1;
+  }
+  // Score = number of swings + number of putts + extra strokes for each penalty
+  // (a penalty result on a shot costs 1 stroke for the swing + 1 penalty stroke).
+  const score = shots.length + puttsArr.length + penalties;
+
+  let fwHit = 0;
+  let fwAns = 0;
+  if (par >= 4 && shots.length > 0 && shots[0].lie === "Tee" && shots[0].result) {
+    fwAns = 1;
+    if (shots[0].result === "Fairway" || shots[0].result === "On fairway") fwHit = 1;
+  }
+
+  // Greens in Regulation: ball on green within (par - 2) swings.
+  // par 3 → 1 swing, par 4 → 2 swings, par 5 → 3 swings.
+  let gir = 0;
+  let girAns = 0;
+  if (par >= 3 && shots.length > 0) {
+    girAns = 1;
+    const greenIdx = shots.findIndex(function (s) {
+      return s.result === "Green" || s.result === "On green" || s.result === "Holed";
+    });
+    if (greenIdx !== -1 && (greenIdx + 1) <= (par - 2)) gir = 1;
+  }
+
+  // Scrambling: missed GIR but still made par or better.
+  let scrambleAns = 0;
+  let scrambleSave = 0;
+  if (girAns === 1 && gir === 0 && score > 0) {
+    scrambleAns = 1;
+    if (score <= par) scrambleSave = 1;
+  }
+
+  const firstPuttResult = (document.getElementById("firstPuttResult-" + i) || {}).value || "";
+  const missedShort = ((document.getElementById("missedShortPutt-" + i) || {}).value || "") === "Yes";
   return {
     par,
     shots,
@@ -1258,6 +1289,10 @@ function getHoleStats(i) {
     goodShots,
     fwHit,
     fwAns,
+    gir,
+    girAns,
+    scrambleAns,
+    scrambleSave,
     firstPuttResult,
     missedShort,
   };
@@ -1427,6 +1462,10 @@ function updateSummary() {
   let fairwaysAnswered = 0;
   let missedShortPutts = 0;
   let scoredHolesCount = 0;
+  let girHit = 0;
+  let girAns = 0;
+  let scrambleSave = 0;
+  let scrambleAns = 0;
 
   for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
@@ -1441,6 +1480,10 @@ function updateSummary() {
     totalPenalties += s.penalties;
     fairwaysHit += s.fwHit;
     fairwaysAnswered += s.fwAns;
+    girHit += s.gir;
+    girAns += s.girAns;
+    scrambleSave += s.scrambleSave;
+    scrambleAns += s.scrambleAns;
     if (s.missedShort) missedShortPutts += 1;
   }
 
@@ -1458,6 +1501,21 @@ function updateSummary() {
   document.getElementById("sumChips").textContent = "Total Chips: " + totalChips;
   document.getElementById("sumChipsPutts").textContent = "Chips + Putts: " + (totalChips + totalPutts);
   document.getElementById("sumFairway").textContent = "Fairway Hit %: " + fairwayPct + "%";
+
+  const girEl = document.getElementById("sumGir");
+  if (girEl) {
+    const pct = girAns > 0 ? Math.round((girHit / girAns) * 100) : 0;
+    girEl.textContent = "Greens in Regulation: " + pct + "% (" + girHit + "/" + girAns + ")";
+  }
+  const scrEl = document.getElementById("sumScramble");
+  if (scrEl) {
+    if (scrambleAns === 0) scrEl.textContent = "Scrambling: — (every green hit)";
+    else {
+      const pct = Math.round((scrambleSave / scrambleAns) * 100);
+      scrEl.textContent = "Scrambling: " + pct + "% (" + scrambleSave + "/" + scrambleAns + ")";
+    }
+  }
+
   document.getElementById("sumPenalties").textContent = "Penalties: " + totalPenalties;
   document.getElementById("sumMissed").textContent = "Missed Short Putts: " + missedShortPutts;
 }
@@ -1632,6 +1690,10 @@ function saveRoundToHistory() {
   let fairwaysAnswered = 0;
   let missedShortPutts = 0;
   let badShots = 0;
+  let girHit = 0;
+  let girAns = 0;
+  let scrambleSave = 0;
+  let scrambleAns = 0;
 
   for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
@@ -1643,12 +1705,18 @@ function saveRoundToHistory() {
     fairwaysHit += s.fwHit;
     fairwaysAnswered += s.fwAns;
     badShots += s.badShots;
+    girHit += s.gir;
+    girAns += s.girAns;
+    scrambleSave += s.scrambleSave;
+    scrambleAns += s.scrambleAns;
     if (s.missedShort) missedShortPutts += 1;
   }
 
   const coursePar = getCoursePar();
   const parForRound = totalPar > 0 ? totalPar : coursePar;
   const fairwayPct = fairwaysAnswered > 0 ? Math.round((fairwaysHit / fairwaysAnswered) * 100) : null;
+  const girPct = girAns > 0 ? Math.round((girHit / girAns) * 100) : null;
+  const scramblePct = scrambleAns > 0 ? Math.round((scrambleSave / scrambleAns) * 100) : null;
 
   const fullData = { setup: {}, holes: {} };
   for (const f of SETUP_FIELDS) {
@@ -1685,6 +1753,8 @@ function saveRoundToHistory() {
     totalChips,
     totalPenalties,
     fairwayPct,
+    girPct,
+    scramblePct,
     badShots,
     missedShortPutts,
     holes: getActiveHoles().length,
@@ -2183,7 +2253,8 @@ function getHoleStatsFromSavedHole(holeData) {
     holeData.par,
     holeData.shots || [],
     holeData.firstPuttResult,
-    holeData.missedShortPutt
+    holeData.missedShortPutt,
+    holeData.putts || []
   );
 }
 
