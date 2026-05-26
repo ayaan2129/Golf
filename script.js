@@ -565,6 +565,9 @@ function switchTab(tabId) {
     renderIronStatsSummary();
     renderDriverStatsSummary();
   }
+  if (tabId === "videosTab") {
+    renderVideoLibrary();
+  }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
       buildHoles();
@@ -584,7 +587,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab") {
     showApp();
     switchTab(target);
     syncBottomTabs(target);
@@ -6377,6 +6380,394 @@ initChat();
 renderClubDistances();
 
 // Now that all constants and functions are initialized, decide which
+// ---------------- Swing Video Library (Phase 6) ----------------
+const VIDEO_DB_NAME = "golfVideosDB";
+const VIDEO_STORE = "videoBlobs";
+let _videoDbPromise = null;
+
+function openVideoDB() {
+  if (_videoDbPromise) return _videoDbPromise;
+  _videoDbPromise = new Promise(function (resolve, reject) {
+    if (!window.indexedDB) { reject(new Error("IndexedDB not supported")); return; }
+    const req = indexedDB.open(VIDEO_DB_NAME, 1);
+    req.onupgradeneeded = function (e) {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(VIDEO_STORE)) {
+        db.createObjectStore(VIDEO_STORE);
+      }
+    };
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { reject(req.error); };
+  });
+  return _videoDbPromise;
+}
+
+function putVideoBlob(id, blob) {
+  return openVideoDB().then(function (db) {
+    return new Promise(function (resolve, reject) {
+      const tx = db.transaction(VIDEO_STORE, "readwrite");
+      tx.objectStore(VIDEO_STORE).put(blob, id);
+      tx.oncomplete = function () { resolve(); };
+      tx.onerror = function () { reject(tx.error); };
+    });
+  });
+}
+
+function getVideoBlob(id) {
+  return openVideoDB().then(function (db) {
+    return new Promise(function (resolve, reject) {
+      const tx = db.transaction(VIDEO_STORE, "readonly");
+      const req = tx.objectStore(VIDEO_STORE).get(id);
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  });
+}
+
+function deleteVideoBlob(id) {
+  return openVideoDB().then(function (db) {
+    return new Promise(function (resolve, reject) {
+      const tx = db.transaction(VIDEO_STORE, "readwrite");
+      tx.objectStore(VIDEO_STORE).delete(id);
+      tx.oncomplete = function () { resolve(); };
+      tx.onerror = function () { reject(tx.error); };
+    });
+  });
+}
+
+function getVideoIndex() {
+  try { return JSON.parse(localStorage.getItem("videoLibrary") || "[]"); }
+  catch (e) { return []; }
+}
+
+function saveVideoIndex(arr) {
+  localStorage.setItem("videoLibrary", JSON.stringify(arr));
+}
+
+function videoNewId() {
+  return "v_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+}
+
+function generateVideoThumb(file) {
+  return new Promise(function (resolve) {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = url;
+    video.addEventListener("loadeddata", function () {
+      try { video.currentTime = Math.min(0.5, (video.duration || 1) / 2); } catch (e) {}
+    }, { once: true });
+    video.addEventListener("seeked", function () {
+      const c = document.createElement("canvas");
+      const w = video.videoWidth || 320;
+      const h = video.videoHeight || 240;
+      const scale = Math.min(320 / w, 1);
+      c.width = Math.round(w * scale);
+      c.height = Math.round(h * scale);
+      const ctx = c.getContext("2d");
+      ctx.drawImage(video, 0, 0, c.width, c.height);
+      const data = c.toDataURL("image/jpeg", 0.7);
+      URL.revokeObjectURL(url);
+      resolve(data);
+    }, { once: true });
+    video.addEventListener("error", function () { URL.revokeObjectURL(url); resolve(null); }, { once: true });
+  });
+}
+
+async function handleVideoUpload(file) {
+  const status = document.getElementById("videoUploadStatus");
+  if (!file) return;
+  if (status) status.textContent = "Saving " + file.name + "...";
+  try {
+    const id = videoNewId();
+    const thumb = await generateVideoThumb(file);
+    await putVideoBlob(id, file);
+    const idx = getVideoIndex();
+    idx.unshift({
+      id: id,
+      label: file.name.replace(/\.[^.]+$/, "").slice(0, 40),
+      date: todayISO(),
+      club: "",
+      notes: "",
+      thumb: thumb,
+      size: file.size,
+      mime: file.type || "video/mp4",
+      savedAt: new Date().toISOString(),
+    });
+    saveVideoIndex(idx);
+    if (status) status.textContent = "Saved. " + idx.length + " video" + (idx.length === 1 ? "" : "s") + " in library.";
+    renderVideoLibrary();
+  } catch (e) {
+    if (status) status.textContent = "Failed to save: " + (e.message || e);
+  }
+}
+
+let videoCompareMode = false;
+let videoCompareSelection = [];
+
+function renderVideoLibrary() {
+  const grid = document.getElementById("videoLibraryGrid");
+  const empty = document.getElementById("videoEmpty");
+  const toggle = document.getElementById("videoCompareToggle");
+  if (!grid) return;
+  const idx = getVideoIndex();
+  grid.innerHTML = "";
+  if (idx.length === 0) {
+    const e = document.createElement("div");
+    e.className = "video-empty";
+    e.textContent = "No videos yet. Upload one above to start your library.";
+    grid.appendChild(e);
+    if (toggle) toggle.disabled = true;
+    return;
+  }
+  if (toggle) {
+    toggle.disabled = false;
+    toggle.textContent = videoCompareMode ? "Cancel" : "Compare";
+  }
+  for (const v of idx) {
+    const card = document.createElement("div");
+    card.className = "video-card";
+    if (videoCompareSelection.indexOf(v.id) !== -1) card.classList.add("selected");
+    if (v.thumb) {
+      const img = document.createElement("img");
+      img.className = "video-card-thumb";
+      img.src = v.thumb;
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement("div");
+      ph.className = "video-card-thumb";
+      ph.style.display = "flex";
+      ph.style.alignItems = "center";
+      ph.style.justifyContent = "center";
+      ph.style.color = "#888";
+      ph.textContent = "▶";
+      card.appendChild(ph);
+    }
+    const badge = document.createElement("div");
+    badge.className = "video-card-select-badge";
+    badge.textContent = String(videoCompareSelection.indexOf(v.id) + 1 || "");
+    card.appendChild(badge);
+    const meta = document.createElement("div");
+    meta.className = "video-card-meta";
+    const lbl = document.createElement("div");
+    lbl.className = "video-card-label";
+    lbl.textContent = v.label || "Untitled";
+    const dt = document.createElement("div");
+    dt.className = "video-card-date";
+    dt.textContent = v.date + (v.club ? " · " + v.club : "");
+    meta.appendChild(lbl);
+    meta.appendChild(dt);
+    card.appendChild(meta);
+    card.addEventListener("click", function () {
+      if (videoCompareMode) {
+        const pos = videoCompareSelection.indexOf(v.id);
+        if (pos !== -1) videoCompareSelection.splice(pos, 1);
+        else {
+          if (videoCompareSelection.length >= 2) videoCompareSelection.shift();
+          videoCompareSelection.push(v.id);
+        }
+        if (videoCompareSelection.length === 2) {
+          openVideoCompare(videoCompareSelection[0], videoCompareSelection[1]);
+        } else {
+          renderVideoLibrary();
+        }
+      } else {
+        openVideoModal(v.id);
+      }
+    });
+    grid.appendChild(card);
+  }
+}
+
+async function openVideoModal(id) {
+  const idx = getVideoIndex();
+  const v = idx.find(function (x) { return x.id === id; });
+  if (!v) return;
+  const blob = await getVideoBlob(id);
+  if (!blob) { alert("Video file missing."); return; }
+  const url = URL.createObjectURL(blob);
+  const modal = document.getElementById("videoPlayerModal");
+  const body = document.getElementById("videoModalBody");
+  body.innerHTML = "";
+
+  const vid = document.createElement("video");
+  vid.className = "video-modal-player";
+  vid.controls = true;
+  vid.playsInline = true;
+  vid.src = url;
+  body.appendChild(vid);
+
+  const form = document.createElement("div");
+  form.className = "video-modal-form";
+  form.innerHTML =
+    '<div class="profile-row"><label>Label</label><input type="text" id="vmLabel" value="' + escapeAttr(v.label) + '" /></div>' +
+    '<div class="profile-row"><label>Date</label><input type="date" id="vmDate" value="' + v.date + '" /></div>' +
+    '<div class="profile-row"><label>Club</label><input type="text" id="vmClub" value="' + escapeAttr(v.club) + '" placeholder="e.g. 7i" /></div>' +
+    '<div class="profile-row"><label>Notes</label><textarea id="vmNotes" rows="2">' + escapeHtml(v.notes) + '</textarea></div>' +
+    '<div style="display:flex; gap:8px; margin-top:12px;">' +
+      '<button id="vmSave" class="ai-action-btn" style="flex:1;">Save</button>' +
+      '<button id="vmAnalyse" class="ai-action-btn" style="flex:1; background:#1976d2;">AI Analyse Frame</button>' +
+    '</div>' +
+    '<button id="vmDelete" class="btn-secondary danger" style="margin-top:8px; width:100%;">Delete video</button>' +
+    '<div id="vmAiOut" class="ai-output" style="margin-top:10px;"></div>';
+  body.appendChild(form);
+
+  document.getElementById("vmSave").addEventListener("click", function () {
+    const all = getVideoIndex();
+    const i = all.findIndex(function (x) { return x.id === id; });
+    if (i === -1) return;
+    all[i].label = document.getElementById("vmLabel").value.trim() || all[i].label;
+    all[i].date = document.getElementById("vmDate").value || all[i].date;
+    all[i].club = document.getElementById("vmClub").value.trim();
+    all[i].notes = document.getElementById("vmNotes").value.trim();
+    saveVideoIndex(all);
+    renderVideoLibrary();
+    closeVideoModal();
+  });
+  document.getElementById("vmDelete").addEventListener("click", async function () {
+    if (!confirm("Delete this video? It can't be recovered.")) return;
+    await deleteVideoBlob(id);
+    const all = getVideoIndex().filter(function (x) { return x.id !== id; });
+    saveVideoIndex(all);
+    renderVideoLibrary();
+    closeVideoModal();
+  });
+  document.getElementById("vmAnalyse").addEventListener("click", async function () {
+    const out = document.getElementById("vmAiOut");
+    out.textContent = "Pausing video at current frame...";
+    vid.pause();
+    const c = document.createElement("canvas");
+    c.width = vid.videoWidth || 640;
+    c.height = vid.videoHeight || 480;
+    c.getContext("2d").drawImage(vid, 0, 0, c.width, c.height);
+    const dataUrl = c.toDataURL("image/jpeg", 0.85);
+    if (typeof analyseSwingFrame === "function") {
+      try { await analyseSwingFrame(dataUrl, v.notes, out); }
+      catch (e) { out.textContent = "AI error: " + e.message; }
+    } else {
+      out.textContent = "AI analyse function not wired. Add Grok key on Stats tab.";
+    }
+  });
+
+  modal.style.display = "flex";
+  modal._objectUrl = url;
+}
+
+function closeVideoModal() {
+  const modal = document.getElementById("videoPlayerModal");
+  if (!modal) return;
+  if (modal._objectUrl) URL.revokeObjectURL(modal._objectUrl);
+  modal._objectUrl = null;
+  modal.style.display = "none";
+  document.getElementById("videoModalBody").innerHTML = "";
+}
+
+async function openVideoCompare(idA, idB) {
+  const idx = getVideoIndex();
+  const a = idx.find(function (x) { return x.id === idA; });
+  const b = idx.find(function (x) { return x.id === idB; });
+  if (!a || !b) return;
+  const [blobA, blobB] = await Promise.all([getVideoBlob(idA), getVideoBlob(idB)]);
+  if (!blobA || !blobB) { alert("One or both video files missing."); return; }
+  const urlA = URL.createObjectURL(blobA);
+  const urlB = URL.createObjectURL(blobB);
+  const modal = document.getElementById("videoPlayerModal");
+  const body = document.getElementById("videoModalBody");
+  body.innerHTML = "";
+
+  const heading = document.createElement("h3");
+  heading.style.margin = "0 0 10px";
+  heading.textContent = "Compare swings";
+  body.appendChild(heading);
+
+  const row = document.createElement("div");
+  row.className = "video-compare-row";
+  for (const item of [{ url: urlA, meta: a }, { url: urlB, meta: b }]) {
+    const cell = document.createElement("div");
+    const v = document.createElement("video");
+    v.src = item.url;
+    v.controls = true;
+    v.playsInline = true;
+    v.muted = true;
+    cell.appendChild(v);
+    const cap = document.createElement("div");
+    cap.className = "video-compare-label";
+    cap.textContent = (item.meta.label || "Untitled") + " · " + item.meta.date;
+    cell.appendChild(cap);
+    row.appendChild(cell);
+  }
+  body.appendChild(row);
+
+  const ctrlRow = document.createElement("div");
+  ctrlRow.style.display = "flex";
+  ctrlRow.style.gap = "8px";
+  ctrlRow.style.marginTop = "12px";
+  const playBoth = document.createElement("button");
+  playBoth.className = "ai-action-btn";
+  playBoth.style.flex = "1";
+  playBoth.textContent = "▶ Play both";
+  playBoth.addEventListener("click", function () {
+    const vids = body.querySelectorAll("video");
+    vids.forEach(function (v) { v.currentTime = 0; v.play(); });
+  });
+  ctrlRow.appendChild(playBoth);
+  const pauseBoth = document.createElement("button");
+  pauseBoth.className = "btn-secondary";
+  pauseBoth.style.flex = "1";
+  pauseBoth.textContent = "❚❚ Pause";
+  pauseBoth.addEventListener("click", function () {
+    body.querySelectorAll("video").forEach(function (v) { v.pause(); });
+  });
+  ctrlRow.appendChild(pauseBoth);
+  body.appendChild(ctrlRow);
+
+  modal.style.display = "flex";
+  modal._objectUrl = urlA;
+  modal._objectUrlB = urlB;
+}
+
+function escapeAttr(s) { return String(s || "").replace(/"/g, "&quot;"); }
+function escapeHtml(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+const _videoUploadBtn = document.getElementById("videoUploadBtn");
+const _videoRecordBtn = document.getElementById("videoRecordBtn");
+const _videoFileInput = document.getElementById("videoFileInput");
+const _videoCompareToggle = document.getElementById("videoCompareToggle");
+const _videoModalClose = document.getElementById("videoModalClose");
+
+if (_videoUploadBtn && _videoFileInput) {
+  _videoUploadBtn.addEventListener("click", function () { _videoFileInput.removeAttribute("capture"); _videoFileInput.click(); });
+}
+if (_videoRecordBtn && _videoFileInput) {
+  _videoRecordBtn.addEventListener("click", function () { _videoFileInput.setAttribute("capture", "environment"); _videoFileInput.click(); });
+}
+if (_videoFileInput) {
+  _videoFileInput.addEventListener("change", function (e) {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleVideoUpload(f);
+    _videoFileInput.value = "";
+  });
+}
+if (_videoCompareToggle) {
+  _videoCompareToggle.addEventListener("click", function () {
+    videoCompareMode = !videoCompareMode;
+    videoCompareSelection = [];
+    renderVideoLibrary();
+  });
+}
+if (_videoModalClose) {
+  _videoModalClose.addEventListener("click", function () {
+    if (document.getElementById("videoPlayerModal")._objectUrlB) URL.revokeObjectURL(document.getElementById("videoPlayerModal")._objectUrlB);
+    closeVideoModal();
+    if (videoCompareMode) {
+      videoCompareSelection = [];
+      renderVideoLibrary();
+    }
+  });
+}
+
 // screen to show (this used to run at the top of the file but crashed
 // when TEE_GOALS was referenced inside renderWelcome before being
 // declared).
