@@ -45,6 +45,9 @@
             <input type="date" id="defaultsDateInput" />
           </label>
           <p><strong>Temperature:</strong> <span id="defaultsTemp">Pick a date above</span></p>
+          <label>Handicap
+            <input type="number" id="handicapInput" step="0.1" placeholder="18" />
+          </label>
           <p><strong>Location:</strong> India · RCGC (Kolkata)</p>
           <p><strong>My usual bag:</strong></p>
           <p class="defaults-clubs">Driver · 3 Wood · Hybrid (Rescue) · 6 Iron · 7 Iron · 8 Iron · 9 Iron · Pitching Wedge · Sand Wedge · 58° Lob Wedge · Putter</p>
@@ -207,6 +210,12 @@
           </div>
         </div>
 
+        <div class="clubs-card" id="clubDistancesCard">
+          <h2>My Club Distances</h2>
+          <p>Set your typical distance for each club. Shots auto-fill this — you can adjust each shot.</p>
+          <div id="clubDistancesList"></div>
+        </div>
+
         <div class="clubs-card" id="teeCard">
           <h2>Tee Colour</h2>
           <p>Pick the tee colour you're playing from today.</p>
@@ -341,6 +350,8 @@
           <div class="overall-stats" id="tournamentStats"></div>
 
           <div class="club-stats-card" id="clubStatsCard"></div>
+
+          <div class="club-stats-card" id="handicapTrendCard"></div>
 
           <div class="upcoming-section">
             <h3>Upcoming Rounds</h3>

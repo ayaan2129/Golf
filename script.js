@@ -164,6 +164,12 @@ function renderWelcome() {
     loadTemperatureForDate(defaultsDateInput.value);
   }
 
+  const hcapInput = document.getElementById("handicapInput");
+  if (hcapInput) {
+    const p = getProfile();
+    if (p.handicap != null) hcapInput.value = p.handicap;
+  }
+
   const dateInput = document.getElementById("roundDate");
   if (dateInput && !dateInput.value) dateInput.value = todayISO();
 
@@ -250,6 +256,14 @@ if (defaultsDateInputInit) {
   });
 }
 
+const hcapInputInit = document.getElementById("handicapInput");
+if (hcapInputInit) {
+  hcapInputInit.addEventListener("input", function () {
+    const v = hcapInputInit.value === "" ? null : Number(hcapInputInit.value);
+    setProfileField("handicap", v);
+  });
+}
+
 function switchTab(tabId) {
   const pages = document.querySelectorAll(".tab-page");
   pages.forEach(function (p) { p.style.display = p.id === tabId ? "" : "none"; });
@@ -260,6 +274,7 @@ function switchTab(tabId) {
   });
   if (tabId === "clubsTab") {
     buildClubsGrid();
+    renderClubDistances();
   }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
@@ -472,6 +487,65 @@ function getAllAvailableClubs() {
   return ALL_CLUBS.concat(getCustomClubs());
 }
 
+function getProfile() {
+  try {
+    return JSON.parse(localStorage.getItem("playerProfile") || "{}");
+  } catch (e) { return {}; }
+}
+
+function saveProfile(p) {
+  localStorage.setItem("playerProfile", JSON.stringify(p));
+}
+
+function setProfileField(key, value) {
+  const p = getProfile();
+  p[key] = value;
+  saveProfile(p);
+}
+
+function getClubDistance(club) {
+  const p = getProfile();
+  if (p.clubDistances && p.clubDistances[club] != null) return p.clubDistances[club];
+  return null;
+}
+
+function setClubDistance(club, distance) {
+  const p = getProfile();
+  if (!p.clubDistances) p.clubDistances = {};
+  if (distance === "" || distance == null) delete p.clubDistances[club];
+  else p.clubDistances[club] = Number(distance) || 0;
+  saveProfile(p);
+}
+
+function renderClubDistances() {
+  const list = document.getElementById("clubDistancesList");
+  if (!list) return;
+  list.innerHTML = "";
+  const clubs = getSelectedClubs().filter(function (c) { return c !== "Putter"; });
+  if (clubs.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "Pick clubs in your bag above to set their distances.";
+    list.appendChild(p);
+    return;
+  }
+  for (const club of clubs) {
+    const row = document.createElement("div");
+    row.className = "club-distance-row";
+    const lbl = document.createElement("label");
+    lbl.textContent = club;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.placeholder = "yards";
+    input.min = "0";
+    const saved = getClubDistance(club);
+    if (saved != null) input.value = saved;
+    input.addEventListener("input", function () { setClubDistance(club, input.value); });
+    row.appendChild(lbl);
+    row.appendChild(input);
+    list.appendChild(row);
+  }
+}
+
 const MAX_CLUBS = 14;
 
 function getSelectedClubs() {
@@ -533,6 +607,7 @@ function buildClubsGrid() {
       saveSelectedClubs(arr);
       updateClubsCounter();
       updateDisabledClubs();
+      renderClubDistances();
     });
     lbl.appendChild(cb);
     lbl.appendChild(document.createTextNode(club));
@@ -1602,6 +1677,8 @@ function saveRoundToHistory() {
     tee: document.getElementById("teeSelect").value || "",
     coursePar,
     parPlayed: parForRound,
+    handicap: (getProfile().handicap !== undefined ? getProfile().handicap : null),
+    weather: localStorage.getItem("defaultsTemp") || "",
     totalScore,
     scoreVsPar: parForRound > 0 ? totalScore - parForRound : 0,
     totalPutts,
@@ -2017,6 +2094,22 @@ function onHolesInput(event) {
     event.target.dataset.auto = "0";
   }
   const t = event.target;
+  if (t.dataset && t.dataset.shotField === "club") {
+    const shotCard = t.closest(".shot-card");
+    if (shotCard) {
+      const hitEl = shotCard.querySelector('[data-shot-field="distanceHit"]');
+      if (hitEl && (!hitEl.value || hitEl.dataset.autoFromClub === "1")) {
+        const dist = getClubDistance(t.value);
+        if (dist != null && dist > 0) {
+          hitEl.value = dist;
+          hitEl.dataset.autoFromClub = "1";
+        }
+      }
+    }
+  }
+  if (t.dataset && t.dataset.shotField === "distanceHit") {
+    t.dataset.autoFromClub = "0";
+  }
   if (t.dataset && (t.dataset.shotField === "distanceHit" || t.dataset.shotField === "result")) {
     const holeCard = t.closest(".hole-card");
     if (holeCard) {
@@ -2858,7 +2951,105 @@ function renderDashboard() {
   renderAchievements();
   renderTypeStats();
   renderClubStats();
+  renderHandicapTrend();
   renderUpcoming();
+}
+
+function renderHandicapTrend() {
+  const card = document.getElementById("handicapTrendCard");
+  if (!card) return;
+  card.innerHTML = "";
+  const h = document.createElement("h3");
+  h.textContent = "Handicap Trend";
+  card.appendChild(h);
+
+  const history = getHistory()
+    .filter(function (r) { return typeof r.handicap === "number" && r.date; })
+    .sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+  if (history.length < 2) {
+    const p = document.createElement("p");
+    p.textContent = "Save at least 2 rounds with a handicap set on the Welcome page to see your trend.";
+    card.appendChild(p);
+    return;
+  }
+
+  const w = 320;
+  const hpx = 160;
+  const pad = 24;
+  const handicaps = history.map(function (r) { return r.handicap; });
+  const minH = Math.min.apply(null, handicaps);
+  const maxH = Math.max.apply(null, handicaps);
+  const rangeH = Math.max(1, maxH - minH);
+
+  const points = history.map(function (r, i) {
+    const x = pad + (i / Math.max(1, history.length - 1)) * (w - 2 * pad);
+    const y = pad + ((maxH - r.handicap) / rangeH) * (hpx - 2 * pad);
+    return { x, y, r };
+  });
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + w + " " + hpx);
+  svg.setAttribute("width", w);
+  svg.setAttribute("height", hpx);
+
+  const grid = document.createElementNS(svgNS, "rect");
+  grid.setAttribute("x", 0);
+  grid.setAttribute("y", 0);
+  grid.setAttribute("width", w);
+  grid.setAttribute("height", hpx);
+  grid.setAttribute("fill", "#f8fbf8");
+  svg.appendChild(grid);
+
+  const path = document.createElementNS(svgNS, "polyline");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#2e7d32");
+  path.setAttribute("stroke-width", "3");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("points", points.map(function (p) { return p.x + "," + p.y; }).join(" "));
+  svg.appendChild(path);
+
+  for (const p of points) {
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("cx", p.x);
+    dot.setAttribute("cy", p.y);
+    dot.setAttribute("r", 4);
+    dot.setAttribute("fill", "#f5b800");
+    dot.setAttribute("stroke", "#8a6d00");
+    dot.setAttribute("stroke-width", 1.5);
+    svg.appendChild(dot);
+  }
+
+  const labelMin = document.createElementNS(svgNS, "text");
+  labelMin.setAttribute("x", 4);
+  labelMin.setAttribute("y", 14);
+  labelMin.setAttribute("font-size", "11");
+  labelMin.setAttribute("fill", "#4f6f4f");
+  labelMin.textContent = "HC " + maxH;
+  svg.appendChild(labelMin);
+
+  const labelMax = document.createElementNS(svgNS, "text");
+  labelMax.setAttribute("x", 4);
+  labelMax.setAttribute("y", hpx - 4);
+  labelMax.setAttribute("font-size", "11");
+  labelMax.setAttribute("fill", "#4f6f4f");
+  labelMax.textContent = "HC " + minH;
+  svg.appendChild(labelMax);
+
+  card.appendChild(svg);
+
+  const summary = document.createElement("p");
+  summary.style.fontSize = "12px";
+  summary.style.marginTop = "8px";
+  const first = history[0].handicap;
+  const last = history[history.length - 1].handicap;
+  const delta = last - first;
+  let trendText = "Steady at " + last.toFixed(1) + ".";
+  if (delta < 0) trendText = "Down " + Math.abs(delta).toFixed(1) + " strokes - improving! (" + first.toFixed(1) + " → " + last.toFixed(1) + ")";
+  else if (delta > 0) trendText = "Up " + delta.toFixed(1) + " - focus on weak areas. (" + first.toFixed(1) + " → " + last.toFixed(1) + ")";
+  summary.textContent = trendText;
+  card.appendChild(summary);
 }
 
 function gatherAllShots() {
@@ -2921,6 +3112,7 @@ function renderClubStats() {
   for (const c of clubs) {
     const data = byClub[c];
     const tr = document.createElement("tr");
+    tr.className = "clickable";
     let avg = "—", longest = "—", shortest = "—";
     if (data.distances.length > 0) {
       avg = Math.round(data.distances.reduce(function (s, v) { return s + v; }, 0) / data.distances.length);
@@ -2942,6 +3134,7 @@ function renderClubStats() {
       "<td>" + longest + "</td>" +
       "<td>" + shortest + "</td>" +
       "<td>" + topMiss + "</td>";
+    tr.addEventListener("click", function () { showClubDetailModal(c); });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -3132,6 +3325,83 @@ function showRoundDetail(round) {
 
 function closeRoundDetail() {
   document.getElementById("roundDetailModal").style.display = "none";
+}
+
+function showClubDetailModal(club) {
+  const body = document.getElementById("modalBody");
+  body.innerHTML = "";
+
+  const title = document.createElement("h2");
+  title.textContent = club + " — Club Lab";
+  body.appendChild(title);
+
+  const shots = gatherAllShots().filter(function (s) { return s.club === club; });
+  if (shots.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No shots recorded with this club.";
+    body.appendChild(p);
+    document.getElementById("roundDetailModal").style.display = "";
+    return;
+  }
+
+  const dists = shots.map(function (s) { return Number(s.distanceHit); }).filter(function (n) { return !isNaN(n) && n > 0; });
+  const avg = dists.length ? Math.round(dists.reduce(function (s, v) { return s + v; }, 0) / dists.length) : "—";
+  const longest = dists.length ? Math.max.apply(null, dists) : "—";
+  const shortest = dists.length ? Math.min.apply(null, dists) : "—";
+
+  const counts = { lie: {}, direction: {}, quality: {}, result: {} };
+  for (const s of shots) {
+    for (const key in counts) {
+      if (s[key]) counts[key][s[key]] = (counts[key][s[key]] || 0) + 1;
+    }
+  }
+
+  const summary = [
+    "Times used: " + shots.length,
+    "Average distance: " + avg + " yds",
+    "Longest: " + longest + " yds",
+    "Shortest: " + shortest + " yds",
+  ];
+  for (const line of summary) {
+    const p = document.createElement("p");
+    p.textContent = line;
+    body.appendChild(p);
+  }
+
+  function topItems(obj) {
+    return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, 3);
+  }
+
+  function section(label, obj) {
+    const top = topItems(obj);
+    if (top.length === 0) return;
+    const h = document.createElement("h3");
+    h.textContent = label;
+    body.appendChild(h);
+    const ul = document.createElement("ul");
+    for (const k of top) {
+      const li = document.createElement("li");
+      li.textContent = k + " — " + obj[k] + " shot(s)";
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+
+  section("Most common lie", counts.lie);
+  section("Most common direction", counts.direction);
+  section("Most common quality", counts.quality);
+  section("Most common result", counts.result);
+
+  const setHint = document.createElement("p");
+  setHint.style.marginTop = "12px";
+  setHint.style.fontStyle = "italic";
+  const saved = getClubDistance(club);
+  if (saved) setHint.textContent = "Your stored " + club + " distance: " + saved + " yds.";
+  else setHint.textContent = "Tip: set a default distance for this club on the Club Setup page.";
+  body.appendChild(setHint);
+
+  document.getElementById("roundDetailModal").style.display = "";
+  window.scrollTo(0, 0);
 }
 
 function addChatMessage(text, role) {
@@ -3448,6 +3718,7 @@ renderHistory();
 initDashboard();
 renderDashboard();
 initChat();
+renderClubDistances();
 
 // Now that all constants and functions are initialized, decide which
 // screen to show (this used to run at the top of the file but crashed
