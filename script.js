@@ -196,7 +196,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "trackerTab" || target === "statsTab") {
+  } else if (target === "trackerTab" || target === "statsTab" || target === "coachTab") {
     showApp();
     switchTab(target);
   }
@@ -456,21 +456,86 @@ function makeShotCard(shotNumber) {
   `;
 }
 
+let currentHoleIndex = 0;
+
 function buildHoles() {
   holesContainer.innerHTML = "";
   const active = getActiveHoles();
   holeCount = active.length > 0 ? active[active.length - 1] : 18;
   for (let pos = 0; pos < active.length; pos++) {
     const i = active[pos];
-    holesContainer.insertAdjacentHTML("beforeend", makeHoleCard(i));
+    const step = document.createElement("div");
+    step.className = "hole-step";
+    step.dataset.stepIndex = pos;
+    step.innerHTML = makeHoleCard(i);
     const playedSoFar = pos + 1;
     if (playedSoFar === 5 || playedSoFar === 10 || playedSoFar === 15) {
-      holesContainer.insertAdjacentHTML(
+      step.insertAdjacentHTML(
         "beforeend",
         `<div class="trend-check" id="trendCheck-${playedSoFar}" style="display:none;"><h3>Trend Check after ${playedSoFar} Holes</h3><div class="trend-lines"></div></div>`
       );
     }
+    holesContainer.appendChild(step);
   }
+  if (currentHoleIndex >= active.length) currentHoleIndex = 0;
+  showHole(currentHoleIndex);
+}
+
+function showHole(index) {
+  const steps = holesContainer.querySelectorAll(".hole-step");
+  if (steps.length === 0) return;
+  if (index < 0) index = 0;
+  if (index >= steps.length) index = steps.length - 1;
+  currentHoleIndex = index;
+  steps.forEach(function (s, i) {
+    s.style.display = i === currentHoleIndex ? "" : "none";
+  });
+  updateHoleNav();
+  localStorage.setItem("currentHoleIndex", String(index));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updateHoleNav() {
+  const steps = holesContainer.querySelectorAll(".hole-step");
+  const total = steps.length;
+  const active = getActiveHoles();
+  const holeNum = active[currentHoleIndex] || (currentHoleIndex + 1);
+  const progressEl = document.getElementById("holeProgress");
+  if (progressEl) {
+    progressEl.textContent = "Hole " + holeNum + " (" + (currentHoleIndex + 1) + "/" + total + ")";
+  }
+  const prevBtn = document.getElementById("prevHoleBtn");
+  const nextBtn = document.getElementById("nextHoleBtn");
+  if (prevBtn) prevBtn.disabled = currentHoleIndex === 0;
+  if (nextBtn) {
+    nextBtn.classList.remove("done");
+    if (currentHoleIndex === total - 1) {
+      nextBtn.textContent = "Done →";
+      nextBtn.classList.add("done");
+    } else {
+      nextBtn.textContent = "Next →";
+    }
+  }
+  const fill = document.getElementById("holeProgressFill");
+  if (fill && total > 0) {
+    let filledCount = 0;
+    for (let i = 0; i < total; i++) {
+      const a = active[i];
+      if (getShotsForHole(a).length > 0) filledCount++;
+    }
+    fill.style.width = Math.round((filledCount / total) * 100) + "%";
+  }
+}
+
+function updateHoleParColors() {
+  const cards = holesContainer.querySelectorAll(".hole-card");
+  cards.forEach(function (card) {
+    const parInput = card.querySelector("input[id^='par-']");
+    if (parInput) {
+      const par = Number(parInput.value) || 0;
+      card.dataset.par = par;
+    }
+  });
 }
 
 function addShot(holeNum) {
@@ -1531,6 +1596,8 @@ function handleChange() {
   saveAll();
   updateSummary();
   analyze();
+  updateHoleParColors();
+  updateHoleNav();
   const courseKey = document.getElementById("courseSelect").value;
   if (courseKey === "Other" || COURSES[courseKey]) {
     updateCourseInfoFromInputs();
@@ -2704,7 +2771,44 @@ function coachAnswerFor(question) {
     return "Pros built their game one round at a time. Track everything, fix one weakness at a time, and you keep moving toward World No. 1.";
   }
 
-  return "I can help with: putting, driving, chipping, weakness, strengths, practice, tournaments, RCGC, scoring, improvement, goals, and pre-round advice. Try one of those!";
+  if (q.indexOf("swing") !== -1) {
+    return "Keep a steady head. Finish your shoulder turn. Accelerate THROUGH the ball, not at it. Practice slow tempo half-swings until contact is clean every time.";
+  }
+  if (q.indexOf("grip") !== -1) {
+    return "Both palms facing each other. The V's from thumb and index finger point at your right shoulder (right-handed). Grip pressure light - like holding a tube of toothpaste.";
+  }
+  if (q.indexOf("stance") !== -1 || q.indexOf("posture") !== -1 || q.indexOf("setup") !== -1) {
+    return "Feet shoulder-width apart, knees slightly bent, tilt from the hips not the waist, weight on the balls of the feet. Stay athletic and balanced.";
+  }
+  if (q.indexOf("nervous") !== -1 || q.indexOf("anxiety") !== -1 || q.indexOf("scared") !== -1 || q.indexOf("pressure") !== -1 || q.indexOf("fear") !== -1) {
+    return "Take 3 deep breaths before any tough shot. Pick a small target. Make one smooth practice swing first. The shot is just a shot - your worth doesn't depend on it.";
+  }
+  if (q.indexOf("mental") !== -1 || q.indexOf("confidence") !== -1 || q.indexOf("mindset") !== -1) {
+    return "After a bad shot: feel it for 10 seconds, then let it go. Picture your best shot before every swing. Never play your next shot angry.";
+  }
+  if (q.indexOf("slice") !== -1) {
+    return "Slice fix: check your grip first (turn left hand slightly to the right). Feel your right shoulder go DOWN and TOWARD the target after impact. Swing more in-to-out.";
+  }
+  if (q.indexOf("hook") !== -1) {
+    return "Hook fix: weaken your grip (turn left hand slightly left). Don't let shoulders open too fast. Feel a more out-to-in swing path with a held-off finish.";
+  }
+  if (q.indexOf("top") !== -1 || q.indexOf("duff") !== -1 || q.indexOf("fat") !== -1 || q.indexOf("thin") !== -1 || q.indexOf("strike") !== -1 || q.indexOf("contact") !== -1) {
+    return "Mishits usually mean you lifted up or scooped. Keep your spine angle through impact. With irons hit DOWN through the ball - trust the loft.";
+  }
+  if (q.indexOf("bunker") !== -1 || q.indexOf("sand") !== -1) {
+    return "Open your stance and clubface. Aim 1-2 inches behind the ball and SPLASH the sand. Don't decelerate - swing through.";
+  }
+  if (q.indexOf("rain") !== -1 || q.indexOf("wind") !== -1 || q.indexOf("weather") !== -1) {
+    return "Wind/rain: take more club, swing easier, keep the ball flight low. Wider stance for balance. Stay patient - everyone's playing the same conditions.";
+  }
+  if (q.indexOf("warm up") !== -1 || q.indexOf("warmup") !== -1) {
+    return "Warm-up: 5 minutes stretch, 5 short putts, 10 chips, 10 short iron half-swings, then a few full swings. Don't skip the short game - it sets your feel.";
+  }
+  if (q.indexOf("fitness") !== -1 || q.indexOf("workout") !== -1 || q.indexOf("strength") !== -1) {
+    return "Junior golf fitness: rotation drills, core planks, single-leg balance, light medicine ball throws. Flexibility matters more than heavy weights.";
+  }
+
+  return "Hmm, tell me a bit more or ask in different words. I can help with: swing, grip, stance, slice, hook, mishits, mental game, pressure, bunkers, weather, warm-up, putting, driving, chipping, weakness, strengths, practice, tournaments, RCGC, scoring, improvement, and pre-round advice.";
 }
 
 function sendChatMessage(text) {
@@ -2739,6 +2843,26 @@ function initChat() {
     });
   });
 }
+
+const prevHoleBtn = document.getElementById("prevHoleBtn");
+const nextHoleBtn = document.getElementById("nextHoleBtn");
+if (prevHoleBtn) {
+  prevHoleBtn.addEventListener("click", function () { showHole(currentHoleIndex - 1); });
+}
+if (nextHoleBtn) {
+  nextHoleBtn.addEventListener("click", function () {
+    const steps = holesContainer.querySelectorAll(".hole-step");
+    if (currentHoleIndex >= steps.length - 1) {
+      showApp();
+      switchTab("statsTab");
+    } else {
+      showHole(currentHoleIndex + 1);
+    }
+  });
+}
+
+const savedIdx = Number(localStorage.getItem("currentHoleIndex"));
+if (!isNaN(savedIdx) && savedIdx >= 0) currentHoleIndex = savedIdx;
 
 buildCustomHoleChecks();
 buildHoles();

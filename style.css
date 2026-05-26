@@ -24,7 +24,11 @@ html, body {
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--ink);
-  background: linear-gradient(180deg, #eaf6ea 0%, #d6ecd6 100%);
+  background:
+    radial-gradient(ellipse at top, rgba(245, 184, 0, 0.10), transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(25, 118, 210, 0.08), transparent 50%),
+    linear-gradient(180deg, #b6e3b6 0%, #66bb6a 35%, #2e7d32 100%);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -311,6 +315,127 @@ textarea { resize: vertical; }
   font-weight: 800;
   cursor: pointer;
 }
+
+.hole-step { animation: fadeSlide 0.25s ease-out; }
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hole-progress-bar {
+  width: 100%;
+  max-width: 340px;
+  height: 8px;
+  margin: 10px auto;
+  background: var(--grass);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.hole-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-light), var(--gold));
+  width: 0%;
+  transition: width 0.3s ease;
+  border-radius: 6px;
+}
+
+.hole-nav {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  border-top: 3px solid var(--green-mid);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 12px -12px 0;
+  z-index: 30;
+  box-shadow: 0 -6px 16px rgba(27, 94, 32, 0.18);
+}
+
+.hole-nav-btn {
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  border: 2px solid var(--green-mid);
+  background: white;
+  color: var(--green-deep);
+  cursor: pointer;
+  flex: 1;
+  max-width: 130px;
+}
+
+.hole-nav-btn.primary {
+  background: linear-gradient(180deg, var(--green-mid), var(--green-deep));
+  color: white;
+  border-color: var(--green-deep);
+  box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3);
+}
+
+.hole-nav-btn.done {
+  background: linear-gradient(180deg, var(--gold), #d8a000);
+  color: var(--ink);
+  border-color: #d8a000;
+}
+
+.hole-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#holeProgress {
+  font-weight: 800;
+  color: var(--green-deep);
+  font-size: 14px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.hole-card[data-par="3"] {
+  border-top-color: var(--water);
+  background: linear-gradient(180deg, #e3f2fd 0%, white 35%);
+}
+.hole-card[data-par="3"] h2 { background: linear-gradient(135deg, var(--water), #0d47a1); }
+
+.hole-card[data-par="4"] {
+  border-top-color: var(--green-mid);
+  background: linear-gradient(180deg, #e8f5e9 0%, white 35%);
+}
+.hole-card[data-par="4"] h2 { background: linear-gradient(135deg, var(--green-mid), var(--green-deep)); }
+
+.hole-card[data-par="5"] {
+  border-top-color: var(--gold);
+  background: linear-gradient(180deg, #fff8d6 0%, white 35%);
+}
+.hole-card[data-par="5"] h2 {
+  background: linear-gradient(135deg, var(--gold), #d8a000);
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+}
+
+.setup {
+  background: linear-gradient(180deg, white, #f4faf4);
+  border-top: 5px solid var(--green-mid);
+}
+.dashboard {
+  background: linear-gradient(180deg, white, #e6f4ff);
+  border-top: 5px solid var(--water);
+}
+.post-review {
+  background: linear-gradient(180deg, white, #fff8d6);
+  border-top: 5px solid var(--gold);
+}
+.previous-rounds {
+  background: linear-gradient(180deg, white, #f3edff);
+  border-top: 5px solid var(--purple);
+}
+
+#sendBtn { padding-left: 18px; padding-right: 18px; }
 
 .page-label {
   text-align: center;
