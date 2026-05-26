@@ -878,7 +878,6 @@ function getShotsForHole(holeNum) {
 function toggleSetupRows() {
   const course = document.getElementById("courseSelect").value;
   document.getElementById("customCourseRow").style.display = course === "Other" ? "" : "none";
-  document.getElementById("teeRow").style.display = COURSES[course] ? "" : "none";
 
   const playedIn = document.getElementById("playedIn").value;
   document.getElementById("countryRow").style.display = playedIn === "Outside India" ? "" : "none";
@@ -3227,6 +3226,9 @@ if (nextHoleBtn) {
 const savedIdx = Number(localStorage.getItem("currentHoleIndex"));
 if (!isNaN(savedIdx) && savedIdx >= 0) currentHoleIndex = savedIdx;
 
+if (!localStorage.getItem("selectedClubs")) {
+  saveSelectedClubs(DEFAULT_CLUBS.slice());
+}
 buildClubsGrid();
 
 const clubsSelectAll = document.getElementById("clubsSelectAll");

@@ -129,16 +129,6 @@
             <input type="text" id="customCourseName" />
           </label>
 
-          <label id="teeRow" style="display:none;">Tee
-            <select id="teeSelect">
-              <option value="">-- choose --</option>
-              <option value="Blue">Blue</option>
-              <option value="White">White</option>
-              <option value="Yellow">Yellow</option>
-              <option value="Red">Red</option>
-            </select>
-          </label>
-
           <label>Course Par
             <input type="number" id="coursePar" min="1" />
           </label>
@@ -189,34 +179,6 @@
             </select>
           </label>
 
-          <h3>Round Readiness</h3>
-
-          <label>Energy Level
-            <select id="energyLevel">
-              <option value="">-- choose --</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-          </label>
-
-          <label>Confidence Level
-            <select id="confidenceLevel">
-              <option value="">-- choose --</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-          </label>
-
-          <label>Sleep Quality
-            <select id="sleepQuality">
-              <option value="">-- choose --</option>
-              <option value="Poor">Poor</option>
-              <option value="OK">OK</option>
-              <option value="Good">Good</option>
-            </select>
-          </label>
         </div>
 
         <div class="page-nav">
@@ -243,6 +205,20 @@
             <button id="clubsClearAll" type="button" class="clubs-action-btn">Clear All</button>
             <button id="clubsDefault" type="button" class="clubs-action-btn">Standard Bag</button>
           </div>
+        </div>
+
+        <div class="clubs-card" id="teeCard">
+          <h2>Tee Colour</h2>
+          <p>Pick the tee colour you're playing from today.</p>
+          <label id="teeRow">Tee
+            <select id="teeSelect">
+              <option value="">-- choose --</option>
+              <option value="Blue">Blue</option>
+              <option value="White">White</option>
+              <option value="Yellow">Yellow</option>
+              <option value="Red">Red</option>
+            </select>
+          </label>
         </div>
 
         <div class="page-nav">
