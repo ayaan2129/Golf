@@ -1153,17 +1153,18 @@ function saveAll() {
   data.setup.customHoles = [];
   customCBs.forEach(function (cb) { data.setup.customHoles.push(Number(cb.value)); });
   for (const i of getActiveHoles()) {
-    const fpdEl = document.getElementById("firstPuttDistance-" + i);
+    const parEl = document.getElementById("par-" + i);
+    if (!parEl) continue;
     data.holes[i] = {
-      par: document.getElementById("par-" + i).value,
-      distance: document.getElementById("holeDistance-" + i).value,
+      par: (parEl || {}).value || "",
+      distance: ((document.getElementById("holeDistance-" + i)) || {}).value || "",
       shots: getShotsForHole(i),
       putts: getPuttsForHole(i),
-      quickScore: (document.getElementById("quickScore-" + i) || {}).value || "",
-      quickPutts: (document.getElementById("quickPutts-" + i) || {}).value || "",
-      firstPuttDistance: fpdEl ? fpdEl.value : "",
-      firstPuttResult: document.getElementById("firstPuttResult-" + i).value,
-      missedShortPutt: document.getElementById("missedShortPutt-" + i).value,
+      quickScore: ((document.getElementById("quickScore-" + i)) || {}).value || "",
+      quickPutts: ((document.getElementById("quickPutts-" + i)) || {}).value || "",
+      firstPuttDistance: ((document.getElementById("firstPuttDistance-" + i)) || {}).value || "",
+      firstPuttResult: ((document.getElementById("firstPuttResult-" + i)) || {}).value || "",
+      missedShortPutt: ((document.getElementById("missedShortPutt-" + i)) || {}).value || "",
     };
   }
   localStorage.setItem("golfRound", JSON.stringify(data));
@@ -1369,7 +1370,16 @@ function applyRoundMode() {
 }
 
 function getHoleStats(i) {
-  const par = Number(document.getElementById("par-" + i).value) || 0;
+  const parEl = document.getElementById("par-" + i);
+  if (!parEl) {
+    return {
+      par: 0, shots: [], score: 0, putts: 0, chips: 0, penalties: 0,
+      badShots: 0, goodShots: 0, fwHit: 0, fwAns: 0,
+      gir: 0, girAns: 0, scrambleAns: 0, scrambleSave: 0,
+      firstPuttResult: "", missedShort: false,
+    };
+  }
+  const par = Number(parEl.value) || 0;
   if (getRoundMode() === "quick") {
     const score = Number((document.getElementById("quickScore-" + i) || {}).value) || 0;
     const putts = Number((document.getElementById("quickPutts-" + i) || {}).value) || 0;
@@ -2599,6 +2609,12 @@ function initDashboard() {
   });
 
   document.getElementById("addUpcomingBtn").addEventListener("click", addUpcomingRound);
+  const addPracticeBtn = document.getElementById("addPracticeBtn");
+  if (addPracticeBtn) {
+    addPracticeBtn.addEventListener("click", addPracticeSession);
+    const pdate = document.getElementById("practiceDate");
+    if (pdate && !pdate.value) pdate.value = todayISO();
+  }
   document.getElementById("modalClose").addEventListener("click", closeRoundDetail);
   document.getElementById("roundDetailModal").addEventListener("click", function (e) {
     if (e.target === this) closeRoundDetail();
@@ -3202,7 +3218,109 @@ function renderDashboard() {
   renderClubStats();
   renderHandicapTrend();
   renderScoreTrend();
+  renderPracticeLog();
   renderUpcoming();
+}
+
+function getPractice() {
+  try { return JSON.parse(localStorage.getItem("practiceSessions") || "[]"); }
+  catch (e) { return []; }
+}
+
+function savePractice(arr) {
+  localStorage.setItem("practiceSessions", JSON.stringify(arr));
+}
+
+function addPracticeSession() {
+  const date = document.getElementById("practiceDate").value || todayISO();
+  const area = document.getElementById("practiceArea").value || "Range";
+  const duration = Number(document.getElementById("practiceDuration").value) || 0;
+  const focus = document.getElementById("practiceFocus").value || "";
+  const notes = document.getElementById("practiceNotes").value || "";
+  if (duration === 0 && !focus) {
+    alert("Add a duration or a focus drill to log this practice session.");
+    return;
+  }
+  const arr = getPractice();
+  arr.push({ date, area, duration, focus, notes, savedAt: new Date().toISOString() });
+  savePractice(arr);
+  document.getElementById("practiceDuration").value = "";
+  document.getElementById("practiceFocus").value = "";
+  document.getElementById("practiceNotes").value = "";
+  renderPracticeLog();
+}
+
+function renderPracticeLog() {
+  const list = document.getElementById("practiceList");
+  if (!list) return;
+  list.innerHTML = "";
+  const arr = getPractice().slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+  if (arr.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No practice sessions logged yet.";
+    list.appendChild(p);
+  } else {
+    for (let i = 0; i < Math.min(arr.length, 10); i++) {
+      const s = arr[i];
+      const card = document.createElement("div");
+      card.className = "practice-card";
+      const info = document.createElement("div");
+      info.className = "practice-info";
+      const headEl = document.createElement("div");
+      headEl.innerHTML = "<strong>" + (s.date || "—") + " · " + s.area + "</strong>" + (s.duration ? " · " + s.duration + " min" : "");
+      info.appendChild(headEl);
+      if (s.focus) {
+        const f = document.createElement("div");
+        f.style.fontSize = "12px";
+        f.textContent = "Focus: " + s.focus;
+        info.appendChild(f);
+      }
+      if (s.notes) {
+        const n = document.createElement("div");
+        n.style.fontSize = "12px";
+        n.style.color = "#555";
+        n.textContent = s.notes;
+        info.appendChild(n);
+      }
+      card.appendChild(info);
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", function () {
+        const all = getPractice();
+        const idx = all.findIndex(function (x) { return x.savedAt === s.savedAt; });
+        if (idx >= 0) {
+          all.splice(idx, 1);
+          savePractice(all);
+          renderPracticeLog();
+        }
+      });
+      card.appendChild(removeBtn);
+      list.appendChild(card);
+    }
+  }
+
+  const summary = document.getElementById("practiceSummary");
+  if (!summary) return;
+  const last7 = arr.filter(function (s) {
+    const d = parseDate(s.date);
+    if (!d) return false;
+    const diff = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= 7;
+  });
+  if (last7.length === 0) {
+    summary.textContent = "No practice in the last 7 days. Goal: practise 3+ times this week.";
+    summary.style.color = "#b71c1c";
+  } else {
+    const byArea = {};
+    let totalMin = 0;
+    for (const s of last7) {
+      byArea[s.area] = (byArea[s.area] || 0) + 1;
+      totalMin += Number(s.duration) || 0;
+    }
+    const focusAreas = Object.keys(byArea).map(function (k) { return k + " ×" + byArea[k]; }).join(", ");
+    summary.textContent = "This week: " + last7.length + " sessions, " + totalMin + " minutes (" + focusAreas + ").";
+    summary.style.color = "#2e7d32";
+  }
 }
 
 function gatherAllScoredHoles() {

@@ -1231,6 +1231,68 @@ textarea { resize: vertical; }
 .overall-stats p { margin: 4px 0; font-size: 13px; font-weight: 600; }
 .overall-stats ul { padding-left: 20px; font-size: 13px; line-height: 1.6; }
 
+.practice-section {
+  background: linear-gradient(180deg, #fff8d6, #ffe9a8);
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.practice-section h3 {
+  color: #8a6d00;
+  border: none;
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.practice-form {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.practice-form button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  background: linear-gradient(180deg, var(--gold), #d8a000);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.practice-card {
+  background: white;
+  border: 1.5px solid var(--gold);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.practice-card .practice-info { flex: 1; }
+.practice-card .practice-info strong { color: var(--green-deep); }
+
+.practice-card button {
+  background: var(--crimson);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .upcoming-form {
   background: var(--gold-soft);
   border: 1.5px solid var(--gold);

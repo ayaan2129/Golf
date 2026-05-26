@@ -383,6 +383,29 @@
 
           <div class="club-stats-card" id="scoreTrendCard"></div>
 
+          <div class="practice-section">
+            <h3>Practice Log</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Track your range, chipping and putting sessions. Builds context with your rounds.</p>
+            <div class="practice-form">
+              <label>Date <input type="date" id="practiceDate" /></label>
+              <label>Area
+                <select id="practiceArea">
+                  <option value="Range">Range (full swings)</option>
+                  <option value="Putting">Putting green</option>
+                  <option value="Chipping">Chipping green</option>
+                  <option value="Bunker">Bunker</option>
+                  <option value="Mixed">Mixed (multiple)</option>
+                </select>
+              </label>
+              <label>Duration (minutes) <input type="number" id="practiceDuration" min="1" placeholder="30" /></label>
+              <label>Focus / Drill <input type="text" id="practiceFocus" placeholder="e.g. 3-foot circle drill" /></label>
+              <label>Notes <textarea id="practiceNotes" rows="2"></textarea></label>
+              <button id="addPracticeBtn">Save Practice Session</button>
+            </div>
+            <div id="practiceList"></div>
+            <p id="practiceSummary" style="font-size:13px; margin-top:8px; font-weight:bold;"></p>
+          </div>
+
           <div class="upcoming-section">
             <h3>Upcoming Rounds</h3>
 
