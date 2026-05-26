@@ -345,8 +345,42 @@
 
         <div class="page-nav">
           <button class="btn-back" data-go="trackerTab">← Back: Hole Tracker</button>
+          <button class="btn-next" data-go="coachTab">Next: Talk to Coach →</button>
           <button class="btn-back" data-go="welcome">Pre-Round Page</button>
           <button id="statsLogoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <div id="coachTab" class="tab-page" style="display:none;">
+        <h2 class="page-label">Page 5 — Talk to Coach</h2>
+
+        <div class="chat-card">
+          <h2>Coach Chat</h2>
+          <div id="chatMessages" class="chat-messages"></div>
+
+          <div class="quick-replies" id="quickReplies">
+            <button class="quick-reply" data-q="How is my putting?">How is my putting?</button>
+            <button class="quick-reply" data-q="How is my driving?">How is my driving?</button>
+            <button class="quick-reply" data-q="What's my biggest weakness?">What's my biggest weakness?</button>
+            <button class="quick-reply" data-q="What should I practice today?">What should I practice today?</button>
+            <button class="quick-reply" data-q="How am I doing overall?">How am I doing overall?</button>
+            <button class="quick-reply" data-q="How are my tournaments?">How are my tournaments?</button>
+            <button class="quick-reply" data-q="What about RCGC?">What about RCGC?</button>
+            <button class="quick-reply" data-q="What are my strengths?">What are my strengths?</button>
+            <button class="quick-reply" data-q="Am I improving?">Am I improving?</button>
+            <button class="quick-reply" data-q="What about chipping?">What about chipping?</button>
+          </div>
+
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Ask the coach..." />
+            <button id="sendBtn">Send</button>
+          </div>
+        </div>
+
+        <div class="page-nav">
+          <button class="btn-back" data-go="statsTab">← Back: Coach &amp; Stats</button>
+          <button class="btn-back" data-go="trackerTab">Hole Tracker</button>
+          <button class="btn-back" data-go="welcome">Pre-Round Page</button>
         </div>
       </div>
     </div>

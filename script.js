@@ -2568,6 +2568,178 @@ function closeRoundDetail() {
   document.getElementById("roundDetailModal").style.display = "none";
 }
 
+function addChatMessage(text, role) {
+  const wrap = document.getElementById("chatMessages");
+  const msg = document.createElement("div");
+  msg.className = "chat-msg chat-msg-" + role;
+  msg.textContent = text;
+  wrap.appendChild(msg);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function coachAnswerFor(question) {
+  const q = (question || "").toLowerCase();
+  const history = getHistory();
+  const recent = history.slice(-5);
+
+  function avg(arr, key) {
+    const v = arr.filter(function (r) { return typeof r[key] === "number" && !isNaN(r[key]); });
+    if (v.length === 0) return null;
+    return v.reduce(function (s, r) { return s + r[key]; }, 0) / v.length;
+  }
+
+  if (history.length === 0) {
+    return "Save a few rounds first and I'll have real data to talk about. Try to log your next round!";
+  }
+
+  if (q.indexOf("hello") !== -1 || q.indexOf("hi ") !== -1 || q === "hi") {
+    return "Hey! I'm your golf coach. Ask me about your putting, driving, chipping, weaknesses, strengths, tournaments, or how to improve.";
+  }
+
+  if (q.indexOf("putt") !== -1 || q.indexOf("putting") !== -1) {
+    const avgPutts = avg(recent, "totalPutts");
+    const missed = recent.reduce(function (s, r) { return s + (r.missedShortPutts || 0); }, 0);
+    const lines = [];
+    if (avgPutts !== null) lines.push("Your average over your last " + recent.length + " rounds is " + avgPutts.toFixed(1) + " putts.");
+    if (missed > 0) lines.push("You've missed " + missed + " short putts recently. Drill: 5 balls 3 feet from the hole, don't stop until all 5 go in.");
+    else lines.push("Short putts have been solid - keep that confidence.");
+    if (avgPutts !== null && avgPutts > 34) lines.push("Lots of putts means 3-putts. Practice lag putting from 30 feet to a coin.");
+    return lines.join(" ");
+  }
+
+  if (q.indexOf("drive") !== -1 || q.indexOf("driving") !== -1 || q.indexOf("fairway") !== -1 || q.indexOf("tee shot") !== -1) {
+    const avgFw = avg(recent, "fairwayPct");
+    if (avgFw === null) return "Track your tee shots a few more rounds and I'll tell you your fairway accuracy.";
+    if (avgFw >= 70) return "Driving is a strength - " + Math.round(avgFw) + "% fairways. Keep aiming at a target on every tee.";
+    if (avgFw >= 50) return "Fairway accuracy is OK at " + Math.round(avgFw) + "%. Pick the safest line and use a club you trust off the tee.";
+    return "Fairway hit rate is " + Math.round(avgFw) + "% - that's a weak area. Use a shorter club off the tee and aim 10 yards inside trouble.";
+  }
+
+  if (q.indexOf("chip") !== -1) {
+    const avgChips = avg(recent, "totalChips");
+    if (avgChips === null || avgChips === 0) return "Track your chips (Wedge shots) and I'll have feedback.";
+    return "You're averaging " + avgChips.toFixed(1) + " chips per round. Practice 20 chips a day from 10-30 yards to lower this.";
+  }
+
+  if (q.indexOf("weakness") !== -1 || q.indexOf("weak") !== -1) {
+    if (recent[recent.length - 1] && recent[recent.length - 1].topWeakness) {
+      return recent[recent.length - 1].topWeakness;
+    }
+    return "Play and save a round - the coach picks your biggest weakness automatically.";
+  }
+
+  if (q.indexOf("strength") !== -1 || q.indexOf("good at") !== -1 || q.indexOf("best") !== -1) {
+    const counts = {};
+    for (const r of recent) for (const s of (r.strengths || [])) counts[s] = (counts[s] || 0) + 1;
+    const top = topKeys(counts, 2);
+    if (top.length === 0) return "Keep playing - you'll show strengths once you save more rounds.";
+    return "Your strengths recently: " + top.join(" and ") + ". Keep doing that.";
+  }
+
+  if (q.indexOf("practice") !== -1 || q.indexOf("practise") !== -1 || q.indexOf("improve") !== -1 || q.indexOf("drill") !== -1) {
+    const counts = {};
+    for (const r of recent) for (const p of (r.practice || [])) counts[p] = (counts[p] || 0) + 1;
+    const top = topKeys(counts, 3);
+    if (top.length === 0) return "Daily: 10 short putts, 20 chips from 15 yards, 10 smooth full swings. That's a solid foundation.";
+    return "Top things to practice: " + top.join("; ") + ".";
+  }
+
+  if (q.indexOf("tournament") !== -1 || q.indexOf("tour") !== -1) {
+    const tournaments = history.filter(function (r) { return r.gameType === "Tournament"; });
+    if (tournaments.length === 0) return "You haven't logged any tournament rounds yet. Add one to track tournament stats.";
+    const scores = tournaments.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    if (scores.length === 0) return "Tournament rounds saved but no scores yet.";
+    const best = Math.min.apply(null, scores);
+    return "Tournament rounds: " + tournaments.length + ". Best score: " + best + ". Stay patient under pressure - one shot at a time.";
+  }
+
+  if (q.indexOf("rcgc") !== -1) {
+    const rcgc = history.filter(function (r) { return r.courseName === "RCGC"; });
+    if (rcgc.length === 0) return "No RCGC rounds saved yet. Once you play there I'll have RCGC-specific tips.";
+    const scores = rcgc.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    const best = scores.length > 0 ? Math.min.apply(null, scores) : "—";
+    const counts = {};
+    for (const r of rcgc) for (const m of (r.mistakes || [])) counts[m] = (counts[m] || 0) + 1;
+    const top = topKeys(counts, 2);
+    let msg = "RCGC rounds: " + rcgc.length + ". Best score: " + best + ".";
+    if (top.length > 0) msg += " Common RCGC mistakes: " + top.join("; ") + ".";
+    return msg;
+  }
+
+  if (q.indexOf("score") !== -1 || q.indexOf("scoring") !== -1) {
+    const scores = recent.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    if (scores.length === 0) return "No scored rounds yet - let's get one logged.";
+    const a = (scores.reduce(function (s, v) { return s + v; }, 0) / scores.length).toFixed(1);
+    const best = Math.min.apply(null, scores);
+    const worst = Math.max.apply(null, scores);
+    return "Last " + scores.length + " rounds: avg " + a + ", best " + best + ", worst " + worst + ".";
+  }
+
+  if (q.indexOf("improv") !== -1 || q.indexOf("getting better") !== -1) {
+    const scoresAll = history.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+    if (scoresAll.length < 2) return "Save at least 2 rounds and I'll tell you the trend.";
+    const first = scoresAll[0];
+    const last = scoresAll[scoresAll.length - 1];
+    const diff = last - first;
+    if (diff < -1) return "Yes - your scores are dropping. First saved: " + first + ", latest: " + last + ". Keep grinding.";
+    if (diff > 1) return "Scores have gone up by " + diff + " strokes. Focus on your top weakness this week.";
+    return "Scores are about the same. Lock in your basics and your average will come down.";
+  }
+
+  if (q.indexOf("goal") !== -1 || q.indexOf("tee") !== -1) {
+    const g = suggestTeeProgression();
+    let msg = "Current tee: " + (g.currentTee || "not set") + ". Goal: " + g.goalText + ".";
+    if (g.progress) msg += " " + g.progress + ".";
+    if (g.suggestion) msg += " " + g.suggestion;
+    return msg;
+  }
+
+  if (q.indexOf("ready") !== -1 || q.indexOf("next round") !== -1 || q.indexOf("today") !== -1) {
+    const lastMistake = recent[recent.length - 1] && recent[recent.length - 1].mistakes && recent[recent.length - 1].mistakes[0];
+    if (lastMistake) return "Today, focus on this: " + lastMistake + ". Warm up with putts and chips, drink water, take it shot by shot.";
+    return "Warm up with putts and chips, drink water, pick a target every shot, and don't hurry.";
+  }
+
+  if (q.indexOf("rory") !== -1 || q.indexOf("mcilroy") !== -1 || q.indexOf("dream") !== -1 || q.indexOf("pro") !== -1) {
+    return "Pros built their game one round at a time. Track everything, fix one weakness at a time, and you keep moving toward World No. 1.";
+  }
+
+  return "I can help with: putting, driving, chipping, weakness, strengths, practice, tournaments, RCGC, scoring, improvement, goals, and pre-round advice. Try one of those!";
+}
+
+function sendChatMessage(text) {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return;
+  addChatMessage(trimmed, "user");
+  const reply = coachAnswerFor(trimmed);
+  setTimeout(function () { addChatMessage(reply, "coach"); }, 250);
+}
+
+function initChat() {
+  const messages = document.getElementById("chatMessages");
+  if (!messages) return;
+  if (messages.children.length === 0) {
+    addChatMessage("Hi! I'm your coach. Ask me anything about your golf game - or tap a question below to start.", "coach");
+  }
+  const sendBtn = document.getElementById("sendBtn");
+  const input = document.getElementById("chatInput");
+  sendBtn.addEventListener("click", function () {
+    sendChatMessage(input.value);
+    input.value = "";
+  });
+  input.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
+      sendChatMessage(input.value);
+      input.value = "";
+    }
+  });
+  document.querySelectorAll(".quick-reply").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      sendChatMessage(btn.dataset.q);
+    });
+  });
+}
+
 buildCustomHoleChecks();
 buildHoles();
 loadAll();
@@ -2578,3 +2750,4 @@ analyze();
 renderHistory();
 initDashboard();
 renderDashboard();
+initChat();
