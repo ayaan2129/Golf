@@ -561,6 +561,7 @@ function switchTab(tabId) {
   }
   if (tabId === "practiceTab") {
     renderPuttingStatsSummary();
+    renderChippingStatsSummary();
   }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
@@ -878,16 +879,171 @@ function setPracticePill(group, key, value) {
   puttingState.conditions[key] = value;
 }
 
+const chippingState = {
+  active: false,
+  sessionStart: null,
+  shots: [],
+  conditions: { distance: 20, lie: "fairway", slope: "flat", club: "SW" },
+};
+
+const CHIP_GOOD = ["Holed", "In 3ft", "In 6ft"];
+const CHIP_UD = ["Holed", "In 3ft", "In 6ft"]; // up-and-down likely
+
+function setChipPill(group, key, value) {
+  document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset[key] === value);
+  });
+  chippingState.conditions[key] = value;
+}
+
+function startChippingDrill() {
+  chippingState.active = true;
+  chippingState.sessionStart = new Date().toISOString();
+  chippingState.shots = [];
+  document.getElementById("practicePickerView").style.display = "none";
+  document.getElementById("chippingView").style.display = "";
+  updateChippingRunningStat();
+}
+
+function endChippingDrill() {
+  if (!chippingState.active) return;
+  if (chippingState.shots.length > 0) {
+    const arr = getPractice();
+    const ended = new Date();
+    const startedAt = new Date(chippingState.sessionStart);
+    const durationMin = Math.max(1, Math.round((ended - startedAt) / 60000));
+    arr.push({
+      date: todayISO(),
+      area: "Chipping",
+      type: "Chipping",
+      duration: durationMin,
+      focus: "Drill — " + chippingState.shots.length + " chips",
+      notes: "",
+      savedAt: ended.toISOString(),
+      shots: chippingState.shots.slice(),
+    });
+    savePractice(arr);
+  }
+  chippingState.active = false;
+  chippingState.shots = [];
+  document.getElementById("chippingView").style.display = "none";
+  document.getElementById("practicePickerView").style.display = "";
+  renderChippingStatsSummary();
+  renderPracticeLog();
+}
+
+function updateChippingRunningStat() {
+  const el = document.getElementById("chipRunning");
+  if (!el) return;
+  const n = chippingState.shots.length;
+  if (n === 0) { el.textContent = "0 chips logged"; return; }
+  const ud = chippingState.shots.filter(function (s) { return CHIP_UD.indexOf(s.result) !== -1; }).length;
+  el.textContent = n + " chips · " + ud + " up-&-down chance · " + Math.round(ud / n * 100) + "%";
+}
+
+function recordChip(result) {
+  const dist = Number(document.getElementById("chipDistance").value) || chippingState.conditions.distance;
+  const shot = {
+    timestamp: new Date().toISOString(),
+    distance: dist,
+    lie: chippingState.conditions.lie,
+    slope: chippingState.conditions.slope,
+    club: chippingState.conditions.club,
+    result: result,
+  };
+  chippingState.shots.push(shot);
+  updateChippingRunningStat();
+}
+
+function getChippingInsights() {
+  const sessions = getPractice().filter(function (s) { return s.type === "Chipping" && Array.isArray(s.shots); });
+  const allShots = [];
+  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
+  function udRate(set) {
+    if (set.length === 0) return null;
+    const ud = set.filter(function (sh) { return CHIP_UD.indexOf(sh.result) !== -1; }).length;
+    return { count: set.length, ud, pct: Math.round(ud / set.length * 100) };
+  }
+  const buckets = [
+    { lbl: "0-10 y", fn: function (sh) { return sh.distance <= 10; } },
+    { lbl: "10-20 y", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20; } },
+    { lbl: "20-40 y", fn: function (sh) { return sh.distance > 20 && sh.distance <= 40; } },
+    { lbl: "40+ y", fn: function (sh) { return sh.distance > 40; } },
+  ];
+  const distanceRates = buckets.map(function (b) {
+    const r = udRate(allShots.filter(b.fn));
+    return { label: b.lbl, count: r ? r.count : 0, pct: r ? r.pct : null };
+  });
+  const lieGroups = {};
+  for (const sh of allShots) {
+    if (!lieGroups[sh.lie]) lieGroups[sh.lie] = [];
+    lieGroups[sh.lie].push(sh);
+  }
+  const lieRates = Object.keys(lieGroups).map(function (k) {
+    const r = udRate(lieGroups[k]);
+    return { lie: k, count: r.count, pct: r.pct };
+  }).sort(function (a, b) { return b.count - a.count; });
+  // Mishit count (chunked / bladed)
+  const mishits = allShots.filter(function (sh) { return sh.result === "Chunked" || sh.result === "Bladed"; });
+  const mishitPct = allShots.length > 0 ? Math.round(mishits.length / allShots.length * 100) : null;
+  // Top miss type
+  let topMiss = null;
+  const misses = allShots.filter(function (sh) { return CHIP_GOOD.indexOf(sh.result) === -1; });
+  if (misses.length > 0) {
+    const c = {};
+    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
+    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+  }
+  return { totalShots: allShots.length, sessions: sessions.length, distanceRates, lieRates, mishitPct, topMiss };
+}
+
+function renderChippingStatsSummary() {
+  const el = document.getElementById("chipStatsSummary");
+  if (!el) return;
+  const ins = getChippingInsights();
+  if (ins.totalShots === 0) {
+    el.innerHTML = "Log some chips to see your up-and-down rate.";
+    return;
+  }
+  let html = "";
+  for (const b of ins.distanceRates) {
+    if (b.count === 0) continue;
+    html += '<div class="stat-line"><span>' + b.label + " (" + b.count + ")</span><span class=\"stat-num\">" + b.pct + "%</span></div>";
+  }
+  if (ins.topMiss) html += '<div class="stat-line"><span>Most common miss</span><span class="stat-num">' + ins.topMiss + "</span></div>";
+  if (ins.mishitPct != null && ins.totalShots >= 3) html += '<div class="stat-line"><span>Chunk / blade rate</span><span class="stat-num">' + ins.mishitPct + "%</span></div>";
+  el.innerHTML = html || "No chips logged yet.";
+}
+
 document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
   tile.addEventListener("click", function () {
     const t = tile.dataset.prac;
     if (t === "putting") {
       startPuttingDrill();
+    } else if (t === "chipping") {
+      startChippingDrill();
     } else {
-      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next. Putting is live now.");
+      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next. Putting and chipping are live now.");
     }
   });
 });
+
+document.querySelectorAll("#chipLiePills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setChipPill("chipLiePills", "lie", p.dataset.lie); });
+});
+document.querySelectorAll("#chipSlopePills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setChipPill("chipSlopePills", "slope", p.dataset.slope); });
+});
+document.querySelectorAll("#chipClubPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setChipPill("chipClubPills", "club", p.dataset.club); });
+});
+document.querySelectorAll("#chippingView .result-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () { recordChip(btn.dataset.chipResult); });
+});
+const chipBackBtn = document.getElementById("chipBackBtn");
+if (chipBackBtn) chipBackBtn.addEventListener("click", endChippingDrill);
+const chipEndBtn = document.getElementById("chipEndBtn");
+if (chipEndBtn) chipEndBtn.addEventListener("click", endChippingDrill);
 
 document.querySelectorAll("#puttBreakPills .pill").forEach(function (p) {
   p.addEventListener("click", function () { setPracticePill("puttBreakPills", "break", p.dataset.break); });
@@ -4027,6 +4183,20 @@ function aiBaseContext() {
       }
       if (pi.topMiss) lines.push("  - Most common miss: " + pi.topMiss);
       if (pi.lag) lines.push("  - Lag in 5-ft circle: " + pi.lag.inCirclePct + "% (" + pi.lag.count + " putts)");
+    }
+  }
+  if (typeof getChippingInsights === "function") {
+    const ci = getChippingInsights();
+    if (ci.totalShots > 0) {
+      lines.push("Chipping practice — " + ci.totalShots + " chips across " + ci.sessions + " sessions (up-&-down = inside 6 ft):");
+      for (const b of ci.distanceRates) {
+        if (b.count > 0) lines.push("  - " + b.label + ": " + b.pct + "% UD (" + b.count + " chips)");
+      }
+      for (const l of ci.lieRates) {
+        lines.push("  - From " + l.lie + ": " + l.pct + "% UD (" + l.count + " chips)");
+      }
+      if (ci.topMiss) lines.push("  - Most common chip miss: " + ci.topMiss);
+      if (ci.mishitPct != null) lines.push("  - Chunk/blade rate: " + ci.mishitPct + "%");
     }
   }
   return lines.join("\n");

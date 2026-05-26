@@ -657,6 +657,11 @@
             <label class="profile-section-title">Recent Putting Stats</label>
             <div id="puttStatsSummary">Log some putts to see your make rate.</div>
           </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Chipping Stats</label>
+            <div id="chipStatsSummary">Log some chips to see your up-and-down rate.</div>
+          </div>
         </div>
 
         <div id="puttingView" style="display:none;">
@@ -744,6 +749,71 @@
               <button class="result-btn good" data-lag-result="Holed">✓ Holed</button>
               <button class="result-btn" data-lag-result="In Circle">○ Inside circle</button>
               <button class="result-btn miss" data-lag-result="Outside Circle">⊝ Outside</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="chippingView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="chipBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Chipping Drill</h2>
+              <button id="chipEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="chipRunning">0 chips logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
+            <div class="profile-row">
+              <label>Distance</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="chipDistance" placeholder="yd" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Lie</label>
+              <div class="pill-group small-pills" id="chipLiePills">
+                <button class="pill active" data-lie="fairway" type="button">Fairway</button>
+                <button class="pill" data-lie="light-rough" type="button">Light Rough</button>
+                <button class="pill" data-lie="heavy-rough" type="button">Heavy Rough</button>
+                <button class="pill" data-lie="sand" type="button">Sand</button>
+                <button class="pill" data-lie="hardpan" type="button">Hardpan</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Slope</label>
+              <div class="pill-group small-pills" id="chipSlopePills">
+                <button class="pill active" data-slope="flat" type="button">Flat</button>
+                <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                <button class="pill" data-slope="downhill" type="button">Downhill</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="chipClubPills">
+                <button class="pill" data-club="LW" type="button">LW</button>
+                <button class="pill active" data-club="SW" type="button">SW</button>
+                <button class="pill" data-club="PW" type="button">PW</button>
+                <button class="pill" data-club="9i" type="button">9i</button>
+                <button class="pill" data-club="8i" type="button">8i</button>
+                <button class="pill" data-club="7i" type="button">7i</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it stop?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-chip-result="Holed">✓ Holed</button>
+              <button class="result-btn good" data-chip-result="In 3ft">○ Inside 3 ft</button>
+              <button class="result-btn" data-chip-result="In 6ft">◔ Inside 6 ft</button>
+              <button class="result-btn miss" data-chip-result="6-15ft">⌀ 6–15 ft</button>
+              <button class="result-btn miss" data-chip-result="Past 15ft">↑ Past 15 ft</button>
+              <button class="result-btn miss" data-chip-result="Off green">⊝ Off green</button>
+              <button class="result-btn miss" data-chip-result="Chunked">✗ Chunked / fat</button>
+              <button class="result-btn miss" data-chip-result="Bladed">⤴ Bladed / thin</button>
             </div>
           </div>
         </div>
