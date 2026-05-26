@@ -1351,12 +1351,16 @@ function updateSummary() {
   let fairwaysHit = 0;
   let fairwaysAnswered = 0;
   let missedShortPutts = 0;
+  let scoredHolesCount = 0;
 
   for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     document.getElementById("holeScore-" + i).textContent = s.score;
     totalScore += s.score;
-    totalPar += s.par;
+    if (s.score > 0) {
+      totalPar += s.par;
+      scoredHolesCount += 1;
+    }
     totalPutts += s.putts;
     totalChips += s.chips;
     totalPenalties += s.penalties;
@@ -1366,9 +1370,9 @@ function updateSummary() {
   }
 
   const coursePar = getCoursePar();
-  const parForDiff = coursePar > 0 ? coursePar : totalPar;
+  const parForDiff = totalPar > 0 ? totalPar : coursePar;
   const diff = totalScore - parForDiff;
-  const diffText = diff > 0 ? "+" + diff : "" + diff;
+  const diffText = totalScore === 0 ? "—" : (diff > 0 ? "+" + diff : "" + diff);
 
   let fairwayPct = 0;
   if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
@@ -1425,13 +1429,13 @@ function analyze() {
   if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
 
   const mistakes = [];
-  if (totalPenalties >= 3) mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
-  if (fairwayPct !== null && fairwayPct < 50) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
-  if (missedShortPutts >= 2) mistakes.push("Missed " + missedShortPutts + " short putts.");
-  if (firstPuttShort >= 4) mistakes.push("First putts too short " + firstPuttShort + " times.");
-  if (firstPuttLong >= 4) mistakes.push("First putts too long " + firstPuttLong + " times.");
-  if (threePutts >= 3) mistakes.push("Too many 3-putts: " + threePutts + " holes.");
-  if (badShots >= 5) mistakes.push("Many poor shots (" + badShots + " tops/duffs/slices/hooks).");
+  if (totalPenalties >= 1) mistakes.push("Penalty strokes lost: " + totalPenalties + ".");
+  if (fairwayPct !== null && fairwayPct < 60) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
+  if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
+  if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (threePutts >= 1) mistakes.push(threePutts + " three-putt(s).");
+  if (badShots >= 2) mistakes.push("Poor shots (top/duff/slice/hook): " + badShots + ".");
 
   const strengths = [];
   if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
@@ -1441,11 +1445,16 @@ function analyze() {
   if (goodShots >= 8) strengths.push("Lots of good shots (" + goodShots + ").");
 
   const practice = [];
-  if (missedShortPutts >= 2) practice.push("Short putting (3-5 foot putts)");
-  if (fairwayPct !== null && fairwayPct < 50) practice.push("Tee shot accuracy");
-  if (firstPuttShort >= 4 || firstPuttLong >= 4) practice.push("Lag putting (long putts)");
-  if (totalPenalties >= 3) practice.push("Penalty-free course management");
-  if (badShots >= 5) practice.push("Ball striking (clean contact)");
+  if (missedShortPutts >= 1) practice.push("Short putting (3-5 foot putts)");
+  if (fairwayPct !== null && fairwayPct < 60) practice.push("Tee shot accuracy");
+  if (firstPuttShort >= 2 || firstPuttLong >= 2) practice.push("Lag putting (long putts)");
+  if (totalPenalties >= 1) practice.push("Course management - safer lines off the tee");
+  if (badShots >= 2) practice.push("Ball striking (clean contact, smooth tempo)");
+  if (threePutts >= 1) practice.push("Speed control on long putts");
+  if (scoredHoles >= 3 && practice.length === 0) {
+    practice.push("Keep the basics sharp - 20 chips and 20 short putts a day");
+    practice.push("Mix in lag putts from 30+ feet to keep speed control sharp");
+  }
 
   const weaknesses = [];
   if (missedShortPutts >= 2) weaknesses.push({ score: missedShortPutts * 20, text: "Your biggest weakness today was putting because you had " + totalPutts + " putts and missed " + missedShortPutts + " short putts. Practise 3-5 foot putts first." });
@@ -1540,6 +1549,7 @@ function renderList(id, items, emptyText) {
 
 function saveRoundToHistory() {
   let totalScore = 0;
+  let totalPar = 0;
   let totalPutts = 0;
   let totalChips = 0;
   let totalPenalties = 0;
@@ -1551,6 +1561,7 @@ function saveRoundToHistory() {
   for (const i of getActiveHoles()) {
     const s = getHoleStats(i);
     totalScore += s.score;
+    if (s.score > 0) totalPar += s.par;
     totalPutts += s.putts;
     totalChips += s.chips;
     totalPenalties += s.penalties;
@@ -1561,6 +1572,7 @@ function saveRoundToHistory() {
   }
 
   const coursePar = getCoursePar();
+  const parForRound = totalPar > 0 ? totalPar : coursePar;
   const fairwayPct = fairwaysAnswered > 0 ? Math.round((fairwaysHit / fairwaysAnswered) * 100) : null;
 
   const fullData = { setup: {}, holes: {} };
@@ -1589,8 +1601,9 @@ function saveRoundToHistory() {
     courseName: getCourseName() || "Unknown course",
     tee: document.getElementById("teeSelect").value || "",
     coursePar,
+    parPlayed: parForRound,
     totalScore,
-    scoreVsPar: coursePar > 0 ? totalScore - coursePar : totalScore,
+    scoreVsPar: parForRound > 0 ? totalScore - parForRound : 0,
     totalPutts,
     totalChips,
     totalPenalties,
@@ -2123,13 +2136,13 @@ function computeAnalysisFromHoles(holeStatsList) {
   if (fairwaysAnswered > 0) fairwayPct = Math.round((fairwaysHit / fairwaysAnswered) * 100);
 
   const mistakes = [];
-  if (totalPenalties >= 3) mistakes.push("Too many penalties: " + totalPenalties + " strokes lost.");
-  if (fairwayPct !== null && fairwayPct < 50) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
-  if (missedShortPutts >= 2) mistakes.push("Missed " + missedShortPutts + " short putts.");
-  if (firstPuttShort >= 4) mistakes.push("First putts too short " + firstPuttShort + " times.");
-  if (firstPuttLong >= 4) mistakes.push("First putts too long " + firstPuttLong + " times.");
-  if (threePutts >= 3) mistakes.push("Too many 3-putts: " + threePutts + " holes.");
-  if (badShots >= 5) mistakes.push("Many poor shots (" + badShots + ").");
+  if (totalPenalties >= 1) mistakes.push("Penalty strokes lost: " + totalPenalties + ".");
+  if (fairwayPct !== null && fairwayPct < 60) mistakes.push("Missed fairways: only " + fairwayPct + "% hit.");
+  if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
+  if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
+  if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (threePutts >= 1) mistakes.push(threePutts + " three-putt(s).");
+  if (badShots >= 2) mistakes.push("Poor shots (top/duff/slice/hook): " + badShots + ".");
 
   const strengths = [];
   if (fairwayPct !== null && fairwayPct >= 70) strengths.push("Good fairway accuracy: " + fairwayPct + "%.");
@@ -2139,11 +2152,16 @@ function computeAnalysisFromHoles(holeStatsList) {
   if (goodShots >= 8) strengths.push("Lots of good shots (" + goodShots + ").");
 
   const practice = [];
-  if (missedShortPutts >= 2) practice.push("Short putting (3-5 foot putts)");
-  if (fairwayPct !== null && fairwayPct < 50) practice.push("Tee shot accuracy");
-  if (firstPuttShort >= 4 || firstPuttLong >= 4) practice.push("Lag putting (long putts)");
-  if (totalPenalties >= 3) practice.push("Penalty-free course management");
-  if (badShots >= 5) practice.push("Ball striking (clean contact)");
+  if (missedShortPutts >= 1) practice.push("Short putting (3-5 foot putts)");
+  if (fairwayPct !== null && fairwayPct < 60) practice.push("Tee shot accuracy");
+  if (firstPuttShort >= 2 || firstPuttLong >= 2) practice.push("Lag putting (long putts)");
+  if (totalPenalties >= 1) practice.push("Course management - safer lines off the tee");
+  if (badShots >= 2) practice.push("Ball striking (clean contact, smooth tempo)");
+  if (threePutts >= 1) practice.push("Speed control on long putts");
+  if (scoredHoles >= 3 && practice.length === 0) {
+    practice.push("Keep the basics sharp - 20 chips and 20 short putts a day");
+    practice.push("Mix in lag putts from 30+ feet to keep speed control sharp");
+  }
 
   const weaknesses = [];
   if (missedShortPutts >= 2) weaknesses.push({ score: missedShortPutts * 20, text: "Your biggest weakness was putting - " + totalPutts + " putts and " + missedShortPutts + " missed short putts. Practise 3-5 foot putts." });
