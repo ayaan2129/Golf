@@ -635,10 +635,10 @@ const MAX_CLUBS = 14;
 
 function getSelectedClubs() {
   const raw = localStorage.getItem("selectedClubs");
-  if (!raw) return DEFAULT_CLUBS.slice();
+  if (raw === null) return DEFAULT_CLUBS.slice();
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (Array.isArray(parsed)) return parsed;
   } catch (e) {}
   return DEFAULT_CLUBS.slice();
 }
@@ -4265,19 +4265,11 @@ if (nextHoleBtn) {
 const savedIdx = Number(localStorage.getItem("currentHoleIndex"));
 if (!isNaN(savedIdx) && savedIdx >= 0) currentHoleIndex = savedIdx;
 
-(function ensureDefaultClubs() {
-  const raw = localStorage.getItem("selectedClubs");
-  let needsDefaults = !raw;
-  if (!needsDefaults) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed) || parsed.length === 0) needsDefaults = true;
-    } catch (e) {
-      needsDefaults = true;
-    }
-  }
-  if (needsDefaults) saveSelectedClubs(DEFAULT_CLUBS.slice());
-})();
+// Only save defaults on the very first visit (when no selectedClubs key yet).
+// Once the user clicks Clear All, we respect the empty bag.
+if (localStorage.getItem("selectedClubs") === null) {
+  saveSelectedClubs(DEFAULT_CLUBS.slice());
+}
 buildClubsGrid();
 
 const clubsSelectAll = document.getElementById("clubsSelectAll");
