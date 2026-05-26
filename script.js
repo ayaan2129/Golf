@@ -333,6 +333,8 @@ const ALL_CLUBS = [
 
 const DEFAULT_CLUBS = ["Driver", "3 Wood", "Hybrid", "7 Iron", "8 Iron", "9 Iron", "PW", "SW", "Putter"];
 
+const MAX_CLUBS = 14;
+
 function getSelectedClubs() {
   const raw = localStorage.getItem("selectedClubs");
   if (!raw) return DEFAULT_CLUBS.slice();
@@ -347,19 +349,42 @@ function saveSelectedClubs(arr) {
   localStorage.setItem("selectedClubs", JSON.stringify(arr));
 }
 
+function updateClubsCounter() {
+  const counter = document.getElementById("clubsCounter");
+  if (!counter) return;
+  const selected = getSelectedClubs();
+  counter.textContent = selected.length + " / " + MAX_CLUBS + " clubs selected";
+  if (selected.length >= MAX_CLUBS) counter.classList.add("full");
+  else counter.classList.remove("full");
+}
+
 function buildClubsGrid() {
   const grid = document.getElementById("clubsGrid");
   if (!grid) return;
   grid.innerHTML = "";
-  const selected = getSelectedClubs();
+  let selected = getSelectedClubs();
+  if (selected.length > MAX_CLUBS) {
+    selected = selected.slice(0, MAX_CLUBS);
+    saveSelectedClubs(selected);
+  }
+  updateClubsCounter();
+
   for (const club of ALL_CLUBS) {
     const lbl = document.createElement("label");
-    lbl.className = "club-pill" + (selected.indexOf(club) !== -1 ? " checked" : "");
+    const isChecked = selected.indexOf(club) !== -1;
+    lbl.className = "club-pill" + (isChecked ? " checked" : "");
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.value = club;
-    cb.checked = selected.indexOf(club) !== -1;
+    cb.checked = isChecked;
     cb.addEventListener("change", function () {
+      const checkedCount = document.querySelectorAll("#clubsGrid input[type=checkbox]:checked").length;
+      if (cb.checked && checkedCount > MAX_CLUBS) {
+        cb.checked = false;
+        lbl.classList.remove("checked");
+        alert("You can only carry " + MAX_CLUBS + " clubs (golf rule). Remove a club first.");
+        return;
+      }
       if (cb.checked) lbl.classList.add("checked");
       else lbl.classList.remove("checked");
       const arr = [];
@@ -367,11 +392,25 @@ function buildClubsGrid() {
         arr.push(c.value);
       });
       saveSelectedClubs(arr);
+      updateClubsCounter();
+      updateDisabledClubs();
     });
     lbl.appendChild(cb);
     lbl.appendChild(document.createTextNode(club));
     grid.appendChild(lbl);
   }
+  updateDisabledClubs();
+}
+
+function updateDisabledClubs() {
+  const grid = document.getElementById("clubsGrid");
+  if (!grid) return;
+  const checked = grid.querySelectorAll("input[type=checkbox]:checked").length;
+  grid.querySelectorAll(".club-pill").forEach(function (lbl) {
+    const cb = lbl.querySelector("input[type=checkbox]");
+    if (!cb.checked && checked >= MAX_CLUBS) lbl.classList.add("disabled");
+    else lbl.classList.remove("disabled");
+  });
 }
 
 let holeCount = 18;
@@ -2918,7 +2957,7 @@ const clubsClearAll = document.getElementById("clubsClearAll");
 const clubsDefault = document.getElementById("clubsDefault");
 if (clubsSelectAll) {
   clubsSelectAll.addEventListener("click", function () {
-    saveSelectedClubs(ALL_CLUBS.slice());
+    saveSelectedClubs(ALL_CLUBS.slice(0, MAX_CLUBS));
     buildClubsGrid();
   });
 }

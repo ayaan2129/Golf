@@ -340,6 +340,27 @@ textarea { resize: vertical; }
   margin: 0 0 12px;
 }
 
+.clubs-counter {
+  text-align: center;
+  font-weight: 800;
+  color: var(--green-deep);
+  background: var(--gold-soft);
+  border: 1.5px solid var(--gold);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin: 8px 0 12px !important;
+}
+
+.clubs-counter.full {
+  background: linear-gradient(180deg, var(--gold), #d8a000);
+  color: white;
+}
+
+.club-pill.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .clubs-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
