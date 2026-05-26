@@ -563,6 +563,7 @@ function switchTab(tabId) {
     renderPuttingStatsSummary();
     renderChippingStatsSummary();
     renderIronStatsSummary();
+    renderDriverStatsSummary();
   }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
@@ -1162,6 +1163,151 @@ function renderIronStatsSummary() {
   el.innerHTML = html || "No iron shots logged yet.";
 }
 
+const driverState = {
+  active: false,
+  sessionStart: null,
+  shots: [],
+  conditions: { club: "Driver", shape: "straight" },
+};
+
+const DRV_FAIRWAY_RESULTS = ["Fairway"];
+const DRV_PLAYABLE_RESULTS = ["Fairway", "Light rough L", "Light rough R"];
+
+function setDrvPill(group, key, value) {
+  document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset[key] === value);
+  });
+  driverState.conditions[key] = value;
+}
+
+function startDriverDrill() {
+  driverState.active = true;
+  driverState.sessionStart = new Date().toISOString();
+  driverState.shots = [];
+  document.getElementById("practicePickerView").style.display = "none";
+  document.getElementById("driverView").style.display = "";
+  updateDriverRunningStat();
+}
+
+function endDriverDrill() {
+  if (!driverState.active) return;
+  if (driverState.shots.length > 0) {
+    const arr = getPractice();
+    const ended = new Date();
+    const startedAt = new Date(driverState.sessionStart);
+    const durationMin = Math.max(1, Math.round((ended - startedAt) / 60000));
+    arr.push({
+      date: todayISO(),
+      area: "Driver",
+      type: "Driver",
+      duration: durationMin,
+      focus: "Drill — " + driverState.shots.length + " tee shots",
+      notes: "",
+      savedAt: ended.toISOString(),
+      shots: driverState.shots.slice(),
+    });
+    savePractice(arr);
+  }
+  driverState.active = false;
+  driverState.shots = [];
+  document.getElementById("driverView").style.display = "none";
+  document.getElementById("practicePickerView").style.display = "";
+  renderDriverStatsSummary();
+  renderPracticeLog();
+}
+
+function updateDriverRunningStat() {
+  const el = document.getElementById("drvRunning");
+  if (!el) return;
+  const n = driverState.shots.length;
+  if (n === 0) { el.textContent = "0 shots logged"; return; }
+  const fw = driverState.shots.filter(function (s) { return DRV_FAIRWAY_RESULTS.indexOf(s.result) !== -1; }).length;
+  el.textContent = n + " tee shots · " + fw + " fairways · " + Math.round(fw / n * 100) + "%";
+}
+
+function recordDriver(result) {
+  const carry = Number(document.getElementById("drvCarry").value) || null;
+  const total = Number(document.getElementById("drvTotal").value) || null;
+  const shot = {
+    timestamp: new Date().toISOString(),
+    club: driverState.conditions.club,
+    carry: carry,
+    total: total,
+    shape: driverState.conditions.shape,
+    result: result,
+  };
+  driverState.shots.push(shot);
+  updateDriverRunningStat();
+  document.getElementById("drvCarry").value = "";
+  document.getElementById("drvTotal").value = "";
+}
+
+function getDriverInsights() {
+  const sessions = getPractice().filter(function (s) { return s.type === "Driver" && Array.isArray(s.shots); });
+  const allShots = [];
+  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
+  // Per-club stats
+  const byClub = {};
+  for (const sh of allShots) {
+    if (!byClub[sh.club]) byClub[sh.club] = [];
+    byClub[sh.club].push(sh);
+  }
+  const clubStats = [];
+  const order = ["Driver","3W","5W","3H","4H"];
+  for (const c of order) {
+    if (!byClub[c]) continue;
+    const set = byClub[c];
+    const carries = set.map(function (s) { return s.carry; }).filter(function (v) { return typeof v === "number" && v > 0; });
+    const totals = set.map(function (s) { return s.total; }).filter(function (v) { return typeof v === "number" && v > 0; });
+    const fw = set.filter(function (sh) { return DRV_FAIRWAY_RESULTS.indexOf(sh.result) !== -1; }).length;
+    const playable = set.filter(function (sh) { return DRV_PLAYABLE_RESULTS.indexOf(sh.result) !== -1; }).length;
+    clubStats.push({
+      club: c,
+      count: set.length,
+      avgCarry: carries.length ? Math.round(carries.reduce(function (a, b) { return a + b; }, 0) / carries.length) : null,
+      avgTotal: totals.length ? Math.round(totals.reduce(function (a, b) { return a + b; }, 0) / totals.length) : null,
+      fairwayPct: Math.round(fw / set.length * 100),
+      playablePct: Math.round(playable / set.length * 100),
+    });
+  }
+  // Miss side bias
+  const leftMisses = allShots.filter(function (sh) { return sh.result === "Light rough L" || sh.shape === "hook" || sh.shape === "pull"; }).length;
+  const rightMisses = allShots.filter(function (sh) { return sh.result === "Light rough R" || sh.shape === "slice" || sh.shape === "push"; }).length;
+  // Shape distribution
+  const shapeCounts = {};
+  for (const sh of allShots) shapeCounts[sh.shape] = (shapeCounts[sh.shape] || 0) + 1;
+  // Top miss
+  let topMiss = null;
+  const misses = allShots.filter(function (sh) { return DRV_FAIRWAY_RESULTS.indexOf(sh.result) === -1; });
+  if (misses.length > 0) {
+    const c = {};
+    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
+    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+  }
+  return { totalShots: allShots.length, sessions: sessions.length, clubStats, topMiss, shapeCounts, leftMisses, rightMisses };
+}
+
+function renderDriverStatsSummary() {
+  const el = document.getElementById("driverStatsSummary");
+  if (!el) return;
+  const ins = getDriverInsights();
+  if (ins.totalShots === 0) {
+    el.innerHTML = "Log some tee shots to see your fairway %.";
+    return;
+  }
+  let html = "";
+  for (const cs of ins.clubStats) {
+    const carryStr = cs.avgCarry != null ? cs.avgCarry + "y" : "—";
+    html += '<div class="stat-line"><span>' + cs.club + " (" + cs.count + ")</span><span class=\"stat-num\">" + carryStr + " · " + cs.fairwayPct + "% FW</span></div>";
+  }
+  if (ins.topMiss) html += '<div class="stat-line"><span>Most common miss</span><span class="stat-num">' + ins.topMiss + "</span></div>";
+  if (ins.leftMisses + ins.rightMisses > 0) {
+    const bias = ins.leftMisses > ins.rightMisses ? "Left-side bias" : (ins.rightMisses > ins.leftMisses ? "Right-side bias" : "Balanced");
+    html += '<div class="stat-line"><span>Miss bias</span><span class="stat-num">' + bias + "</span></div>";
+  }
+  el.innerHTML = html || "No tee shots logged yet.";
+}
+
 document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
   tile.addEventListener("click", function () {
     const t = tile.dataset.prac;
@@ -1171,11 +1317,27 @@ document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
       startChippingDrill();
     } else if (t === "iron") {
       startIronDrill();
+    } else if (t === "driver") {
+      startDriverDrill();
     } else {
-      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next.");
+      alert("Drill coming next.");
     }
   });
 });
+
+document.querySelectorAll("#drvClubPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setDrvPill("drvClubPills", "club", p.dataset.club); });
+});
+document.querySelectorAll("#drvShapePills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setDrvPill("drvShapePills", "shape", p.dataset.shape); });
+});
+document.querySelectorAll("#driverView .result-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () { recordDriver(btn.dataset.drvResult); });
+});
+const drvBackBtn = document.getElementById("drvBackBtn");
+if (drvBackBtn) drvBackBtn.addEventListener("click", endDriverDrill);
+const drvEndBtn = document.getElementById("drvEndBtn");
+if (drvEndBtn) drvEndBtn.addEventListener("click", endDriverDrill);
 
 document.querySelectorAll("#ironClubPills .pill").forEach(function (p) {
   p.addEventListener("click", function () { setIronPill("ironClubPills", "club", p.dataset.club); });
@@ -4372,6 +4534,20 @@ function aiBaseContext() {
       }
       if (ii.pureStrikePct != null) lines.push("  - Pure-strike rate: " + ii.pureStrikePct + "%");
       if (ii.topMiss) lines.push("  - Most common iron miss: " + ii.topMiss);
+    }
+  }
+  if (typeof getDriverInsights === "function") {
+    const di = getDriverInsights();
+    if (di.totalShots > 0) {
+      lines.push("Tee shot practice — " + di.totalShots + " shots across " + di.sessions + " sessions:");
+      for (const cs of di.clubStats) {
+        const carryStr = cs.avgCarry != null ? cs.avgCarry + "y carry" : "no carry";
+        const totalStr = cs.avgTotal != null ? ", " + cs.avgTotal + "y total" : "";
+        lines.push("  - " + cs.club + " (" + cs.count + " shots): " + carryStr + totalStr + ", " + cs.fairwayPct + "% FW (" + cs.playablePct + "% playable)");
+      }
+      if (di.topMiss) lines.push("  - Most common tee miss: " + di.topMiss);
+      if (di.leftMisses > di.rightMisses) lines.push("  - Miss bias: left side (" + di.leftMisses + " vs " + di.rightMisses + " right)");
+      else if (di.rightMisses > di.leftMisses) lines.push("  - Miss bias: right side (" + di.rightMisses + " vs " + di.leftMisses + " left)");
     }
   }
   return lines.join("\n");

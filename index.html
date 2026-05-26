@@ -667,6 +667,11 @@
             <label class="profile-section-title">Recent Iron Stats</label>
             <div id="ironStatsSummary">Log some iron shots to see your yardage gapping.</div>
           </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Driver / Wood Stats</label>
+            <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
+          </div>
         </div>
 
         <div id="puttingView" style="display:none;">
@@ -889,6 +894,71 @@
               <button class="result-btn miss" data-iron-result="Fat">✗ Fat / chunked</button>
               <button class="result-btn miss" data-iron-result="Thin">⤴ Thin / topped</button>
               <button class="result-btn miss" data-iron-result="OB">⊝ OB / hazard</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="driverView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="drvBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Tee Shot Practice</h2>
+              <button id="drvEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="drvRunning">0 shots logged</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Shot Setup</label>
+            <div class="profile-row">
+              <label>Club</label>
+              <div class="pill-group small-pills" id="drvClubPills">
+                <button class="pill active" data-club="Driver" type="button">Driver</button>
+                <button class="pill" data-club="3W" type="button">3W</button>
+                <button class="pill" data-club="5W" type="button">5W</button>
+                <button class="pill" data-club="3H" type="button">3H</button>
+                <button class="pill" data-club="4H" type="button">4H</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Carry</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="drvCarry" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Total</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="drvTotal" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">yd</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Shape</label>
+              <div class="pill-group small-pills" id="drvShapePills">
+                <button class="pill active" data-shape="straight" type="button">— Straight</button>
+                <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+                <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+                <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+                <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+                <button class="pill" data-shape="pull" type="button">← Pull</button>
+                <button class="pill" data-shape="push" type="button">→ Push</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Result — where did it finish?</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-drv-result="Fairway">✓ Fairway</button>
+              <button class="result-btn" data-drv-result="Light rough L">L. rough left</button>
+              <button class="result-btn" data-drv-result="Light rough R">L. rough right</button>
+              <button class="result-btn miss" data-drv-result="Heavy rough">⌀ Heavy rough</button>
+              <button class="result-btn miss" data-drv-result="Bunker">⊝ Fairway bunker</button>
+              <button class="result-btn miss" data-drv-result="Trees">↶ Trees / tree trouble</button>
+              <button class="result-btn miss" data-drv-result="OB">✗ OB / hazard</button>
+              <button class="result-btn miss" data-drv-result="Topped">⤴ Topped / thin</button>
             </div>
           </div>
         </div>

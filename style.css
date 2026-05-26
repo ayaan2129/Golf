@@ -932,20 +932,20 @@ details.profile-section ul {
   border-color: var(--border);
 }
 
-#puttStatsSummary, #chipStatsSummary, #ironStatsSummary {
+#puttStatsSummary, #chipStatsSummary, #ironStatsSummary, #driverStatsSummary {
   font-size: 13px;
   color: var(--ink-soft);
   line-height: 1.5;
 }
 
-#puttStatsSummary .stat-line, #chipStatsSummary .stat-line, #ironStatsSummary .stat-line {
+#puttStatsSummary .stat-line, #chipStatsSummary .stat-line, #ironStatsSummary .stat-line, #driverStatsSummary .stat-line {
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
-#puttStatsSummary .stat-line:last-child, #chipStatsSummary .stat-line:last-child, #ironStatsSummary .stat-line:last-child { border-bottom: none; }
-#puttStatsSummary .stat-num, #chipStatsSummary .stat-num, #ironStatsSummary .stat-num { font-weight: 800; color: var(--green-deep); }
+#puttStatsSummary .stat-line:last-child, #chipStatsSummary .stat-line:last-child, #ironStatsSummary .stat-line:last-child, #driverStatsSummary .stat-line:last-child { border-bottom: none; }
+#puttStatsSummary .stat-num, #chipStatsSummary .stat-num, #ironStatsSummary .stat-num, #driverStatsSummary .stat-num { font-weight: 800; color: var(--green-deep); }
 
 .section-header {
   text-align: center;
