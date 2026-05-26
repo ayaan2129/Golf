@@ -559,6 +559,9 @@ function switchTab(tabId) {
     buildClubsGrid();
     renderClubDistances();
   }
+  if (tabId === "practiceTab") {
+    renderPuttingStatsSummary();
+  }
   if (tabId === "trackerTab") {
     if (!holesContainer || holesContainer.children.length === 0) {
       buildHoles();
@@ -578,7 +581,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab") {
     showApp();
     switchTab(target);
     syncBottomTabs(target);
@@ -730,6 +733,198 @@ if (profileLogout) {
     }
   });
 }
+
+// ===== Practice — Putting drill =====
+const puttingState = {
+  active: false,
+  sessionStart: null,
+  shots: [],
+  conditions: { distance: 5, break: "straight", slope: "flat", speed: "medium", intent: "make", circle: 5 },
+};
+
+function getPuttingInsights() {
+  const sessions = getPractice().filter(function (s) { return s.type === "Putting" && Array.isArray(s.shots); });
+  const allShots = [];
+  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
+  const buckets = [
+    { lbl: "0-3 ft", fn: function (sh) { return sh.distance <= 3 && sh.intent === "make"; } },
+    { lbl: "3-5 ft", fn: function (sh) { return sh.distance > 3 && sh.distance <= 5 && sh.intent === "make"; } },
+    { lbl: "5-10 ft", fn: function (sh) { return sh.distance > 5 && sh.distance <= 10 && sh.intent === "make"; } },
+    { lbl: "10-20 ft", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20 && sh.intent === "make"; } },
+    { lbl: "20+ ft", fn: function (sh) { return sh.distance > 20 && sh.intent === "make"; } },
+  ];
+  const distanceRates = buckets.map(function (b) {
+    const set = allShots.filter(b.fn);
+    if (set.length === 0) return { label: b.lbl, count: 0, pct: null };
+    const made = set.filter(function (sh) { return sh.result === "Holed"; }).length;
+    return { label: b.lbl, count: set.length, pct: Math.round(made / set.length * 100) };
+  });
+  const misses = allShots.filter(function (sh) { return sh.intent === "make" && sh.result !== "Holed"; });
+  let topMiss = null;
+  if (misses.length > 0) {
+    const dirCounts = {};
+    for (const m of misses) dirCounts[m.result] = (dirCounts[m.result] || 0) + 1;
+    topMiss = Object.keys(dirCounts).sort(function (a, b) { return dirCounts[b] - dirCounts[a]; })[0];
+  }
+  const lagShots = allShots.filter(function (sh) { return sh.intent === "lag"; });
+  let lag = null;
+  if (lagShots.length > 0) {
+    const inCircle = lagShots.filter(function (sh) { return sh.result === "Holed" || sh.result === "In Circle"; }).length;
+    lag = { count: lagShots.length, inCirclePct: Math.round(inCircle / lagShots.length * 100) };
+  }
+  return { totalShots: allShots.length, sessions: sessions.length, distanceRates, topMiss, lag };
+}
+
+function renderPuttingStatsSummary() {
+  const el = document.getElementById("puttStatsSummary");
+  if (!el) return;
+  const ins = getPuttingInsights();
+  if (ins.totalShots === 0) {
+    el.innerHTML = "Log some putts to see your make rate.";
+    return;
+  }
+  let html = "";
+  for (const b of ins.distanceRates) {
+    if (b.count === 0) continue;
+    html += '<div class="stat-line"><span>' + b.label + " (" + b.count + ")</span><span class=\"stat-num\">" + b.pct + "%</span></div>";
+  }
+  if (ins.topMiss) html += '<div class="stat-line"><span>Most common miss</span><span class="stat-num">' + ins.topMiss + "</span></div>";
+  if (ins.lag) html += '<div class="stat-line"><span>Lag in circle (' + ins.lag.count + ")</span><span class=\"stat-num\">" + ins.lag.inCirclePct + "%</span></div>";
+  el.innerHTML = html || "No make-intent putts yet.";
+}
+
+function startPuttingDrill() {
+  puttingState.active = true;
+  puttingState.sessionStart = new Date().toISOString();
+  puttingState.shots = [];
+  document.getElementById("practicePickerView").style.display = "none";
+  document.getElementById("puttingView").style.display = "";
+  updatePuttingRunningStat();
+}
+
+function endPuttingDrill() {
+  if (!puttingState.active) return;
+  if (puttingState.shots.length > 0) {
+    const arr = getPractice();
+    const ended = new Date();
+    const startedAt = new Date(puttingState.sessionStart);
+    const durationMin = Math.max(1, Math.round((ended - startedAt) / 60000));
+    arr.push({
+      date: todayISO(),
+      area: "Putting",
+      type: "Putting",
+      duration: durationMin,
+      focus: "Drill — " + puttingState.shots.length + " putts",
+      notes: "",
+      savedAt: ended.toISOString(),
+      shots: puttingState.shots.slice(),
+    });
+    savePractice(arr);
+  }
+  puttingState.active = false;
+  puttingState.shots = [];
+  document.getElementById("puttingView").style.display = "none";
+  document.getElementById("practicePickerView").style.display = "";
+  renderPuttingStatsSummary();
+  renderPracticeLog();
+}
+
+function updatePuttingRunningStat() {
+  const el = document.getElementById("puttRunning");
+  if (!el) return;
+  const n = puttingState.shots.length;
+  if (n === 0) { el.textContent = "0 putts logged"; return; }
+  const makeShots = puttingState.shots.filter(function (s) { return s.intent === "make"; });
+  if (makeShots.length === 0) {
+    const lag = puttingState.shots.filter(function (s) { return s.intent === "lag"; });
+    const inCircle = lag.filter(function (s) { return s.result === "Holed" || s.result === "In Circle"; }).length;
+    el.textContent = n + " lag putts · " + Math.round(inCircle / lag.length * 100) + "% in circle";
+    return;
+  }
+  const made = makeShots.filter(function (s) { return s.result === "Holed"; }).length;
+  el.textContent = n + " putts · " + made + " made · " + Math.round(made / makeShots.length * 100) + "%";
+}
+
+function recordPutt(result, lagResult) {
+  const dist = Number(document.getElementById("puttDistance").value) || puttingState.conditions.distance;
+  const intent = puttingState.conditions.intent;
+  let resolvedResult;
+  let finishDist = null;
+  if (intent === "lag") {
+    finishDist = Number(document.getElementById("puttFinishDist").value);
+    resolvedResult = lagResult || (finishDist != null && finishDist <= Number(document.getElementById("puttCircle").value || 5) ? "In Circle" : "Outside Circle");
+  } else {
+    resolvedResult = result;
+  }
+  const shot = {
+    timestamp: new Date().toISOString(),
+    distance: dist,
+    break: puttingState.conditions.break,
+    slope: puttingState.conditions.slope,
+    speed: puttingState.conditions.speed,
+    intent: intent,
+    result: resolvedResult,
+    finishDist: finishDist,
+  };
+  puttingState.shots.push(shot);
+  updatePuttingRunningStat();
+  document.getElementById("puttFinishDist").value = "";
+}
+
+function setPracticePill(group, key, value) {
+  document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset[key] === value);
+  });
+  puttingState.conditions[key] = value;
+}
+
+document.querySelectorAll(".practice-type-tile").forEach(function (tile) {
+  tile.addEventListener("click", function () {
+    const t = tile.dataset.prac;
+    if (t === "putting") {
+      startPuttingDrill();
+    } else {
+      alert(t.charAt(0).toUpperCase() + t.slice(1) + " practice drill is coming next. Putting is live now.");
+    }
+  });
+});
+
+document.querySelectorAll("#puttBreakPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setPracticePill("puttBreakPills", "break", p.dataset.break); });
+});
+document.querySelectorAll("#puttSlopePills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setPracticePill("puttSlopePills", "slope", p.dataset.slope); });
+});
+document.querySelectorAll("#puttSpeedPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setPracticePill("puttSpeedPills", "speed", p.dataset.speed); });
+});
+document.querySelectorAll("#puttIntentPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () {
+    setPracticePill("puttIntentPills", "intent", p.dataset.intent);
+    const lagRow = document.getElementById("puttLagRow");
+    const makeRes = document.getElementById("puttMakeResults");
+    const lagRes = document.getElementById("puttLagResults");
+    if (p.dataset.intent === "lag") {
+      lagRow.style.display = "";
+      makeRes.style.display = "none";
+      lagRes.style.display = "";
+    } else {
+      lagRow.style.display = "none";
+      makeRes.style.display = "";
+      lagRes.style.display = "none";
+    }
+  });
+});
+document.querySelectorAll("#puttMakeResults .result-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () { recordPutt(btn.dataset.result); });
+});
+document.querySelectorAll("#puttLagResults .result-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () { recordPutt(null, btn.dataset.lagResult); });
+});
+const puttBackBtn = document.getElementById("puttBackBtn");
+if (puttBackBtn) puttBackBtn.addEventListener("click", endPuttingDrill);
+const puttEndBtn = document.getElementById("puttEndBtn");
+if (puttEndBtn) puttEndBtn.addEventListener("click", endPuttingDrill);
 
 const headerHome = document.getElementById("headerHomeBtn");
 if (headerHome) {
@@ -3779,10 +3974,21 @@ function aiBaseContext() {
   const bag = getSelectedClubs().join(", ");
   const clubDist = profile.clubDistances || {};
 
+  const playerName = profile.displayName || (typeof getCurrentUsername === "function" ? getCurrentUsername() : "") || "Ayaan";
+  const dream = profile.bigGoal || "become World No. 1, beat Rory McIlroy";
+  const courseKey = ((document.getElementById("courseSelect") || {}).value) || "RCGC";
+  const course = COURSES[courseKey];
   let lines = [];
-  lines.push("Player: Ayaan, age " + age + ", based in Kolkata India.");
-  lines.push("Dream: become World No. 1, beat Rory McIlroy. He's a budding junior pro.");
+  lines.push("Player: " + playerName + ", age " + age + ", based in Kolkata India.");
+  lines.push("Dream: " + dream + ". Junior aspiring pro.");
   lines.push("Handicap: " + hc + ".");
+  if (course) {
+    let locLine = "Home course: " + (course.name || courseKey);
+    if (course.location) locLine += " (lat " + course.location.lat + ", lon " + course.location.lon + ")";
+    if (course.greenSpeed) locLine += ", green speed " + course.greenSpeed;
+    lines.push(locLine + ".");
+    if (course.notes) lines.push("Course notes: " + course.notes);
+  }
   lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
   if (Object.keys(clubDist).length > 0) {
     lines.push("Club distances: " + Object.keys(clubDist).map(function (c) { return c + " " + clubDist[c] + "y"; }).join(", ") + ".");
@@ -3810,6 +4016,17 @@ function aiBaseContext() {
     lines.push("Recent practice:");
     for (const s of practice) {
       lines.push("  - " + s.date + " " + s.area + " " + (s.duration || "?") + "min" + (s.focus ? " (" + s.focus + ")" : ""));
+    }
+  }
+  if (typeof getPuttingInsights === "function") {
+    const pi = getPuttingInsights();
+    if (pi.totalShots > 0) {
+      lines.push("Putting practice — " + pi.totalShots + " putts across " + pi.sessions + " sessions:");
+      for (const b of pi.distanceRates) {
+        if (b.count > 0) lines.push("  - " + b.label + ": " + b.pct + "% (" + b.count + " putts)");
+      }
+      if (pi.topMiss) lines.push("  - Most common miss: " + pi.topMiss);
+      if (pi.lag) lines.push("  - Lag in 5-ft circle: " + pi.lag.inCirclePct + "% (" + pi.lag.count + " putts)");
     }
   }
   return lines.join("\n");

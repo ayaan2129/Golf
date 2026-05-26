@@ -61,6 +61,7 @@
       <button class="drawer-item" data-go-tab="setupTab">⚙  New Round Setup</button>
       <button class="drawer-item" data-go-tab="trackerTab">⛳  Current Round</button>
       <button class="drawer-item" data-go-tab="statsTab">▦  Stats &amp; History</button>
+      <button class="drawer-item" data-go-tab="practiceTab">🎯  Practice</button>
       <button class="drawer-item" data-go-tab="coachTab">💬  Coach</button>
       <button class="drawer-item" data-go-tab="profileTab">◯  My Profile</button>
       <div class="drawer-divider"></div>
@@ -620,6 +621,131 @@
           <button id="seedDemoBtn" class="btn-secondary">Load Demo Data</button>
           <button id="wipeDemoBtn" class="btn-secondary danger">Wipe All Data</button>
           <button id="profileLogoutBtn" class="btn-danger">Logout</button>
+        </div>
+      </div>
+
+      <div id="practiceTab" class="tab-page" style="display:none;">
+        <div class="setup-hero">
+          <h1 class="setup-hero-title">Practice</h1>
+          <p class="setup-hero-sub" id="practiceSubText">Quick log per shot. Builds % over time.</p>
+        </div>
+
+        <div id="practicePickerView">
+          <div class="setup-card">
+            <label class="profile-section-title">What are you practising?</label>
+            <div class="practice-type-grid">
+              <button class="practice-type-tile" data-prac="putting">
+                <div class="ptt-icon">⛳</div>
+                <div class="ptt-label">Putting</div>
+              </button>
+              <button class="practice-type-tile" data-prac="chipping">
+                <div class="ptt-icon">◐</div>
+                <div class="ptt-label">Chipping</div>
+              </button>
+              <button class="practice-type-tile" data-prac="iron">
+                <div class="ptt-icon">─</div>
+                <div class="ptt-label">Irons</div>
+              </button>
+              <button class="practice-type-tile" data-prac="driver">
+                <div class="ptt-icon">▲</div>
+                <div class="ptt-label">Driver</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Recent Putting Stats</label>
+            <div id="puttStatsSummary">Log some putts to see your make rate.</div>
+          </div>
+        </div>
+
+        <div id="puttingView" style="display:none;">
+          <div class="setup-card">
+            <div class="practice-header">
+              <button id="puttBackBtn" class="header-btn">←</button>
+              <h2 class="practice-title">Putting Drill</h2>
+              <button id="puttEndBtn" class="btn-secondary" style="padding:8px 12px;font-size:13px;">End</button>
+            </div>
+            <div class="practice-running" id="puttRunning">0 putts · 0% made</div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
+            <div class="profile-row">
+              <label>Distance</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="puttDistance" placeholder="ft" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft</span>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Break</label>
+              <div class="pill-group small-pills" id="puttBreakPills">
+                <button class="pill active" data-break="straight" type="button">— Straight</button>
+                <button class="pill" data-break="L-to-R" type="button">↘ L→R</button>
+                <button class="pill" data-break="R-to-L" type="button">↙ R→L</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Slope</label>
+              <div class="pill-group small-pills" id="puttSlopePills">
+                <button class="pill active" data-slope="flat" type="button">Flat</button>
+                <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                <button class="pill" data-slope="downhill" type="button">Downhill</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Green</label>
+              <div class="pill-group small-pills" id="puttSpeedPills">
+                <button class="pill" data-speed="slow" type="button">Slow</button>
+                <button class="pill active" data-speed="medium" type="button">Medium</button>
+                <button class="pill" data-speed="fast" type="button">Fast</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Intent</label>
+            <div class="pill-group" id="puttIntentPills">
+              <button class="pill active" data-intent="make" type="button">Try to Make</button>
+              <button class="pill" data-intent="lag" type="button">Lag (just close)</button>
+            </div>
+            <div class="profile-row" id="puttLagRow" style="display:none;">
+              <label>Circle target</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="puttCircle" value="5" min="1" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft circle</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-card" id="puttMakeResults">
+            <label class="profile-section-title">Result</label>
+            <div class="result-grid">
+              <button class="result-btn good" data-result="Holed">✓ Holed</button>
+              <button class="result-btn miss" data-result="Lip-out">⊝ Lip-out</button>
+              <button class="result-btn miss" data-result="Short">↓ Short</button>
+              <button class="result-btn miss" data-result="Long">↑ Long / past</button>
+              <button class="result-btn miss" data-result="Left">← Missed left</button>
+              <button class="result-btn miss" data-result="Right">→ Missed right</button>
+            </div>
+          </div>
+
+          <div class="setup-card" id="puttLagResults" style="display:none;">
+            <label class="profile-section-title">Where did it finish?</label>
+            <div class="profile-row">
+              <label>Distance left</label>
+              <div style="display:flex; gap:6px;align-items:center;">
+                <input type="number" id="puttFinishDist" placeholder="ft" min="0" style="width:80px; text-align:right;" />
+                <span style="color:var(--muted); font-size:14px;">ft</span>
+              </div>
+            </div>
+            <div class="result-grid">
+              <button class="result-btn good" data-lag-result="Holed">✓ Holed</button>
+              <button class="result-btn" data-lag-result="In Circle">○ Inside circle</button>
+              <button class="result-btn miss" data-lag-result="Outside Circle">⊝ Outside</button>
+            </div>
+          </div>
         </div>
       </div>
 

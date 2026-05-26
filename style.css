@@ -830,6 +830,123 @@ details.profile-section ul {
 
 #startRoundBtn:active { transform: translateY(1px); }
 
+/* ========== PRACTICE PAGE ========== */
+.practice-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.practice-type-tile {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.practice-type-tile:active { transform: scale(0.97); }
+
+.practice-type-tile .ptt-icon {
+  font-size: 36px;
+  color: var(--green-deep);
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.practice-type-tile .ptt-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.practice-type-tile:nth-child(2) .ptt-icon { color: var(--gold-deep); }
+.practice-type-tile:nth-child(3) .ptt-icon { color: var(--water); }
+.practice-type-tile:nth-child(4) .ptt-icon { color: var(--crimson); }
+
+.practice-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.practice-title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.practice-running {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--fairway);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-deep);
+  text-align: center;
+}
+
+.small-pills .pill {
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.result-btn {
+  padding: 14px 10px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+}
+
+.result-btn:active { transform: scale(0.96); }
+
+.result-btn.good {
+  background: linear-gradient(135deg, var(--green-bright), var(--green-mid));
+  color: white;
+  border-color: var(--green-deep);
+}
+
+.result-btn.miss {
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-color: var(--border);
+}
+
+#puttStatsSummary {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+#puttStatsSummary .stat-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+#puttStatsSummary .stat-line:last-child { border-bottom: none; }
+#puttStatsSummary .stat-num { font-weight: 800; color: var(--green-deep); }
+
 .section-header {
   text-align: center;
   color: white;
