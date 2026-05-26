@@ -385,6 +385,40 @@
 
           <div class="club-stats-card" id="weatherImpactCard"></div>
 
+          <div class="ai-card">
+            <h3>AI Coach Settings</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Paste a Grok API key (from console.x.ai) to switch the coach from rule-based to AI. Stored only on this device.</p>
+            <label>Grok API Key
+              <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
+            </label>
+            <label>
+              <input type="checkbox" id="aiModeToggle" style="width:auto; margin-right:6px;" />
+              Use AI for chat & reports
+            </label>
+            <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Round Report</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Generate a personalized narrative report of your most recent saved round.</p>
+            <button id="genRoundReportBtn" class="ai-action-btn">Generate Round Report</button>
+            <div id="aiRoundReport" class="ai-output"></div>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Weekly Practice Plan</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Get a 7-day practice plan tailored to your recent weaknesses.</p>
+            <button id="genPracticePlanBtn" class="ai-action-btn">Generate Practice Plan</button>
+            <div id="aiPracticePlan" class="ai-output"></div>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Pre-Round Brief</h3>
+            <p style="font-size:13px; margin:0 0 8px;">A focused game plan for your next round, using today's weather and recent form.</p>
+            <button id="genPreRoundBtn" class="ai-action-btn">Generate Pre-Round Brief</button>
+            <div id="aiPreRoundBrief" class="ai-output"></div>
+          </div>
+
           <div class="practice-section">
             <h3>Practice Log</h3>
             <p style="font-size:13px; margin:0 0 8px;">Track your range, chipping and putting sessions. Builds context with your rounds.</p>

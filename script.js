@@ -2644,6 +2644,31 @@ function initDashboard() {
   });
 
   document.getElementById("addUpcomingBtn").addEventListener("click", addUpcomingRound);
+
+  const grokKeyInput = document.getElementById("grokApiKey");
+  const aiToggle = document.getElementById("aiModeToggle");
+  if (grokKeyInput) {
+    grokKeyInput.value = localStorage.getItem("grokApiKey") || "";
+    grokKeyInput.addEventListener("input", function () {
+      localStorage.setItem("grokApiKey", grokKeyInput.value.trim());
+      renderAiStatus();
+    });
+  }
+  if (aiToggle) {
+    aiToggle.checked = localStorage.getItem("aiMode") === "on";
+    aiToggle.addEventListener("change", function () {
+      localStorage.setItem("aiMode", aiToggle.checked ? "on" : "off");
+      renderAiStatus();
+    });
+  }
+  renderAiStatus();
+
+  const reportBtn = document.getElementById("genRoundReportBtn");
+  if (reportBtn) reportBtn.addEventListener("click", generateRoundReport);
+  const planBtn = document.getElementById("genPracticePlanBtn");
+  if (planBtn) planBtn.addEventListener("click", generatePracticePlan);
+  const preBtn = document.getElementById("genPreRoundBtn");
+  if (preBtn) preBtn.addEventListener("click", generatePreRoundBrief);
   const addPracticeBtn = document.getElementById("addPracticeBtn");
   if (addPracticeBtn) {
     addPracticeBtn.addEventListener("click", addPracticeSession);
@@ -3256,6 +3281,165 @@ function renderDashboard() {
   renderWeatherImpact();
   renderPracticeLog();
   renderUpcoming();
+}
+
+function aiEnabled() {
+  return localStorage.getItem("aiMode") === "on" && !!localStorage.getItem("grokApiKey");
+}
+
+function getGrokKey() {
+  return localStorage.getItem("grokApiKey") || "";
+}
+
+async function callGrok(systemPrompt, userPrompt, opts) {
+  const key = getGrokKey();
+  if (!key) throw new Error("Set a Grok API key first.");
+  const messages = [];
+  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+  if (Array.isArray(userPrompt)) {
+    for (const m of userPrompt) messages.push(m);
+  } else if (userPrompt) {
+    messages.push({ role: "user", content: userPrompt });
+  }
+  const body = {
+    model: (opts && opts.model) || "grok-2-latest",
+    messages,
+    temperature: (opts && opts.temperature !== undefined) ? opts.temperature : 0.5,
+  };
+  const res = await fetch("https://api.x.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + key,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.text()).substring(0, 200); } catch (e) {}
+    throw new Error("API " + res.status + " " + detail);
+  }
+  const data = await res.json();
+  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
+}
+
+function aiBaseContext() {
+  const profile = getProfile();
+  const history = getHistory();
+  const last5 = history.slice(-5).reverse();
+  const age = calcAge(profile.birthday) || 12;
+  const hc = profile.handicap != null ? profile.handicap : "unknown";
+  const bag = getSelectedClubs().join(", ");
+  const clubDist = profile.clubDistances || {};
+
+  let lines = [];
+  lines.push("Player: Ayaan, age " + age + ", based in Kolkata India.");
+  lines.push("Dream: become World No. 1, beat Rory McIlroy. He's a budding junior pro.");
+  lines.push("Handicap: " + hc + ".");
+  lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
+  if (Object.keys(clubDist).length > 0) {
+    lines.push("Club distances: " + Object.keys(clubDist).map(function (c) { return c + " " + clubDist[c] + "y"; }).join(", ") + ".");
+  }
+  lines.push("Total rounds saved: " + history.length + ".");
+  if (last5.length > 0) {
+    lines.push("Last " + last5.length + " rounds:");
+    for (const r of last5) {
+      const parts = [
+        r.date,
+        r.courseName + (r.tee ? " " + r.tee : ""),
+        "score " + r.totalScore + " (" + (r.scoreVsPar >= 0 ? "+" : "") + r.scoreVsPar + ")",
+        "putts " + (r.totalPutts != null ? r.totalPutts : "?"),
+        "GIR " + (r.girPct != null ? r.girPct + "%" : "?"),
+        "FW " + (r.fairwayPct != null ? r.fairwayPct + "%" : "?"),
+        "scramble " + (r.scramblePct != null ? r.scramblePct + "%" : "?"),
+        "pens " + (r.totalPenalties != null ? r.totalPenalties : "?"),
+      ];
+      if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
+      lines.push("  - " + parts.join(", "));
+    }
+  }
+  const practice = getPractice().slice(-5).reverse();
+  if (practice.length > 0) {
+    lines.push("Recent practice:");
+    for (const s of practice) {
+      lines.push("  - " + s.date + " " + s.area + " " + (s.duration || "?") + "min" + (s.focus ? " (" + s.focus + ")" : ""));
+    }
+  }
+  return lines.join("\n");
+}
+
+function setAiOutput(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+async function generateRoundReport() {
+  const out = "aiRoundReport";
+  setAiOutput(out, "Asking the coach...");
+  const history = getHistory();
+  if (history.length === 0) { setAiOutput(out, "Save a round first."); return; }
+  const r = history[history.length - 1];
+  const sys = "You are Coach. Speak directly to a 12-year-old budding pro golfer named Ayaan. Be specific, kind, and honest. 4-6 short paragraphs. No emojis.";
+  const ctx = aiBaseContext();
+  const detailed = JSON.stringify({
+    course: r.courseName, tee: r.tee, date: r.date,
+    score: r.totalScore, vsPar: r.scoreVsPar,
+    putts: r.totalPutts, chips: r.totalChips, penalties: r.totalPenalties,
+    fairwayPct: r.fairwayPct, girPct: r.girPct, scramblePct: r.scramblePct,
+    mistakes: r.mistakes, strengths: r.strengths, blunders: r.blunders,
+    weather: r.weatherData,
+  });
+  const userMsg = "Player context:\n" + ctx + "\n\nMost recent round JSON:\n" + detailed + "\n\nWrite a personal post-round report covering: what went well, the 1-2 critical mistakes with the exact hole numbers, and what to practise in the next 3 days. End with one motivational sentence tied to his dream of beating Rory.";
+  try {
+    const reply = await callGrok(sys, userMsg);
+    setAiOutput(out, reply);
+  } catch (e) {
+    setAiOutput(out, "Error: " + e.message);
+  }
+}
+
+async function generatePracticePlan() {
+  const out = "aiPracticePlan";
+  setAiOutput(out, "Asking the coach...");
+  const sys = "You are Coach. Build a 7-day practice plan for a budding 12-year-old golfer named Ayaan. Each day: one focus area + a specific drill + duration. Match his data. Be concrete. No emojis.";
+  const ctx = aiBaseContext();
+  const userMsg = "Player context:\n" + ctx + "\n\nReturn a Mon-Sun plan, one line per day in this format:\nMonday — focus — drill — minutes\nUse his actual weakest stats from above.";
+  try {
+    const reply = await callGrok(sys, userMsg);
+    setAiOutput(out, reply);
+  } catch (e) {
+    setAiOutput(out, "Error: " + e.message);
+  }
+}
+
+async function generatePreRoundBrief() {
+  const out = "aiPreRoundBrief";
+  setAiOutput(out, "Asking the coach...");
+  const sys = "You are Coach. Give a tight 5-bullet pre-round game plan for a 12-year-old budding pro golfer named Ayaan. Be specific. No emojis.";
+  const ctx = aiBaseContext();
+  let weather = null;
+  try { weather = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+  const course = (document.getElementById("courseSelect") || {}).value || "RCGC";
+  const tee = (document.getElementById("teeSelect") || {}).value || "";
+  const userMsg = "Player context:\n" + ctx + "\n\nNext round: " + course + " " + tee + ". Weather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh, " + (weather.condition || "?") : "unknown") + ".\n\nReturn 5 short bullets covering: (1) tee strategy today, (2) which club is hot, (3) what to avoid based on past mistakes, (4) putting focus, (5) one mental cue.";
+  try {
+    const reply = await callGrok(sys, userMsg);
+    setAiOutput(out, reply);
+  } catch (e) {
+    setAiOutput(out, "Error: " + e.message);
+  }
+}
+
+function renderAiStatus() {
+  const el = document.getElementById("aiStatus");
+  if (!el) return;
+  if (aiEnabled()) {
+    el.textContent = "AI coach ON — Grok will answer chat + generate reports.";
+    el.classList.add("on");
+  } else {
+    el.textContent = "AI coach off — using rule-based responses. Add Grok API key to enable.";
+    el.classList.remove("on");
+  }
 }
 
 function renderWeatherImpact() {
@@ -4369,12 +4553,34 @@ function coachAnswerFor(question) {
   return "Hmm, tell me a bit more or ask in different words. I can help with: swing, grip, stance, slice, hook, mishits, mental game, pressure, bunkers, weather, warm-up, putting, driving, chipping, weakness, strengths, practice, tournaments, RCGC, scoring, improvement, and pre-round advice.";
 }
 
-function sendChatMessage(text) {
+const chatHistory = [];
+
+async function sendChatMessage(text) {
   const trimmed = (text || "").trim();
   if (!trimmed) return;
   addChatMessage(trimmed, "user");
-  const reply = coachAnswerFor(trimmed);
-  setTimeout(function () { addChatMessage(reply, "coach"); }, 250);
+  chatHistory.push({ role: "user", content: trimmed });
+  if (aiEnabled()) {
+    addChatMessage("Coach is thinking...", "coach");
+    const thinkingEl = document.getElementById("chatMessages").lastChild;
+    try {
+      const sys = "You are Coach, a warm and direct coach for a 12-year-old budding pro golfer named Ayaan in Kolkata. His dream is to be World No. 1 and beat Rory McIlroy. Speak in simple, specific words. Reply in 2-4 short sentences for most questions. No emojis. If a question needs his data, use the context below.\n\n" + aiBaseContext();
+      const messages = chatHistory.slice(-10);
+      const reply = await callGrok(sys, messages);
+      chatHistory.push({ role: "assistant", content: reply });
+      if (thinkingEl) thinkingEl.remove();
+      addChatMessage(reply, "coach");
+    } catch (e) {
+      if (thinkingEl) thinkingEl.remove();
+      addChatMessage("AI error: " + e.message + " (falling back to rule-based)", "coach");
+      const fallback = coachAnswerFor(trimmed);
+      addChatMessage(fallback, "coach");
+    }
+  } else {
+    const reply = coachAnswerFor(trimmed);
+    chatHistory.push({ role: "assistant", content: reply });
+    setTimeout(function () { addChatMessage(reply, "coach"); }, 250);
+  }
 }
 
 function initChat() {

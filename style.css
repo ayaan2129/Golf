@@ -1231,6 +1231,85 @@ textarea { resize: vertical; }
 .overall-stats p { margin: 4px 0; font-size: 13px; font-weight: 600; }
 .overall-stats ul { padding-left: 20px; font-size: 13px; line-height: 1.6; }
 
+.ai-card {
+  background: linear-gradient(160deg, #1a1a2e, #16213e);
+  color: #e8e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.ai-card h3 {
+  color: var(--gold);
+  border: none;
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.ai-card label {
+  color: #c0c0d0;
+  font-size: 13px;
+}
+
+.ai-card input[type=password],
+.ai-card input[type=text] {
+  background: rgba(255,255,255,0.08);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.ai-card input:focus {
+  border-color: var(--gold);
+}
+
+.ai-status {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  background: rgba(245, 184, 0, 0.18);
+  color: var(--gold);
+  border-radius: 6px;
+}
+
+.ai-status.on {
+  background: rgba(76, 175, 80, 0.18);
+  color: #8eff9e;
+}
+
+.ai-action-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(180deg, var(--gold), #d8a000);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.ai-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-output {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: #e8e8f0;
+  min-height: 8px;
+}
+
+.ai-output:empty { display: none; }
+
 .practice-section {
   background: linear-gradient(180deg, #fff8d6, #ffe9a8);
   border: 2px solid var(--gold);
