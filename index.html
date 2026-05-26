@@ -82,6 +82,8 @@
 
         <h3>Today's Focus</h3>
         <ul id="welcomeFocus"></ul>
+        <button id="aiFocusBtn" class="ai-action-btn">Get AI Coach's Focus</button>
+        <div id="aiFocusOutput" class="ai-output"></div>
 
         <h3>Daily Practice</h3>
         <ul id="welcomePractice"></ul>
@@ -274,6 +276,12 @@
           <button id="nextHoleBtn" class="hole-nav-btn primary">Next →</button>
         </div>
 
+        <div class="ai-card" style="margin: 8px auto; max-width:340px;">
+          <h3>AI Tip for This Hole</h3>
+          <button id="aiHoleTipBtn" class="ai-action-btn">Get AI hole tip</button>
+          <div id="aiHoleTipOutput" class="ai-output"></div>
+        </div>
+
         <div class="page-nav">
           <button class="btn-back" data-go="clubsTab">← Back: Clubs</button>
           <button class="btn-next" data-go="statsTab">Finish: Coach &amp; Stats →</button>
@@ -419,6 +427,38 @@
             <div id="aiPreRoundBrief" class="ai-output"></div>
           </div>
 
+          <div class="ai-card">
+            <h3>AI Tournament Prep Brief</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Multi-day plan for your next tournament: course notes, scoring strategy, mental prep.</p>
+            <button id="genTournamentBtn" class="ai-action-btn">Generate Tournament Brief</button>
+            <div id="aiTournamentBrief" class="ai-output"></div>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Goal Recommendations</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Realistic 3-month / 6-month / 1-year goals based on your trajectory.</p>
+            <button id="genGoalsBtn" class="ai-action-btn">Generate Goal Plan</button>
+            <div id="aiGoalsOutput" class="ai-output"></div>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Course Strategy</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Hole-by-hole strategy for the course you most often play.</p>
+            <button id="genCourseBtn" class="ai-action-btn">Generate Course Strategy</button>
+            <div id="aiCourseOutput" class="ai-output"></div>
+          </div>
+
+          <div class="ai-card">
+            <h3>AI Swing / Video Analysis</h3>
+            <p style="font-size:13px; margin:0 0 8px;">Upload a swing photo. Grok vision gives feedback on grip, posture, alignment, swing position.</p>
+            <input type="file" id="swingPhoto" accept="image/*" style="background:rgba(255,255,255,0.08); color:white;" />
+            <label style="margin-top:8px;">Notes (optional)
+              <input type="text" id="swingNotes" placeholder="e.g. front-on view, mid-iron" />
+            </label>
+            <button id="analyzeSwingBtn" class="ai-action-btn">Analyse Swing</button>
+            <div id="aiSwingOutput" class="ai-output"></div>
+          </div>
+
           <div class="practice-section">
             <h3>Practice Log</h3>
             <p style="font-size:13px; margin:0 0 8px;">Track your range, chipping and putting sessions. Builds context with your rounds.</p>
@@ -514,8 +554,10 @@
 
           <div class="chat-input-row">
             <input type="text" id="chatInput" placeholder="Ask the coach..." />
+            <button id="micBtn" type="button" title="Voice input">🎤</button>
             <button id="sendBtn">Send</button>
           </div>
+          <p id="micStatus" style="font-size:11px; margin-top:6px; color:#555;"></p>
         </div>
 
         <div class="page-nav">

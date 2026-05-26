@@ -420,10 +420,28 @@ textarea { resize: vertical; }
   color: white;
   border: none;
   border-radius: 10px;
-  padding: 10px 16px;
+  padding: 10px 14px;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
+}
+
+#micBtn {
+  background: var(--gold);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-size: 16px;
+}
+
+#micBtn.listening {
+  background: var(--crimson);
+  color: white;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
 }
 
 .clubs-card {

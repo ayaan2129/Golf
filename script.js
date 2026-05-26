@@ -2669,6 +2669,23 @@ function initDashboard() {
   if (planBtn) planBtn.addEventListener("click", generatePracticePlan);
   const preBtn = document.getElementById("genPreRoundBtn");
   if (preBtn) preBtn.addEventListener("click", generatePreRoundBrief);
+  const tournBtn = document.getElementById("genTournamentBtn");
+  if (tournBtn) tournBtn.addEventListener("click", generateTournamentBrief);
+  const goalsBtn = document.getElementById("genGoalsBtn");
+  if (goalsBtn) goalsBtn.addEventListener("click", generateGoalPlan);
+  const courseBtn = document.getElementById("genCourseBtn");
+  if (courseBtn) courseBtn.addEventListener("click", generateCourseStrategy);
+  const swingBtn = document.getElementById("analyzeSwingBtn");
+  if (swingBtn) swingBtn.addEventListener("click", analyzeSwingPhoto);
+
+  const focusBtn = document.getElementById("aiFocusBtn");
+  if (focusBtn) focusBtn.addEventListener("click", generateTodaysFocus);
+
+  const holeTipBtn = document.getElementById("aiHoleTipBtn");
+  if (holeTipBtn) holeTipBtn.addEventListener("click", generateHoleTip);
+
+  const micBtn = document.getElementById("micBtn");
+  if (micBtn) micBtn.addEventListener("click", startVoiceInput);
   const addPracticeBtn = document.getElementById("addPracticeBtn");
   if (addPracticeBtn) {
     addPracticeBtn.addEventListener("click", addPracticeSession);
@@ -3410,6 +3427,159 @@ async function generatePracticePlan() {
   } catch (e) {
     setAiOutput(out, "Error: " + e.message);
   }
+}
+
+async function generateHoleTip() {
+  const out = "aiHoleTipOutput";
+  setAiOutput(out, "Asking the coach...");
+  const active = getActiveHoles();
+  const i = active[currentHoleIndex];
+  const parEl = document.getElementById("par-" + i);
+  const distEl = document.getElementById("holeDistance-" + i);
+  if (!parEl) { setAiOutput(out, "No hole loaded."); return; }
+  // Build history on this exact hole across saved rounds
+  const histHere = [];
+  for (const r of getHistory()) {
+    if (r.fullData && r.fullData.holes && r.fullData.holes[i]) {
+      const h = r.fullData.holes[i];
+      const stats = getHoleStatsFromSavedHole(h);
+      if (stats.score > 0) {
+        histHere.push({ date: r.date, score: stats.score, shots: (h.shots || []).length, putts: (h.putts || []).length });
+      }
+    }
+  }
+  let weather = null;
+  try { weather = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+  const sys = "You are Coach. 3-4 short bullets max. Be specific to this hole. No emojis.";
+  const userMsg = "Coach a 12-year-old budding pro through hole " + i + ".\nPar: " + parEl.value + ". Distance: " + (distEl && distEl.value || "?") + " yards.\nHis history on this hole: " + (histHere.length > 0 ? JSON.stringify(histHere) : "no prior data") + ".\nWeather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh" : "unknown") + ".\nPlayer context:\n" + aiBaseContext() + "\n\nGive 3-4 bullets: club off the tee, target line, what to avoid, mental cue.";
+  try { setAiOutput(out, await callGrok(sys, userMsg)); }
+  catch (e) { setAiOutput(out, "Error: " + e.message); }
+}
+
+async function generateTournamentBrief() {
+  const out = "aiTournamentBrief";
+  setAiOutput(out, "Asking the coach...");
+  const upcoming = getUpcoming();
+  const next = upcoming[0] || null;
+  const sys = "You are Coach. Multi-day tournament prep plan for a 12-year-old. Specific, kind, honest. No emojis.";
+  const ctx = aiBaseContext();
+  const target = next ? "Next event: " + next.date + " at " + next.course + " " + (next.tee || "") + " (" + next.holes + " holes)" : "No upcoming round scheduled — assume RCGC Blue tees in 7 days.";
+  const userMsg = "Player context:\n" + ctx + "\n\n" + target + "\n\nReturn a 5-day countdown plan (D-5 to D-day). For each day: focus area + drill + duration. Add a 'tournament day' bullet block: warm-up routine, scoring strategy, mental cue.";
+  try { setAiOutput(out, await callGrok(sys, userMsg)); }
+  catch (e) { setAiOutput(out, "Error: " + e.message); }
+}
+
+async function generateGoalPlan() {
+  const out = "aiGoalsOutput";
+  setAiOutput(out, "Asking the coach...");
+  const sys = "You are Coach. Set realistic but ambitious milestones for a 12-year-old budding pro. Reference his current data. No emojis.";
+  const ctx = aiBaseContext();
+  const userMsg = "Player context:\n" + ctx + "\n\nReturn 3 sections: 3-month goal (handicap + skill), 6-month goal, 1-year goal. Each section: target number + 2 key milestones to hit it. End with one sentence about how this lines up with his dream of becoming World No. 1.";
+  try { setAiOutput(out, await callGrok(sys, userMsg)); }
+  catch (e) { setAiOutput(out, "Error: " + e.message); }
+}
+
+async function generateCourseStrategy() {
+  const out = "aiCourseOutput";
+  setAiOutput(out, "Asking the coach...");
+  const counts = {};
+  for (const r of getHistory()) {
+    if (r.courseName) counts[r.courseName] = (counts[r.courseName] || 0) + 1;
+  }
+  const top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || "RCGC";
+  const courseRounds = getHistory().filter(function (r) { return r.courseName === top; });
+  const sys = "You are Coach. Build a hole-by-hole strategy for a junior. Reference his actual scoring patterns. No emojis.";
+  const ctx = aiBaseContext();
+  const summary = courseRounds.slice(-3).map(function (r) {
+    if (r.fullData && r.fullData.holes) {
+      const ss = [];
+      for (const k in r.fullData.holes) {
+        const h = r.fullData.holes[k];
+        const st = getHoleStatsFromSavedHole(h);
+        ss.push("h" + k + " par" + st.par + " score" + st.score);
+      }
+      return r.date + ": " + ss.join(", ");
+    }
+    return r.date + ": " + r.totalScore;
+  }).join(" | ");
+  const userMsg = "Player context:\n" + ctx + "\n\nCourse: " + top + ". Recent rounds there: " + (summary || "none") + ".\n\nReturn an 18-hole strategy: one short line per hole with tee club + key thing to avoid. Group as 'Front 9' and 'Back 9'.";
+  try { setAiOutput(out, await callGrok(sys, userMsg)); }
+  catch (e) { setAiOutput(out, "Error: " + e.message); }
+}
+
+async function generateTodaysFocus() {
+  const out = "aiFocusOutput";
+  setAiOutput(out, "Asking the coach...");
+  const sys = "You are Coach. One short paragraph (3-4 sentences) on what to focus on today. Warm tone. No emojis. Tie it to his dream of beating Rory.";
+  const ctx = aiBaseContext();
+  const userMsg = "Player context:\n" + ctx + "\n\nGive Ayaan today's focus.";
+  try { setAiOutput(out, await callGrok(sys, userMsg)); }
+  catch (e) { setAiOutput(out, "Error: " + e.message); }
+}
+
+async function analyzeSwingPhoto() {
+  const out = "aiSwingOutput";
+  setAiOutput(out, "Analysing swing...");
+  const fileInput = document.getElementById("swingPhoto");
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    setAiOutput(out, "Pick an image first.");
+    return;
+  }
+  const notes = (document.getElementById("swingNotes") || {}).value || "";
+  const file = fileInput.files[0];
+  const dataUrl = await new Promise(function (resolve, reject) {
+    const r = new FileReader();
+    r.onload = function () { resolve(r.result); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const sys = "You are a golf swing coach for a 12-year-old budding pro. From the image, give 3-5 specific observations on grip, posture, alignment, takeaway, top-of-backswing, or impact. Be honest, kind, specific. No emojis.";
+  const messages = [{
+    role: "user",
+    content: [
+      { type: "text", text: "Analyse this swing. " + (notes ? "Player note: " + notes : "") + "\nPlayer context:\n" + aiBaseContext() },
+      { type: "image_url", image_url: { url: dataUrl } }
+    ]
+  }];
+  try {
+    const reply = await callGrok(sys, messages, { model: "grok-2-vision-1212" });
+    setAiOutput(out, reply);
+  } catch (e) {
+    setAiOutput(out, "Error: " + e.message);
+  }
+}
+
+function startVoiceInput() {
+  const Sp = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById("micBtn");
+  const micStatus = document.getElementById("micStatus");
+  const chatInput = document.getElementById("chatInput");
+  if (!Sp) {
+    if (micStatus) micStatus.textContent = "Voice input not supported in this browser.";
+    return;
+  }
+  const rec = new Sp();
+  rec.lang = "en-IN";
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.onstart = function () {
+    if (micBtn) micBtn.classList.add("listening");
+    if (micStatus) micStatus.textContent = "Listening... speak now.";
+  };
+  rec.onerror = function (e) {
+    if (micStatus) micStatus.textContent = "Mic error: " + e.error;
+    if (micBtn) micBtn.classList.remove("listening");
+  };
+  rec.onend = function () {
+    if (micBtn) micBtn.classList.remove("listening");
+    if (micStatus && !micStatus.textContent.startsWith("Mic error")) micStatus.textContent = "";
+  };
+  rec.onresult = function (e) {
+    const text = e.results[0][0].transcript;
+    if (chatInput) chatInput.value = text;
+    if (micStatus) micStatus.textContent = "Heard: \"" + text + "\" — tap Send.";
+  };
+  rec.start();
 }
 
 async function generatePreRoundBrief() {
