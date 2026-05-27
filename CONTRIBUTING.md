@@ -41,22 +41,20 @@ widget tree: one file = one concern, imports declare its dependencies.
         └── profile.js
 ```
 
-### Current state (after PR #9)
+### Current state (after PR #10)
 
 Extracted:
 - `src/core/storage.js`, `src/core/utils.js`, `src/core/courses.js`
-- `src/data/rounds.js` — getHistory, saveHistory, getUpcoming, saveUpcoming
-- `src/data/practice.js` — getPractice, savePractice + the four insights
-  getters (getPuttingInsights / getChippingInsights / getIronInsights /
-  getDriverInsights) and shared result-classifier constants
-- `src/data/profile.js` — getProfile, saveProfile, setProfileField,
-  getClubDistance, setClubDistance, getSelectedClubs, saveSelectedClubs,
-  getObservedClubCarry, MAX_CLUBS
-- `src/data/videos.js` — IndexedDB blob storage + metadata index
-- `src/data/weather.js` — fetchWeatherForDate + weatherCodeToText
+- `src/data/rounds.js`, `src/data/practice.js`, `src/data/profile.js`,
+  `src/data/videos.js`, `src/data/weather.js`
+- `src/ai/grok.js` — aiEnabled, getGrokKey, getProxyUrl, callGrok
+- `src/ai/context.js` — aiBaseContext, setAiOutput
+- `src/ai/generators.js` — eight generators (round report, practice plan,
+  pre-round brief, tournament brief, goal plan, course strategy, today's
+  focus) + analyseSwingFrame + analyzeSwingPhoto
 
 Pending (still in script.js):
-- AI layer (callGrok, aiBaseContext, generators) — Phase 3 / PR #10
+- generateHoleTip (depends on tracker screen state — moves with Phase 4)
 - Screen modules — Phase 4 / PR #11
 - Final cleanup — PR #12
 
