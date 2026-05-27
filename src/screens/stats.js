@@ -15,7 +15,29 @@ const categoriesFilter = {
   course: "",
   from: "",
   to: "",
+  timeBlock: "all", // all | morning | afternoon | evening
 };
+
+// Time-of-day matcher. Rounds with a timeBlock field (added in PR #5) use it
+// directly; older rounds derive from teeOffTime ("HH:MM" 24-h) or are kept
+// for "all" only.
+function roundMatchesTimeBlock(r, want) {
+  if (want === "all") return true;
+  const tb = (r.timeBlock || "").toLowerCase();
+  if (tb) {
+    if (want === "morning") return tb === "morning";
+    if (want === "afternoon") return tb === "afternoon" || tb === "late afternoon";
+    if (want === "evening") return tb === "evening";
+    return false;
+  }
+  if (!r.teeOffTime) return false;
+  const h = parseInt(String(r.teeOffTime).split(":")[0], 10);
+  if (isNaN(h)) return false;
+  if (want === "morning") return h < 11;
+  if (want === "afternoon") return h >= 11 && h < 17;
+  if (want === "evening") return h >= 17;
+  return false;
+}
 
 function loadCategoriesFilter() {
   try {
@@ -40,6 +62,9 @@ function getFilteredRounds() {
     filtered = filtered.filter(function (r) { return (r.holes || 18) >= 18; });
   } else if (categoriesFilter.holes === "9") {
     filtered = filtered.filter(function (r) { return (r.holes || 18) < 18; });
+  }
+  if (categoriesFilter.timeBlock && categoriesFilter.timeBlock !== "all") {
+    filtered = filtered.filter(function (r) { return roundMatchesTimeBlock(r, categoriesFilter.timeBlock); });
   }
   if (categoriesFilter.range === "last5") filtered = filtered.slice(0, 5);
   else if (categoriesFilter.range === "last20") filtered = filtered.slice(0, 20);
@@ -93,8 +118,9 @@ export function renderCategoriesGrid() {
   const courseLabel = categoriesFilter.course || "All courses";
   const holesLabel = categoriesFilter.holes === "all" ? "18 + 9 holes" : categoriesFilter.holes + " holes only";
   const rangeLabel = ({ last5: "Last 5", last20: "Last 20", year: "This Year", all: "All time", custom: "Custom range" })[categoriesFilter.range];
+  const timeLabel = categoriesFilter.timeBlock && categoriesFilter.timeBlock !== "all" ? " · " + categoriesFilter.timeBlock + " only" : "";
   const summaryEl = document.getElementById("categoriesFilterSummary");
-  if (summaryEl) summaryEl.textContent = courseLabel + " · " + holesLabel + " · " + rangeLabel + " (" + rounds.length + " rounds)";
+  if (summaryEl) summaryEl.textContent = courseLabel + " · " + holesLabel + " · " + rangeLabel + timeLabel + " (" + rounds.length + " rounds)";
 }
 
 function openDeepDive(cat) {
@@ -880,6 +906,9 @@ function openCategoryFilterSheet() {
   document.querySelectorAll("#catFilterHolesPills .pill").forEach(function (p) {
     p.classList.toggle("active", p.dataset.holes === categoriesFilter.holes);
   });
+  document.querySelectorAll("#catFilterTimePills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.time === (categoriesFilter.timeBlock || "all"));
+  });
   document.getElementById("catFilterRange").value = categoriesFilter.range;
   document.getElementById("catFilterFrom").value = categoriesFilter.from || "";
   document.getElementById("catFilterTo").value = categoriesFilter.to || "";
@@ -916,6 +945,12 @@ export function wireStatsCategories() {
       p.classList.add("active");
     });
   });
+  document.querySelectorAll("#catFilterTimePills .pill").forEach(function (p) {
+    p.addEventListener("click", function () {
+      document.querySelectorAll("#catFilterTimePills .pill").forEach(function (x) { x.classList.remove("active"); });
+      p.classList.add("active");
+    });
+  });
 
   const cfr = document.getElementById("catFilterRange");
   if (cfr) cfr.addEventListener("change", function () {
@@ -925,7 +960,9 @@ export function wireStatsCategories() {
   const cfa = document.getElementById("catFilterApply");
   if (cfa) cfa.addEventListener("click", function () {
     const activeHoles = document.querySelector("#catFilterHolesPills .pill.active");
+    const activeTime = document.querySelector("#catFilterTimePills .pill.active");
     categoriesFilter.holes = activeHoles ? activeHoles.dataset.holes : "all";
+    categoriesFilter.timeBlock = activeTime ? activeTime.dataset.time : "all";
     categoriesFilter.course = document.getElementById("catFilterCourse").value || "";
     categoriesFilter.range = document.getElementById("catFilterRange").value;
     categoriesFilter.from = document.getElementById("catFilterFrom").value || "";
@@ -937,7 +974,7 @@ export function wireStatsCategories() {
 
   const cfReset = document.getElementById("catFilterReset");
   if (cfReset) cfReset.addEventListener("click", function () {
-    Object.assign(categoriesFilter, { range: "last20", holes: "all", course: "", from: "", to: "" });
+    Object.assign(categoriesFilter, { range: "last20", holes: "all", course: "", from: "", to: "", timeBlock: "all" });
     saveCategoriesFilter();
     openCategoryFilterSheet();
     renderCategoriesGrid();

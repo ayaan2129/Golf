@@ -828,11 +828,11 @@ const homePractice = document.getElementById("homePracticeBtn");
 if (homePractice) {
   homePractice.addEventListener("click", function () {
     showApp();
-    switchTab("statsTab");
-    syncDrawerActive("statsTab");
+    switchTab("practiceTab");
+    syncDrawerActive("practiceTab");
     setTimeout(function () {
-      const practiceCard = document.querySelector(".practice-section");
-      if (practiceCard) practiceCard.scrollIntoView({ behavior: "smooth" });
+      const picker = document.getElementById("practicePickerView");
+      if (picker) picker.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
   });
 }

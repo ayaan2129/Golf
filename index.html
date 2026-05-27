@@ -472,6 +472,15 @@
                 <input type="date" id="catFilterTo" style="padding:6px; border:1px solid var(--border); border-radius:6px;" />
               </div>
             </div>
+            <div class="profile-row" style="align-items:flex-start;">
+              <label>Time of day</label>
+              <div class="pill-group small-pills" id="catFilterTimePills">
+                <button class="pill active" data-time="all" type="button">All</button>
+                <button class="pill" data-time="morning" type="button">Morning</button>
+                <button class="pill" data-time="afternoon" type="button">Afternoon</button>
+                <button class="pill" data-time="evening" type="button">Evening</button>
+              </div>
+            </div>
             <div style="display:flex; gap:8px; margin-top:14px;">
               <button id="catFilterReset" class="btn-secondary" style="flex:1;">Reset</button>
               <button id="catFilterApply" class="ai-action-btn" style="flex:1;">Apply</button>
@@ -1239,6 +1248,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527m"></script>
+    <script type="module" src="script.js?v=20260527n"></script>
   </body>
 </html>
