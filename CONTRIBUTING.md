@@ -41,22 +41,20 @@ widget tree: one file = one concern, imports declare its dependencies.
         └── profile.js
 ```
 
-### Current state (after PR #10)
+### Current state (after PR #11)
 
 Extracted:
 - `src/core/storage.js`, `src/core/utils.js`, `src/core/courses.js`
 - `src/data/rounds.js`, `src/data/practice.js`, `src/data/profile.js`,
   `src/data/videos.js`, `src/data/weather.js`
-- `src/ai/grok.js` — aiEnabled, getGrokKey, getProxyUrl, callGrok
-- `src/ai/context.js` — aiBaseContext, setAiOutput
-- `src/ai/generators.js` — eight generators (round report, practice plan,
-  pre-round brief, tournament brief, goal plan, course strategy, today's
-  focus) + analyseSwingFrame + analyzeSwingPhoto
+- `src/ai/grok.js`, `src/ai/context.js`, `src/ai/generators.js`
+- `src/screens/practice-ui.js` — putting / chipping / iron / driver drill
+  state machines + render summaries + `wirePracticeUi()` initializer
 
 Pending (still in script.js):
-- generateHoleTip (depends on tracker screen state — moves with Phase 4)
-- Screen modules — Phase 4 / PR #11
-- Final cleanup — PR #12
+- Other screens (login, home, setup, clubs, tracker, stats, videos-ui,
+  coach, profile) — Phase 4b–4d
+- Final cleanup — last PR
 
 ### Adding new code
 
