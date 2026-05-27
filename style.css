@@ -177,6 +177,27 @@ body { padding: 0; }
 
 .drawer-divider { height: 1px; background: var(--border); margin: 8px 16px; }
 
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.settings-row:hover { background: #f6faf6; border-color: var(--green-mid); }
+.settings-row:active { background: #eef5ee; }
+.settings-row-arrow { opacity: 0.5; font-weight: 400; }
+
 .drawer-backdrop {
   position: fixed;
   inset: 0;
