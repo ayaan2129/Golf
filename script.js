@@ -798,6 +798,9 @@ function renderCourseExtras() {
   const notesEl = document.getElementById("courseNotes");
   if (gsEl) gsEl.textContent = c && c.greenSpeed ? "Green speed: " + c.greenSpeed : "";
   if (notesEl) notesEl.textContent = c && c.notes ? c.notes : "";
+  // Hero card title reflects current course
+  const heroTitle = document.getElementById("setupHeroCourseName");
+  if (heroTitle) heroTitle.textContent = c ? (c.location && c.location.name ? c.location.name : courseKey) : "Pick your course";
 }
 
 const courseSelectEl = document.getElementById("courseSelect");

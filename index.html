@@ -134,9 +134,12 @@
 
 
       <div id="setupTab" class="tab-page">
-        <div class="setup-hero">
-          <h1 class="setup-hero-title">New Round</h1>
-          <p class="setup-hero-sub">Pick course, tee, and holes. That's it.</p>
+        <div class="setup-hero-card">
+          <div class="setup-hero-icon">⛳</div>
+          <div>
+            <p class="setup-hero-eyebrow">New round</p>
+            <h1 class="setup-hero-title-v2" id="setupHeroCourseName">Pick your course</h1>
+          </div>
         </div>
 
         <div class="setup-card">
@@ -260,7 +263,10 @@
           <div id="customHolesRow"><div id="customHolesChecks"></div></div>
         </div>
 
-        <button id="startRoundBtn" class="home-cta-btn" style="margin-top: 8px;">Start Round →</button>
+        <div style="height:80px;"></div><!-- spacer so sticky CTA doesn't cover content -->
+        <div class="setup-sticky-cta">
+          <button id="startRoundBtn" class="home-cta-btn">Start Round →</button>
+        </div>
       </div>
 
       <div id="clubsTab" class="tab-page" style="display:none;">
@@ -1233,6 +1239,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527l"></script>
+    <script type="module" src="script.js?v=20260527m"></script>
   </body>
 </html>
