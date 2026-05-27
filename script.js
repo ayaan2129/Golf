@@ -5516,11 +5516,23 @@ function showRoundDetail(round) {
         }
       }
 
-      const putting = document.createElement("p");
-      putting.textContent =
-        "First putt: " + (hole.firstPuttDistance || "—") + " ft, result: " +
-        (hole.firstPuttResult || "—") + ", missed short: " + (hole.missedShortPutt || "—");
-      holeDiv.appendChild(putting);
+      const fpDist = (hole.firstPuttDistance || "").toString().trim();
+      const fpRes = hole.firstPuttResult || "";
+      const missedShort = hole.missedShortPutt === "Yes";
+      if (fpDist || fpRes || missedShort) {
+        const putting = document.createElement("p");
+        const bits = [];
+        if (fpDist && fpRes) {
+          bits.push("First putt from " + fpDist + " ft — " + fpRes.toLowerCase() + ".");
+        } else if (fpDist) {
+          bits.push("First putt from " + fpDist + " ft.");
+        } else if (fpRes) {
+          bits.push("First putt — " + fpRes.toLowerCase() + ".");
+        }
+        if (missedShort) bits.push("Missed a short putt later.");
+        putting.textContent = bits.join(" ");
+        holeDiv.appendChild(putting);
+      }
 
       const stats = getHoleStatsFromSavedHole(hole);
       const analysis = computeHoleAnalysisFromStats(stats);
