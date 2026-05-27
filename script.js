@@ -60,6 +60,7 @@ import {
 import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
 import { wireCoachUi, openChatPanel, closeChatPanel } from "./src/screens/coach.js";
 import { renderCategoriesGrid, wireStatsCategories } from "./src/screens/stats.js";
+import { wireLoginUi } from "./src/screens/login.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
 // stash them, and clean the URL bar so the credentials don't linger in
@@ -429,50 +430,7 @@ async function loadTemperatureForDate(dateStr) {
   localStorage.setItem("currentWeather", JSON.stringify(w));
 }
 
-document.getElementById("loginBtn").addEventListener("click", function () {
-  const u = document.getElementById("usernameInput").value.trim().toLowerCase();
-  const p = document.getElementById("passwordInput").value;
-  const match = getAccounts().find(function (a) { return a.username === u && a.password === p; });
-  if (match) {
-    setCurrentUsername(match.username);
-    document.getElementById("loginError").textContent = "";
-    document.getElementById("passwordInput").value = "";
-    applyUrlActivationToCurrentUser();
-    showWelcome();
-  } else {
-    document.getElementById("loginError").textContent = "Wrong username or password.";
-  }
-});
-
-document.getElementById("openSignupBtn").addEventListener("click", function (e) {
-  e.preventDefault();
-  const box = document.getElementById("signupBox");
-  box.style.display = box.style.display === "none" ? "" : "none";
-});
-
-document.getElementById("signupBtn").addEventListener("click", function () {
-  const errEl = document.getElementById("signupError");
-  errEl.textContent = "";
-  const displayName = (document.getElementById("signupDisplayName").value || "").trim();
-  const username = (document.getElementById("signupUsername").value || "").trim().toLowerCase();
-  const password = document.getElementById("signupPassword").value;
-  if (!displayName) { errEl.textContent = "Add your name."; return; }
-  if (!/^[a-z0-9_.-]{2,20}$/.test(username)) { errEl.textContent = "Username: 2-20 chars, lowercase letters, digits, . _ -"; return; }
-  if (!password || password.length < 4) { errEl.textContent = "Password must be at least 4 characters."; return; }
-  const accounts = getAccounts();
-  if (accounts.find(function (a) { return a.username === username; })) { errEl.textContent = "That username is taken."; return; }
-  accounts.push({ username, password, displayName, createdAt: new Date().toISOString() });
-  saveAccounts(accounts);
-  setCurrentUsername(username);
-  document.getElementById("signupBox").style.display = "none";
-  document.getElementById("signupUsername").value = "";
-  document.getElementById("signupPassword").value = "";
-  document.getElementById("signupDisplayName").value = "";
-  alert("Account created! Welcome, " + displayName + ". Next: set your birthday, handicap, bag, and yardages in Profile.");
-  showApp();
-  switchTab("profileTab");
-  syncDrawerActive("profileTab");
-});
+wireLoginUi({ showWelcome, showApp, switchTab, syncDrawerActive, applyUrlActivationToCurrentUser });
 
 const continueBtnEl = document.getElementById("continueBtn");
 if (continueBtnEl) {

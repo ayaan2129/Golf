@@ -56,6 +56,8 @@ Extracted:
   fallback + AI path via Grok + `wireCoachUi()`
 - `src/screens/stats.js` — Categories grid + Filters sheet + Scoring
   deep-dive + Putting deep-dive (donut + radial) + `wireStatsCategories()`
+- `src/screens/login.js` — login + signup wiring via dependency-injected
+  nav helpers (`wireLoginUi({showWelcome, showApp, switchTab, ...})`)
 
 Legacy bridges (will go away in cleanup PR):
 - `window.suggestTeeProgression` — referenced by coach module until the
