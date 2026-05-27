@@ -117,6 +117,8 @@ function applyUrlActivationToCurrentUser() {
 function setShellVisible(visible) {
   const header = document.getElementById("appHeader");
   if (header) header.style.display = visible ? "" : "none";
+  const nav = document.getElementById("bottomNav");
+  if (nav) nav.style.display = visible ? "" : "none";
 }
 
 function showLogin() {
@@ -772,8 +774,10 @@ document.addEventListener("click", function (e) {
 });
 
 function syncBottomTabs(tabId) {
+  // trackerTab sits within the Round flow — highlight the Round button
+  const mapped = tabId === "trackerTab" ? "setupTab" : tabId;
   document.querySelectorAll(".bt").forEach(function (b) {
-    if (b.dataset.goTab === tabId) b.classList.add("active");
+    if (b.dataset.goTab === mapped) b.classList.add("active");
     else b.classList.remove("active");
   });
 }
@@ -796,6 +800,8 @@ if (homeOngoingResume) {
   homeOngoingResume.addEventListener("click", function () {
     showApp();
     switchTab("trackerTab");
+    syncBottomTabs("trackerTab");
+    syncDrawerActive("trackerTab");
   });
 }
 const homeOngoingDiscard = document.getElementById("homeOngoingDiscard");
@@ -815,6 +821,7 @@ if (homeStart) {
     showApp();
     switchTab("setupTab");
     syncDrawerActive("setupTab");
+    syncBottomTabs("setupTab");
   });
 }
 
@@ -992,6 +999,7 @@ if (homePractice) {
     showApp();
     switchTab("practiceTab");
     syncDrawerActive("practiceTab");
+    syncBottomTabs("practiceTab");
     setTimeout(function () {
       const picker = document.getElementById("practicePickerView");
       if (picker) picker.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1016,6 +1024,7 @@ document.querySelectorAll(".drawer-item").forEach(function (item) {
       switchTab(target);
     }
     syncDrawerActive(target);
+    syncBottomTabs(target);
     closeDrawer();
   });
 });
