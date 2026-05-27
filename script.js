@@ -1634,6 +1634,8 @@ function makeHoleCard(n) {
             <option value="">-- choose --</option>
             <option value="Short">Short</option>
             <option value="Long">Long</option>
+            <option value="Left">Left</option>
+            <option value="Right">Right</option>
             <option value="Good">Good</option>
             <option value="Holed">Holed</option>
           </select>
@@ -1642,8 +1644,8 @@ function makeHoleCard(n) {
         <label>Missed Short Putt?
           <select id="missedShortPutt-${n}">
             <option value="">-- choose --</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
+            <option value="Yes">Yes — missed</option>
+            <option value="No">No — made it</option>
           </select>
         </label>
       </div>
@@ -2374,7 +2376,8 @@ function analyzeHole(i) {
   const hitFairway = s.shots.length > 0 && s.shots[0].lie === "Tee" && s.shots[0].result === "On fairway";
   const reachedGreen = s.shots.some(function (sh) { return sh.result === "On green"; });
   if (s.par > 0 && s.score <= s.par) wentWell = "Made par or better.";
-  else if (s.firstPuttResult === "Holed") wentWell = "Holed your first putt.";
+  else if (s.firstPuttResult === "Holed") wentWell = "First putt: Holed!";
+  else if (s.firstPuttResult === "Good") wentWell = "First putt: Good — close to the hole.";
   else if (hitFairway) wentWell = "Hit the fairway off the tee.";
   else if (reachedGreen) wentWell = "Reached the green.";
   else if (s.goodShots > 0) wentWell = s.goodShots + " good shot(s).";
@@ -2385,7 +2388,10 @@ function analyzeHole(i) {
   else if (s.penalties > 0) practise = "Course management.";
   else if (s.badShots > 0) practise = "Ball striking.";
   else if (s.par >= 4 && !hitFairway && s.shots.length > 0 && s.shots[0].lie === "Tee") practise = "Tee shot accuracy.";
-  else if (s.firstPuttResult === "Short" || s.firstPuttResult === "Long") practise = "Lag putting.";
+  else if (s.firstPuttResult === "Short") practise = "First putt left short — work on lag putting (long putts).";
+  else if (s.firstPuttResult === "Long") practise = "First putt ran long — work on lag putting (long putts).";
+  else if (s.firstPuttResult === "Left") practise = "First putt pulled left — work on putting aim.";
+  else if (s.firstPuttResult === "Right") practise = "First putt pushed right — work on putting aim.";
   else if (s.par > 0 && s.score > s.par + 1) practise = "Approach shots.";
   else practise = "Keep doing what you're doing.";
 
@@ -2587,6 +2593,8 @@ function analyze() {
   let missedShortPutts = 0;
   let firstPuttShort = 0;
   let firstPuttLong = 0;
+  let firstPuttLeft = 0;
+  let firstPuttRight = 0;
   let threePutts = 0;
   let badShots = 0;
   let goodShots = 0;
@@ -2613,6 +2621,8 @@ function analyze() {
     if (s.putts >= 3) threePutts += 1;
     if (s.firstPuttResult === "Short") firstPuttShort += 1;
     if (s.firstPuttResult === "Long") firstPuttLong += 1;
+    if (s.firstPuttResult === "Left") firstPuttLeft += 1;
+    if (s.firstPuttResult === "Right") firstPuttRight += 1;
     if (s.missedShort) missedShortPutts += 1;
     if (s.par === 3 && s.score > 0) {
       par3Score += s.score;
@@ -2634,6 +2644,8 @@ function analyze() {
   if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
   if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
   if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (firstPuttLeft >= 2) mistakes.push("First putts pulled left " + firstPuttLeft + " times.");
+  if (firstPuttRight >= 2) mistakes.push("First putts pushed right " + firstPuttRight + " times.");
   if (threePutts >= 1) mistakes.push(threePutts + " three-putt(s).");
   if (badShots >= 2) mistakes.push("Poor shots (top/duff/slice/hook): " + badShots + ".");
 
@@ -2650,6 +2662,7 @@ function analyze() {
   if (missedShortPutts >= 1) practice.push("Short putting (3-5 foot putts)");
   if (fairwayPct !== null && fairwayPct < 60) practice.push("Tee shot accuracy");
   if (firstPuttShort >= 2 || firstPuttLong >= 2) practice.push("Lag putting (long putts)");
+  if (firstPuttLeft >= 2 || firstPuttRight >= 2) practice.push("Putting aim & start line");
   if (totalPenalties >= 1) practice.push("Course management - safer lines off the tee");
   if (badShots >= 2) practice.push("Ball striking (clean contact, smooth tempo)");
   if (threePutts >= 1) practice.push("Speed control on long putts");
@@ -3365,6 +3378,8 @@ function computeAnalysisFromHoles(holeStatsList) {
   let missedShortPutts = 0;
   let firstPuttShort = 0;
   let firstPuttLong = 0;
+  let firstPuttLeft = 0;
+  let firstPuttRight = 0;
   let threePutts = 0;
   let badShots = 0;
   let goodShots = 0;
@@ -3386,6 +3401,8 @@ function computeAnalysisFromHoles(holeStatsList) {
     if (s.putts >= 3) threePutts += 1;
     if (s.firstPuttResult === "Short") firstPuttShort += 1;
     if (s.firstPuttResult === "Long") firstPuttLong += 1;
+    if (s.firstPuttResult === "Left") firstPuttLeft += 1;
+    if (s.firstPuttResult === "Right") firstPuttRight += 1;
     if (s.missedShort) missedShortPutts += 1;
     if (s.par === 3 && s.score > 0) {
       par3Score += s.score;
@@ -3415,6 +3432,8 @@ function computeAnalysisFromHoles(holeStatsList) {
   if (missedShortPutts >= 1) mistakes.push("Missed " + missedShortPutts + " short putt(s).");
   if (firstPuttShort >= 2) mistakes.push("First putts too short " + firstPuttShort + " times.");
   if (firstPuttLong >= 2) mistakes.push("First putts too long " + firstPuttLong + " times.");
+  if (firstPuttLeft >= 2) mistakes.push("First putts pulled left " + firstPuttLeft + " times.");
+  if (firstPuttRight >= 2) mistakes.push("First putts pushed right " + firstPuttRight + " times.");
   if (threePutts >= 1) mistakes.push(threePutts + " three-putt(s).");
   if (badShots >= 2) mistakes.push("Poor shots (top/duff/slice/hook): " + badShots + ".");
 
@@ -3431,6 +3450,7 @@ function computeAnalysisFromHoles(holeStatsList) {
   if (missedShortPutts >= 1) practice.push("Short putting (3-5 foot putts)");
   if (fairwayPct !== null && fairwayPct < 60) practice.push("Tee shot accuracy");
   if (firstPuttShort >= 2 || firstPuttLong >= 2) practice.push("Lag putting (long putts)");
+  if (firstPuttLeft >= 2 || firstPuttRight >= 2) practice.push("Putting aim & start line");
   if (totalPenalties >= 1) practice.push("Course management - safer lines off the tee");
   if (badShots >= 2) practice.push("Ball striking (clean contact, smooth tempo)");
   if (threePutts >= 1) practice.push("Speed control on long putts");
@@ -3474,7 +3494,8 @@ function computeHoleAnalysisFromStats(s) {
   const hitFairway = s.shots.length > 0 && s.shots[0].lie === "Tee" && s.shots[0].result === "On fairway";
   const reachedGreen = s.shots.some(function (sh) { return sh.result === "On green"; });
   if (s.par > 0 && s.score <= s.par) wentWell = "Made par or better.";
-  else if (s.firstPuttResult === "Holed") wentWell = "Holed your first putt.";
+  else if (s.firstPuttResult === "Holed") wentWell = "First putt: Holed!";
+  else if (s.firstPuttResult === "Good") wentWell = "First putt: Good — close to the hole.";
   else if (hitFairway) wentWell = "Hit the fairway off the tee.";
   else if (reachedGreen) wentWell = "Reached the green.";
   else if (s.goodShots > 0) wentWell = s.goodShots + " good shot(s).";
@@ -3485,7 +3506,10 @@ function computeHoleAnalysisFromStats(s) {
   else if (s.penalties > 0) practise = "Course management.";
   else if (s.badShots > 0) practise = "Ball striking.";
   else if (s.par >= 4 && !hitFairway && s.shots.length > 0 && s.shots[0].lie === "Tee") practise = "Tee shot accuracy.";
-  else if (s.firstPuttResult === "Short" || s.firstPuttResult === "Long") practise = "Lag putting.";
+  else if (s.firstPuttResult === "Short") practise = "First putt left short — work on lag putting (long putts).";
+  else if (s.firstPuttResult === "Long") practise = "First putt ran long — work on lag putting (long putts).";
+  else if (s.firstPuttResult === "Left") practise = "First putt pulled left — work on putting aim.";
+  else if (s.firstPuttResult === "Right") practise = "First putt pushed right — work on putting aim.";
   else if (s.par > 0 && s.score > s.par + 1) practise = "Approach shots.";
   else practise = "Keep doing what you're doing.";
 
