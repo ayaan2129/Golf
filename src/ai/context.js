@@ -5,7 +5,7 @@
 import { calcAge } from "../core/utils.js";
 import { COURSES } from "../core/courses.js";
 import { getCurrentUsername } from "../core/storage.js";
-import { getProfile, getSelectedClubs } from "../data/profile.js";
+import { getProfile, getSelectedClubs, getYardageMatrix, SHOT_TYPES } from "../data/profile.js";
 import {
   getHistory, getStrokesGainedLite, getConfidenceClub, getTopAvoid,
   getScoringZone, getApproachProximity, getPracticeTransfer,
@@ -64,9 +64,49 @@ export function aiBaseContext() {
     if (course.notes) lines.push("Course notes: " + course.notes);
   }
   lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
-  if (Object.keys(clubDist).length > 0) {
+  // Yardage matrix: per-club calm-day baseline carry for Full / ¾ / Half / ¼.
+  // Falls back to legacy clubDistances entry for Full when a club only has
+  // a single distance recorded.
+  const matrix = getYardageMatrix();
+  const matrixLines = [];
+  for (const c of getSelectedClubs()) {
+    if (c === "Putter") continue;
+    const row = matrix[c] || {};
+    const full = row.full != null ? row.full : clubDist[c];
+    const parts = [];
+    if (full != null) parts.push("Full " + full + "y");
+    if (row.threeQ != null) parts.push("¾ " + row.threeQ + "y");
+    if (row.half != null) parts.push("Half " + row.half + "y");
+    if (row.quarter != null) parts.push("¼ " + row.quarter + "y");
+    if (parts.length) matrixLines.push("  - " + c + ": " + parts.join(", "));
+  }
+  if (matrixLines.length) {
+    lines.push("Carry yardages (calm, sea-level, ~70°F baseline):");
+    for (const ml of matrixLines) lines.push(ml);
+  } else if (Object.keys(clubDist).length > 0) {
     lines.push("Club distances: " + Object.keys(clubDist).map(function (c) { return c + " " + clubDist[c] + "y"; }).join(", ") + ".");
   }
+  // Today's playing conditions cached by the Yardage Matrix screen so the
+  // coach can reason about altitude/temp/wind adjustments without fetching.
+  try {
+    const condRaw = localStorage.getItem("ymConditionsCache");
+    if (condRaw) {
+      const cond = JSON.parse(condRaw);
+      const ageMin = cond.fetchedAt ? Math.round((Date.now() - cond.fetchedAt) / 60000) : null;
+      if (ageMin == null || ageMin < 180) {
+        const bits = [];
+        if (cond.elevationFt != null) bits.push("altitude " + Math.round(cond.elevationFt) + " ft");
+        if (cond.tempF != null) bits.push(Math.round(cond.tempF) + "°F");
+        if (cond.windMph != null && cond.windMph > 0) {
+          bits.push(Math.round(cond.windMph) + " mph " + (cond.windRelation || "wind"));
+        } else {
+          bits.push("calm");
+        }
+        if (cond.locationName) bits.unshift(cond.locationName);
+        lines.push("Today's playing conditions: " + bits.join(", ") + ".");
+      }
+    }
+  } catch (e) {}
   lines.push("Total rounds saved: " + history.length + ".");
   if (last5.length > 0) {
     lines.push("Last " + last5.length + " rounds:");

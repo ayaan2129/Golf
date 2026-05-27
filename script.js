@@ -74,6 +74,7 @@ import {
   getIndexHistory, recordIndex,
 } from "./src/data/handicap.js";
 import { wireLoginUi } from "./src/screens/login.js";
+import { renderYardageMatrix, wireYardageMatrix } from "./src/screens/yardage-matrix.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
 // stash them, and clean the URL bar so the credentials don't linger in
@@ -854,6 +855,9 @@ function switchTab(tabId) {
     buildClubsGrid();
     renderClubDistances();
   }
+  if (tabId === "yardageMatrixTab") {
+    renderYardageMatrix();
+  }
   if (tabId === "practiceTab") {
     renderPracticeActivity();
     renderPuttingStatsSummary();
@@ -911,7 +915,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "yardageMatrixTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab") {
     showApp();
     switchTab(target);
     syncBottomTabs(target);
@@ -5668,11 +5672,23 @@ function showRoundDetail(round) {
         }
       }
 
-      const putting = document.createElement("p");
-      putting.textContent =
-        "First putt: " + (hole.firstPuttDistance || "—") + " ft, result: " +
-        (hole.firstPuttResult || "—") + ", missed short: " + (hole.missedShortPutt || "—");
-      holeDiv.appendChild(putting);
+      const fpDist = (hole.firstPuttDistance || "").toString().trim();
+      const fpRes = hole.firstPuttResult || "";
+      const missedShort = hole.missedShortPutt === "Yes";
+      if (fpDist || fpRes || missedShort) {
+        const putting = document.createElement("p");
+        const bits = [];
+        if (fpDist && fpRes) {
+          bits.push("First putt from " + fpDist + " ft — " + fpRes.toLowerCase() + ".");
+        } else if (fpDist) {
+          bits.push("First putt from " + fpDist + " ft.");
+        } else if (fpRes) {
+          bits.push("First putt — " + fpRes.toLowerCase() + ".");
+        }
+        if (missedShort) bits.push("Missed a short putt later.");
+        putting.textContent = bits.join(" ");
+        holeDiv.appendChild(putting);
+      }
 
       const stats = getHoleStatsFromSavedHole(hole);
       const analysis = computeHoleAnalysisFromStats(stats);
@@ -5899,6 +5915,7 @@ renderClubDistances();
 wirePracticeUi();
 wireVideosUi();
 wireStatsCategories();
+wireYardageMatrix();
 
 // when TEE_GOALS was referenced inside renderWelcome before being
 // declared).
