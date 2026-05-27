@@ -642,6 +642,7 @@ function switchTab(tabId) {
   if (tabId === "statsTab") {
     renderDashboard();
     renderHistory();
+    if (typeof renderCategoriesGrid === "function") renderCategoriesGrid();
   }
   if (tabId === "profileTab") {
     syncAiStatusOnProfile();
@@ -7234,6 +7235,302 @@ if (_videoModalClose) {
 }
 
 // screen to show (this used to run at the top of the file but crashed
+// ---------- Stats Categories grid + Filters + Deep-dive sheets (PR #6 / Phase 1) ----------
+
+const categoriesFilter = {
+  range: "last20",  // last5 | last20 | year | all | custom
+  holes: "all",     // 18 | 9 | all
+  course: "",       // course key or empty for all
+  from: "",
+  to: "",
+};
+
+function loadCategoriesFilter() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("categoriesFilter") || "{}");
+    Object.assign(categoriesFilter, saved);
+  } catch (e) {}
+}
+function saveCategoriesFilter() {
+  localStorage.setItem("categoriesFilter", JSON.stringify(categoriesFilter));
+}
+
+function getFilteredRounds() {
+  const all = getHistory().slice().sort(function (a, b) {
+    return (b.savedAt || b.date || "").localeCompare(a.savedAt || a.date || "");
+  });
+  let filtered = all;
+  if (categoriesFilter.course) {
+    filtered = filtered.filter(function (r) { return r.courseName === categoriesFilter.course; });
+  }
+  if (categoriesFilter.holes === "18") {
+    filtered = filtered.filter(function (r) { return (r.holes || 18) >= 18; });
+  } else if (categoriesFilter.holes === "9") {
+    filtered = filtered.filter(function (r) { return (r.holes || 18) < 18; });
+  }
+  if (categoriesFilter.range === "last5") filtered = filtered.slice(0, 5);
+  else if (categoriesFilter.range === "last20") filtered = filtered.slice(0, 20);
+  else if (categoriesFilter.range === "year") {
+    const y = new Date().getFullYear();
+    filtered = filtered.filter(function (r) { return (r.date || "").slice(0, 4) === String(y); });
+  } else if (categoriesFilter.range === "custom") {
+    if (categoriesFilter.from) filtered = filtered.filter(function (r) { return (r.date || "") >= categoriesFilter.from; });
+    if (categoriesFilter.to) filtered = filtered.filter(function (r) { return (r.date || "") <= categoriesFilter.to; });
+  }
+  return filtered;
+}
+
+function renderCategoriesGrid() {
+  const rounds = getFilteredRounds();
+  const setText = function (id, val) { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  if (rounds.length === 0) {
+    setText("catScoringNum", "—");
+    setText("catFairwaysNum", "—");
+    setText("catGreensNum", "—");
+    setText("catUpDownsNum", "—");
+    setText("catSandSavesNum", "—");
+    setText("catPuttingNum", "—");
+    setText("catPenaltiesNum", "—");
+  } else {
+    const avg = function (arr, key) {
+      const vals = arr.map(function (r) { return r[key]; }).filter(function (v) { return v != null && !isNaN(v); });
+      return vals.length === 0 ? null : vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    };
+    const avgScore = avg(rounds, "totalScore");
+    const avgFW = avg(rounds, "fairwayPct");
+    const avgGIR = avg(rounds, "girPct");
+    const avgScramble = avg(rounds, "scramblePct");
+    const avgPutts = avg(rounds, "totalPutts");
+    const totalPens = rounds.reduce(function (s, r) { return s + (r.totalPenalties || 0); }, 0);
+
+    setText("catScoringNum", avgScore != null ? avgScore.toFixed(1) : "—");
+    setText("catFairwaysNum", avgFW != null ? Math.round(avgFW) + "%" : "—");
+    setText("catGreensNum", avgGIR != null ? Math.round(avgGIR) + "%" : "—");
+    setText("catUpDownsNum", avgScramble != null ? Math.round(avgScramble) + "%" : "—");
+    setText("catSandSavesNum", "—"); // separate stat — phase 2
+    setText("catPuttingNum", avgPutts != null ? avgPutts.toFixed(1) : "—");
+    setText("catPenaltiesNum", String(totalPens));
+  }
+
+  // Filter pill state
+  document.querySelectorAll(".cat-filter-pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.range === categoriesFilter.range);
+  });
+
+  // Filter summary line
+  const courseLabel = categoriesFilter.course || "All courses";
+  const holesLabel = categoriesFilter.holes === "all" ? "18 + 9 holes" : categoriesFilter.holes + " holes only";
+  const rangeLabel = ({ last5: "Last 5", last20: "Last 20", year: "This Year", all: "All time", custom: "Custom range" })[categoriesFilter.range];
+  const summaryEl = document.getElementById("categoriesFilterSummary");
+  if (summaryEl) summaryEl.textContent = courseLabel + " · " + holesLabel + " · " + rangeLabel + " (" + rounds.length + " rounds)";
+}
+
+// ---------- Deep-dive sheets ----------
+function openDeepDive(cat) {
+  const modal = document.getElementById("categoryDeepDive");
+  const title = document.getElementById("deepdiveTitle");
+  const scope = document.getElementById("deepdiveScope");
+  const body = document.getElementById("deepdiveBody");
+  if (!modal || !body) return;
+
+  const titles = {
+    scoring: "Scoring",
+    fairways: "Fairways",
+    greens: "Greens",
+    updowns: "Up & Downs",
+    sandsaves: "Sand Saves",
+    putting: "Putting",
+    penalties: "Penalties",
+  };
+  title.textContent = titles[cat] || "—";
+  const rangeLabel = ({ last5: "Last 5", last20: "Last 20", year: "This Year", all: "All", custom: "Custom" })[categoriesFilter.range];
+  scope.textContent = rangeLabel;
+
+  body.innerHTML = "";
+  const rounds = getFilteredRounds();
+
+  if (cat === "scoring") renderScoringDeepDive(body, rounds);
+  else {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">Deep-dive for <strong>' + titles[cat] + '</strong> is coming next.</p>';
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeDeepDive() {
+  const modal = document.getElementById("categoryDeepDive");
+  if (modal) modal.style.display = "none";
+}
+
+function renderScoringDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet. Save a round first.</p>';
+    return;
+  }
+
+  const scores = rounds.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
+  const avg = scores.length ? scores.reduce(function (a, b) { return a + b; }, 0) / scores.length : null;
+  const seasonRounds = rounds.filter(function (r) { return (r.date || "").slice(0, 4) === String(new Date().getFullYear()); });
+  const seasonBest = seasonRounds.length ? Math.min.apply(null, seasonRounds.map(function (r) { return r.totalScore; }).filter(Boolean)) : null;
+  const allTimeBest = getHistory().length ? Math.min.apply(null, getHistory().map(function (r) { return r.totalScore; }).filter(Boolean)) : null;
+  const avgVsPar = rounds.length ? rounds.reduce(function (s, r) { return s + (r.scoreVsPar || 0); }, 0) / rounds.length : null;
+
+  // Hole-level distribution
+  const counts = { birdie: 0, par: 0, bogey: 0, dbogey: 0, worse: 0 };
+  let holeTotal = 0;
+  // Per-par averages
+  const perPar = { 3: { sum: 0, n: 0 }, 4: { sum: 0, n: 0 }, 5: { sum: 0, n: 0 } };
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    for (const h of holes) {
+      const par = h.par || 0;
+      const score = h.score || 0;
+      if (!par || !score) continue;
+      holeTotal++;
+      if (perPar[par]) { perPar[par].sum += score; perPar[par].n++; }
+      const diff = score - par;
+      if (diff <= -1) counts.birdie++;
+      else if (diff === 0) counts.par++;
+      else if (diff === 1) counts.bogey++;
+      else if (diff === 2) counts.dbogey++;
+      else counts.worse++;
+    }
+  }
+
+  const distConfig = [
+    { key: "birdie", lbl: "Birdie", col: "#c62828" },
+    { key: "par",    lbl: "Par",    col: "#2faf3e" },
+    { key: "bogey",  lbl: "Bogey",  col: "#42a5f5" },
+    { key: "dbogey", lbl: "D.Bogey", col: "#1565c0" },
+    { key: "worse",  lbl: "Worse",  col: "#0d47a1" },
+  ];
+
+  let html = '';
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Rounds</div><div class="dd-stat-num">' + rounds.length + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Average Shots</div><div class="dd-stat-num">' + (avg != null ? avg.toFixed(1) : "—") + '</div></div>';
+  html += '</div>';
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Season Best</div><div class="dd-stat-num">' + (seasonBest != null ? seasonBest : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">All-Time Best</div><div class="dd-stat-num">' + (allTimeBest != null ? allTimeBest : "—") + '</div></div>';
+  html += '</div>';
+
+  if (holeTotal > 0) {
+    html += '<div class="dd-section-title">Hole Distribution</div>';
+    html += '<div class="dd-dist-row">';
+    for (const d of distConfig) {
+      const c = counts[d.key];
+      const pct = Math.round(c / holeTotal * 100);
+      const heightPct = Math.max(4, Math.round(c / Math.max.apply(null, Object.values(counts)) * 100));
+      html += '<div class="dd-dist-col">';
+      html += '  <div class="dd-dist-pct">' + pct + '%</div>';
+      html += '  <div class="dd-dist-bar" style="height:' + heightPct + '%; background:' + d.col + ';"></div>';
+      html += '  <div class="dd-dist-lbl">' + d.lbl + '</div>';
+      html += '  <div class="dd-dist-count">' + c + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="dd-section-title">Average to Par</div>';
+  html += '<div style="text-align:center; font-size:32px; font-weight:800; color:' + (avgVsPar > 0 ? 'var(--crimson)' : 'var(--green-deep)') + '; margin-bottom:10px;">' + (avgVsPar != null ? (avgVsPar > 0 ? "+" : "") + avgVsPar.toFixed(2) : "—") + '</div>';
+
+  if (perPar[3].n + perPar[4].n + perPar[5].n > 0) {
+    html += '<div class="dd-section-title">Average Per Hole</div>';
+    for (const p of [3, 4, 5]) {
+      const pp = perPar[p];
+      const a = pp.n > 0 ? pp.sum / pp.n : null;
+      const diff = a != null ? a - p : null;
+      const widthPct = diff != null ? Math.min(100, Math.abs(diff) / 2 * 100) : 0;
+      html += '<div class="dd-vs-par-row">';
+      html += '  <div class="dd-vs-par-lbl">PAR ' + p + '</div>';
+      html += '  <div class="dd-vs-par-bar-wrap"><div class="dd-vs-par-bar" style="width:' + widthPct + '%; left:50%;"></div></div>';
+      html += '  <div class="dd-vs-par-val">' + (diff != null ? (diff > 0 ? "+" : "") + diff.toFixed(2) : "—") + '</div>';
+      html += '</div>';
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+// ---------- Filter sheet ----------
+function openCategoryFilterSheet() {
+  const sheet = document.getElementById("categoryFilterSheet");
+  if (!sheet) return;
+  // Populate course dropdown
+  const courseSel = document.getElementById("catFilterCourse");
+  if (courseSel) {
+    const courses = Object.keys(COURSES).concat(getHistory().map(function (r) { return r.courseName; }).filter(Boolean));
+    const unique = Array.from(new Set(courses));
+    courseSel.innerHTML = '<option value="">All courses</option>' + unique.map(function (c) { return '<option value="' + c + '"' + (c === categoriesFilter.course ? ' selected' : '') + '>' + c + '</option>'; }).join('');
+  }
+  document.querySelectorAll("#catFilterHolesPills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.holes === categoriesFilter.holes);
+  });
+  document.getElementById("catFilterRange").value = categoriesFilter.range;
+  document.getElementById("catFilterFrom").value = categoriesFilter.from || "";
+  document.getElementById("catFilterTo").value = categoriesFilter.to || "";
+  document.getElementById("catFilterDateRow").style.display = categoriesFilter.range === "custom" ? "" : "none";
+  sheet.style.display = "flex";
+}
+
+// Wire all the categories interactions
+loadCategoriesFilter();
+
+document.querySelectorAll(".cat-filter-pill").forEach(function (p) {
+  p.addEventListener("click", function () {
+    categoriesFilter.range = p.dataset.range;
+    saveCategoriesFilter();
+    renderCategoriesGrid();
+  });
+});
+
+document.querySelectorAll(".category-tile").forEach(function (t) {
+  t.addEventListener("click", function () { openDeepDive(t.dataset.cat); });
+});
+
+const _dcb = document.getElementById("deepdiveCloseBtn");
+if (_dcb) _dcb.addEventListener("click", closeDeepDive);
+
+const _cfb = document.getElementById("categoriesFilterBtn");
+if (_cfb) _cfb.addEventListener("click", openCategoryFilterSheet);
+const _cfc = document.getElementById("catFilterClose");
+if (_cfc) _cfc.addEventListener("click", function () { document.getElementById("categoryFilterSheet").style.display = "none"; });
+
+document.querySelectorAll("#catFilterHolesPills .pill").forEach(function (p) {
+  p.addEventListener("click", function () {
+    document.querySelectorAll("#catFilterHolesPills .pill").forEach(function (x) { x.classList.remove("active"); });
+    p.classList.add("active");
+  });
+});
+
+const _cfr = document.getElementById("catFilterRange");
+if (_cfr) _cfr.addEventListener("change", function () {
+  document.getElementById("catFilterDateRow").style.display = _cfr.value === "custom" ? "" : "none";
+});
+
+const _cfa = document.getElementById("catFilterApply");
+if (_cfa) _cfa.addEventListener("click", function () {
+  const activeHoles = document.querySelector("#catFilterHolesPills .pill.active");
+  categoriesFilter.holes = activeHoles ? activeHoles.dataset.holes : "all";
+  categoriesFilter.course = document.getElementById("catFilterCourse").value || "";
+  categoriesFilter.range = document.getElementById("catFilterRange").value;
+  categoriesFilter.from = document.getElementById("catFilterFrom").value || "";
+  categoriesFilter.to = document.getElementById("catFilterTo").value || "";
+  saveCategoriesFilter();
+  renderCategoriesGrid();
+  document.getElementById("categoryFilterSheet").style.display = "none";
+});
+
+const _cfReset = document.getElementById("catFilterReset");
+if (_cfReset) _cfReset.addEventListener("click", function () {
+  Object.assign(categoriesFilter, { range: "last20", holes: "all", course: "", from: "", to: "" });
+  saveCategoriesFilter();
+  openCategoryFilterSheet();
+  renderCategoriesGrid();
+});
+
 // when TEE_GOALS was referenced inside renderWelcome before being
 // declared).
 if (isLoggedIn()) {
