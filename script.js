@@ -441,6 +441,7 @@ function showWelcome() {
   document.getElementById("appScreen").style.display = "none";
   setShellVisible(true);
   syncBottomTabs("home");
+  autoSeedIfNeeded(); // seed demo data on first login for ayaan account
   renderHomeDashboard();
   renderWelcome();
 }
@@ -864,6 +865,57 @@ if (homeStart) {
     switchTab("setupTab");
     syncDrawerActive("setupTab");
     syncBottomTabs("setupTab");
+  });
+}
+
+// Deep-link a home card tap → Coach Chat with a pre-filled question
+function openCoachWithQuestion(question) {
+  showApp();
+  switchTab("coachTab");
+  syncDrawerActive("coachTab");
+  syncBottomTabs("coachTab");
+  openChatPanel();
+  const input = document.getElementById("chatInput");
+  if (input) {
+    input.value = question;
+    input.focus();
+    // Auto-send if AI is enabled
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn && typeof aiEnabled === "function" && aiEnabled()) {
+      setTimeout(function () { sendBtn.click(); }, 120);
+    }
+  }
+}
+
+// Work On This card → ask coach about that specific mistake pattern
+const focusCard = document.getElementById("homeFocusCard");
+if (focusCard) {
+  focusCard.style.cursor = "pointer";
+  focusCard.addEventListener("click", function () {
+    const txt = (document.getElementById("homeFocusText") || {}).textContent || "";
+    if (!txt || txt === "—") return;
+    openCoachWithQuestion("I keep making this mistake: " + txt + ". What's causing it and how do I fix it?");
+  });
+}
+
+// Coach Intel card → ask about confidence club or avoidance pattern
+const intelCard2 = document.getElementById("homeCoachIntel");
+if (intelCard2) {
+  intelCard2.style.cursor = "pointer";
+  intelCard2.addEventListener("click", function () {
+    openCoachWithQuestion("Based on my recent rounds, what's my biggest scoring opportunity right now?");
+  });
+}
+
+// Practice Focus card → ask about that specific practice weakness
+const piCard2 = document.getElementById("homePracticeInsight");
+if (piCard2) {
+  piCard2.style.cursor = "pointer";
+  piCard2.addEventListener("click", function () {
+    const label = (document.getElementById("homePracticeInsightLabel") || {}).textContent || "";
+    const cue = (document.getElementById("homePracticeInsightCue") || {}).textContent || "";
+    const q = label ? "My practice shows I need to work on: " + label + ". " + cue + " Give me a specific drill to fix this." : "What should I focus on in practice today?";
+    openCoachWithQuestion(q);
   });
 }
 
@@ -4483,12 +4535,14 @@ function seedDemoData(silent) {
 }
 
 function autoSeedIfNeeded() {
-  // Intentionally disabled: in a multi-user world, auto-seeding leaks demo
-  // data into every new account's namespace on first visit. Users who want
-  // sample data can click 'Seed Ayaan demo data' on the AI Coach card (or
-  // we'll wire a dedicated demo flow later). For real accounts, the app
-  // starts empty as it should.
-  return;
+  // Only auto-seed for the primary 'ayaan' account on first visit.
+  // Other accounts start empty (no leakage).
+  const user = getCurrentUsername();
+  if (user !== "ayaan") return;
+  if (localStorage.getItem("demoSeeded")) return;
+  if (getHistory().length > 0) return; // already has real data
+  seedDemoData(true /* silent */);
+  localStorage.setItem("demoSeeded", "1");
 }
 
 function wipeAllLocalData() {
@@ -5603,7 +5657,6 @@ if (addCustomBtn && customInput) {
 });
 
 buildCustomHoleChecks();
-autoSeedIfNeeded();
 buildHoles();
 loadAll();
 toggleSetupRows();
@@ -5632,4 +5685,9 @@ if (isLoggedIn()) {
   showWelcome();
 } else {
   showLogin();
+}
+
+// Register service worker for offline/PWA support
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(function () {});
 }

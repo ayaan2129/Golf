@@ -364,6 +364,12 @@ body { padding: 0; }
   padding: 14px 16px;
   margin: 10px 0;
   box-shadow: var(--card-shadow);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.home-tile[style*="cursor: pointer"]:active,
+.home-tile[style*="cursor:pointer"]:active {
+  transform: scale(0.985);
+  box-shadow: var(--card-shadow-lg);
 }
 
 .home-tile h3 {
