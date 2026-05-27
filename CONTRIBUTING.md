@@ -54,14 +54,16 @@ Extracted:
   + modal player + linked-shot picker + compare modal + `wireVideosUi()`
 - `src/screens/coach.js` — chat launcher + panel + send + rule-based
   fallback + AI path via Grok + `wireCoachUi()`
+- `src/screens/stats.js` — Categories grid + Filters sheet + Scoring
+  deep-dive + Putting deep-dive (donut + radial) + `wireStatsCategories()`
 
 Legacy bridges (will go away in cleanup PR):
 - `window.suggestTeeProgression` — referenced by coach module until the
   tee-progression helpers move to `src/data/`.
 
 Pending (still in script.js):
-- Other screens (login, home, setup, clubs, tracker, stats, profile) —
-  remaining Phase 4 sub-phases
+- Other screens (login, home, setup, clubs, tracker, profile) — remaining
+  Phase 4 sub-phases
 - Final cleanup — last PR
 
 ### Adding new code
