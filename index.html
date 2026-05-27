@@ -147,7 +147,7 @@
           <p id="homeLastRoundText" style="margin:0; font-size:13px; color:var(--muted);">No rounds saved yet.</p>
         </div>
 
-        <div class="home-tile home-place">
+        <div class="home-tile home-place" id="homeWeatherTile" style="display:none;">
           <h3>Today at <span id="homeCourse">RCGC</span></h3>
           <p id="homeWeatherText">—</p>
         </div>
@@ -364,9 +364,7 @@
         </div>
 
         <div class="page-nav">
-          <button class="btn-back" data-go="setupTab">← Back: Round Setup</button>
-          <button class="btn-next" data-go="trackerTab">Next: Start Round →</button>
-          <button id="clubsLogoutBtn">Logout</button>
+          <button class="btn-next" data-go="setupTab">Start a Round →</button>
         </div>
       </div>
 
@@ -1266,9 +1264,12 @@
       </div>
 
       <div id="videosTab" class="tab-page" style="display:none;">
-        <div class="setup-hero">
-          <h1 class="setup-hero-title">Swing Videos</h1>
-          <p class="setup-hero-sub">Capture, compare and review your swing over time.</p>
+        <div class="setup-hero-card" style="margin-bottom:0;">
+          <div class="setup-hero-icon">🎥</div>
+          <div>
+            <p class="setup-hero-eyebrow">Swing Library</p>
+            <h1 class="setup-hero-title-v2">Swing Videos</h1>
+          </div>
         </div>
 
         <div class="setup-card">
@@ -1309,7 +1310,13 @@
       </div>
 
       <div id="coachTab" class="tab-page" style="display:none;">
-        <h2 class="section-header">Coach Chat</h2>
+        <div class="setup-hero-card" style="margin-bottom:0;">
+          <div class="setup-hero-icon">🧠</div>
+          <div>
+            <p class="setup-hero-eyebrow">AI Coach</p>
+            <h1 class="setup-hero-title-v2">Coach Chat</h1>
+          </div>
+        </div>
 
         <div class="chat-launcher" id="chatLauncher">
           <div class="chat-launcher-icon">💬</div>
@@ -1341,11 +1348,6 @@
           <p id="micStatus" style="font-size:11px; margin-top:6px; color:#555;"></p>
         </div>
 
-        <div class="page-nav">
-          <button class="btn-back" data-go="statsTab">← Back: Coach &amp; Stats</button>
-          <button class="btn-back" data-go="trackerTab">Hole Tracker</button>
-          <button class="btn-back" data-go="welcome">Pre-Round Page</button>
-        </div>
       </div>
     </div>
 
@@ -1383,6 +1385,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=202605272"></script>
+    <script type="module" src="script.js?v=202605274"></script>
   </body>
 </html>

@@ -313,25 +313,21 @@ function renderHomeDashboard() {
   if (roundsEl) roundsEl.textContent = history.length;
 
   const wxText = document.getElementById("homeWeatherText");
-  if (wxText) {
-    let w = null;
-    try { w = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
-    if (w) {
-      wxText.textContent = Math.round(w.tempMax || 0) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
-    } else {
-      // Auto-fetch today's weather for the default course
-      const t = todayISO();
-      const def = (document.getElementById("courseSelect") || {}).value || "RCGC";
-      loadTemperatureForDate(t);
-      const c = document.getElementById("homeCourse");
-      if (c) c.textContent = def;
-      wxText.textContent = "Loading...";
-    }
-  }
+  const wxTile = document.getElementById("homeWeatherTile");
   const courseEl = document.getElementById("homeCourse");
   if (courseEl) {
     const defaultCourse = (history.length > 0 ? history[history.length - 1].courseName : "RCGC") || "RCGC";
     courseEl.textContent = defaultCourse;
+  }
+  if (wxText) {
+    let w = null;
+    try { w = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+    if (w && w.tempMax != null) {
+      wxText.textContent = Math.round(w.tempMax) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
+      if (wxTile) wxTile.style.display = "";
+    } else {
+      if (wxTile) wxTile.style.display = "none";
+    }
   }
 
   const lastTitleEl = document.getElementById("homeLastRoundTitle");
