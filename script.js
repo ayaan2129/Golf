@@ -3252,7 +3252,8 @@ if (postReview) {
   postReview.addEventListener("input", handleChange);
 }
 
-document.getElementById("saveRoundBtn").addEventListener("click", function () {
+const saveRoundBtnEl = document.getElementById("saveRoundBtn");
+if (saveRoundBtnEl) saveRoundBtnEl.addEventListener("click", function () {
   if (getTotalScore() === 0) {
     alert("Add some shots before saving the round.");
     return;
@@ -3263,7 +3264,8 @@ document.getElementById("saveRoundBtn").addEventListener("click", function () {
   }
 });
 
-document.getElementById("resetBtn").addEventListener("click", function () {
+const resetBtnEl = document.getElementById("resetBtn");
+if (resetBtnEl) resetBtnEl.addEventListener("click", function () {
   if (confirm("Start a new round? This will clear all holes (not your previous rounds).")) {
     clearCurrentRound();
   }
