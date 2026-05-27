@@ -167,29 +167,42 @@ export function getPracticeTransfer(history, practiceActivity) {
   };
 }
 
-// Per-club approach proximity — avg distanceLeft after each approach shot.
+// Per-club approach proximity — avg feet from pin on first putt (from firstPuttDistance).
+// Uses the GIR approach shot's club + the hole's firstPuttDistance.
 export function getApproachProximity(rounds) {
   const byClub = {};
   for (const r of rounds) {
     const holes = (r.fullData && r.fullData.holes) || {};
     for (const k in holes) {
       const h = holes[k];
-      if (!Array.isArray(h.shots)) continue;
-      for (let i = 1; i < h.shots.length; i++) {
-        const s = h.shots[i];
-        const left = Number(s.distanceLeft);
-        const club = s.club;
-        if (!club || isNaN(left) || left <= 0) continue;
-        if (!byClub[club]) byClub[club] = { sum: 0, n: 0, min: left, max: left };
-        byClub[club].sum += left;
-        byClub[club].n++;
-        if (left < byClub[club].min) byClub[club].min = left;
-        if (left > byClub[club].max) byClub[club].max = left;
-      }
+      const proxFt = Number(h.firstPuttDistance);
+      if (!proxFt || proxFt <= 0) continue;
+      if (!Array.isArray(h.shots) || h.shots.length === 0) continue;
+      const par = Number(h.par);
+      // Find GIR approach shot (last shot that reached green, taken in ≤ par-2 strokes)
+      const greenIdx = h.shots.findIndex(function (s) {
+        return s.result === "Green" || s.result === "Holed";
+      });
+      if (greenIdx < 0 || (greenIdx + 1) > (par - 2)) continue;
+      const approachShot = h.shots[greenIdx];
+      const club = approachShot.club;
+      if (!club) continue;
+      if (!byClub[club]) byClub[club] = { sum: 0, n: 0, values: [] };
+      byClub[club].sum += proxFt;
+      byClub[club].n++;
+      byClub[club].values.push(proxFt);
     }
   }
   return Object.keys(byClub).map(function (c) {
     const b = byClub[c];
-    return { club: c, count: b.n, avgLeft: Math.round(b.sum / b.n), min: b.min, max: b.max };
+    const sorted = b.values.slice().sort(function (a, z) { return a - z; });
+    return {
+      club: c,
+      count: b.n,
+      avgLeft: Math.round(b.sum / b.n),
+      min: sorted[0],
+      max: sorted[sorted.length - 1],
+      median: sorted[Math.floor(sorted.length / 2)],
+    };
   }).sort(function (a, b) { return b.count - a.count; });
 }

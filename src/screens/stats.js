@@ -8,6 +8,7 @@
 import { COURSES } from "../core/courses.js";
 import { getHistory, getScoringZone, getPracticeTransfer, getApproachProximity } from "../data/rounds.js";
 import { getPuttingInsights, getPracticeActivity } from "../data/practice.js";
+import { aggregateSG, getTrends, getScoringResponse, computeFullSG } from "../data/strokes-gained.js";
 
 const categoriesFilter = {
   range: "last20",  // last5 | last20 | year | all | custom
@@ -109,6 +110,32 @@ export function renderCategoriesGrid() {
     setText("catSandSavesNum", "—");
     setText("catPuttingNum", avgPutts != null ? avgPutts.toFixed(1) : "—");
     setText("catPenaltiesNum", String(totalPens));
+
+    // SG tile: show best/worst category
+    const sg = aggregateSG(rounds);
+    const sgCats = [
+      { label: "OTT", val: sg.offTee.avg },
+      { label: "App", val: sg.approach.avg },
+      { label: "ARG", val: sg.aroundGreen.avg },
+      { label: "Putt", val: sg.putting.avg },
+    ].filter(function (c) { return c.val != null; });
+    if (sgCats.length > 0) {
+      const worst = sgCats.reduce(function (a, b) { return a.val < b.val ? a : b; });
+      setText("catSGNum", worst.label + " " + (worst.val >= 0 ? "+" : "") + worst.val);
+    } else {
+      setText("catSGNum", "no data");
+    }
+
+    // Trends tile: show number of metrics improving
+    const history = getHistory();
+    const trends = getTrends(history);
+    if (trends) {
+      const improving = Object.values(trends).filter(function (t) { return t.direction === "improving"; }).length;
+      const declining = Object.values(trends).filter(function (t) { return t.direction === "declining"; }).length;
+      setText("catTrendsNum", improving + " ↑ " + declining + " ↓");
+    } else {
+      setText("catTrendsNum", "—");
+    }
   }
 
   document.querySelectorAll(".cat-filter-pill").forEach(function (p) {
@@ -134,6 +161,7 @@ function openDeepDive(cat) {
     scoring: "Scoring", fairways: "Fairways", greens: "Greens",
     updowns: "Up & Downs", sandsaves: "Sand Saves",
     putting: "Putting", penalties: "Penalties",
+    strokesgained: "Strokes Gained", trends: "Trends",
   };
   title.textContent = titles[cat] || "—";
   const rangeLabel = ({ last5: "Last 5", last20: "Last 20", year: "This Year", all: "All", custom: "Custom" })[categoriesFilter.range];
@@ -148,6 +176,8 @@ function openDeepDive(cat) {
   else if (cat === "updowns") renderUpDownsDeepDive(body, rounds);
   else if (cat === "sandsaves") renderSandSavesDeepDive(body, rounds);
   else if (cat === "penalties") renderPenaltiesDeepDive(body, rounds);
+  else if (cat === "strokesgained") renderSGDeepDive(body, rounds);
+  else if (cat === "trends") renderTrendsDeepDive(body, rounds);
   else body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">Deep-dive for <strong>' + titles[cat] + '</strong> is coming next.</p>';
   modal.style.display = "flex";
 }
@@ -1000,4 +1030,176 @@ export function wireStatsCategories() {
     openCategoryFilterSheet();
     renderCategoriesGrid();
   });
+}
+
+// ── Strokes Gained deep-dive ──────────────────────────────────────────────────
+function renderSGDeepDive(body, rounds) {
+  function sgBar(label, val, n) {
+    if (val == null) return '<div class="stat-row"><span class="stat-label">' + label + '</span><span class="stat-val" style="color:var(--muted);">no data — enter first putt distance in tracker</span></div>';
+    const color = val >= 0 ? "var(--green-bright)" : "var(--crimson)";
+    const sign = val >= 0 ? "+" : "";
+    const barW = Math.min(Math.abs(val) / 3 * 100, 100);
+    const barDir = val >= 0 ? "left" : "right";
+    return [
+      '<div class="stat-row" style="flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:12px;">',
+      '  <div style="display:flex; justify-content:space-between; width:100%; align-items:baseline;">',
+      '    <span class="stat-label" style="font-weight:600;">' + label + '</span>',
+      '    <span style="color:' + color + '; font-size:18px; font-weight:700;">' + sign + val + '</span>',
+      '  </div>',
+      '  <div style="width:100%; height:6px; background:var(--card-border); border-radius:3px; overflow:hidden;">',
+      '    <div style="width:' + barW + '%; height:100%; background:' + color + '; margin-' + (val >= 0 ? 'left' : 'right') + ':' + (val < 0 ? (100 - barW) + '%' : '0') + ';"></div>',
+      '  </div>',
+      '  <span style="font-size:11px; color:var(--muted);">' + n + ' holes with data</span>',
+      '</div>',
+    ].join("");
+  }
+
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px; color:var(--muted);">No rounds yet.</p>';
+    return;
+  }
+
+  const sg = aggregateSG(rounds);
+  let html = "";
+
+  html += '<p style="font-size:12px; color:var(--muted); margin:0 0 16px;">Strokes gained vs. scratch benchmark per round (avg). Positive = better than scratch for that category.</p>';
+
+  html += sgBar("Off the Tee (OTT)", sg.offTee.avg, sg.offTee.n);
+  html += sgBar("Approach (APP)", sg.approach.avg, sg.approach.n);
+  html += sgBar("Around the Green (ARG)", sg.aroundGreen.avg, sg.aroundGreen.n);
+  html += sgBar("Putting (PUTT)", sg.putting.avg, sg.putting.n);
+
+  // Total
+  if (sg.total.avg != null) {
+    const totalColor = sg.total.avg >= 0 ? "var(--green-bright)" : "var(--crimson)";
+    const totalSign = sg.total.avg >= 0 ? "+" : "";
+    html += '<div style="border-top:1px solid var(--card-border); padding-top:12px; margin-top:4px; display:flex; justify-content:space-between; align-items:baseline;">';
+    html += '  <span style="font-weight:700;">Total SG</span>';
+    html += '  <span style="font-size:22px; font-weight:800; color:' + totalColor + ';">' + totalSign + sg.total.avg + '</span>';
+    html += '</div>';
+  }
+
+  // Biggest leak callout
+  const cats = [
+    { name: "Off the Tee", val: sg.offTee.avg },
+    { name: "Approach",    val: sg.approach.avg },
+    { name: "Around Green", val: sg.aroundGreen.avg },
+    { name: "Putting",     val: sg.putting.avg },
+  ].filter(function (c) { return c.val != null; });
+  if (cats.length > 0) {
+    const worst = cats.reduce(function (a, b) { return a.val < b.val ? a : b; });
+    const best  = cats.reduce(function (a, b) { return a.val > b.val ? a : b; });
+    html += '<div style="margin-top:20px; background:rgba(220,38,38,0.07); border:1px solid rgba(220,38,38,0.2); border-radius:10px; padding:12px;">';
+    html += '  <div style="font-size:12px; font-weight:700; color:var(--crimson); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;">📍 Biggest leak</div>';
+    html += '  <div style="font-size:15px; font-weight:600;">' + worst.name + ' (' + (worst.val >= 0 ? "+" : "") + worst.val + '/round)</div>';
+    html += '  <div style="font-size:12px; color:var(--muted); margin-top:4px;">Focus practice here first.</div>';
+    html += '</div>';
+    html += '<div style="margin-top:10px; background:rgba(19,122,44,0.07); border:1px solid rgba(19,122,44,0.2); border-radius:10px; padding:12px;">';
+    html += '  <div style="font-size:12px; font-weight:700; color:var(--green-mid); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;">💪 Strength</div>';
+    html += '  <div style="font-size:15px; font-weight:600;">' + best.name + ' (' + (best.val >= 0 ? "+" : "") + best.val + '/round)</div>';
+    html += '</div>';
+  }
+
+  // Per-round history
+  const recent = rounds.slice(-10).reverse();
+  if (recent.length > 0) {
+    html += '<h4 style="margin:20px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);">Round by round</h4>';
+    html += '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; border-collapse:collapse;">';
+    html += '<tr style="color:var(--muted); font-size:11px;"><th style="text-align:left; padding:4px 6px;">Date</th><th style="padding:4px 6px;">OTT</th><th style="padding:4px 6px;">App</th><th style="padding:4px 6px;">ARG</th><th style="padding:4px 6px;">Putt</th></tr>';
+    for (const r of recent) {
+      const rsg = computeFullSG(r);
+      function cell(v) {
+        if (!v) return '<td style="padding:4px 6px; text-align:center; color:var(--muted);">—</td>';
+        const c = v.value >= 0 ? "var(--green-bright)" : "var(--crimson)";
+        const s = v.value >= 0 ? "+" : "";
+        return '<td style="padding:4px 6px; text-align:center; color:' + c + '; font-weight:600;">' + s + v.value + '</td>';
+      }
+      html += '<tr style="border-top:1px solid var(--card-border);">';
+      html += '<td style="padding:4px 6px;">' + (r.date || "—") + '</td>';
+      html += cell(rsg.offTee) + cell(rsg.approach) + cell(rsg.aroundGreen) + cell(rsg.putting);
+      html += '</tr>';
+    }
+    html += '</table></div>';
+  }
+
+  if (sg.offTee.n === 0 && sg.putting.n === 0) {
+    html += '<div style="margin-top:20px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:14px; font-size:13px;">';
+    html += '<strong>💡 How to unlock SG data</strong><br>';
+    html += '<span style="color:var(--muted); font-size:12px; line-height:1.6;">During a round, enter <strong>First putt distance (ft)</strong> in the putting section of each hole. The more holes you enter it for, the more accurate SG gets. Putting SG needs 3+ holes; Approach and OTT also need hole distance + shot data.</span>';
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+// ── Trends deep-dive ──────────────────────────────────────────────────────────
+function renderTrendsDeepDive(body, rounds) {
+  const allHistory = getHistory();
+  if (allHistory.length < 3) {
+    body.innerHTML = '<p style="text-align:center; padding:30px; color:var(--muted);">Need at least 3 rounds to show trends.</p>';
+    return;
+  }
+
+  const trends = getTrends(allHistory);
+  const response = getScoringResponse(allHistory.slice(-20));
+
+  function trendRow(label, t, unit) {
+    if (!t || t.last5 == null) return "";
+    const arrow = t.direction === "improving" ? "↑" : t.direction === "declining" ? "↓" : "→";
+    const color = t.direction === "improving" ? "var(--green-bright)" : t.direction === "declining" ? "var(--crimson)" : "var(--muted)";
+    return [
+      '<div style="border-top:1px solid var(--card-border); padding:12px 0;">',
+      '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">',
+      '    <span style="font-weight:600;">' + label + '</span>',
+      '    <span style="font-size:20px; color:' + color + '; font-weight:700;">' + arrow + '</span>',
+      '  </div>',
+      '  <div style="display:flex; gap:12px; font-size:12px; color:var(--muted);">',
+      t.last5  != null ? '<div><div style="font-size:16px; font-weight:700; color:var(--ink);">' + t.last5  + unit + '</div><div>Last 5</div></div>' : '',
+      t.last10 != null ? '<div><div style="font-size:16px; font-weight:700; color:var(--ink);">' + t.last10 + unit + '</div><div>Last 10</div></div>' : '',
+      t.last20 != null ? '<div><div style="font-size:16px; font-weight:700; color:var(--ink);">' + t.last20 + unit + '</div><div>Last 20</div></div>' : '',
+      '  </div>',
+      '</div>',
+    ].join("");
+  }
+
+  let html = '<p style="font-size:12px; color:var(--muted); margin:0 0 16px;">Rolling averages across all rounds in your history. ↑ = improving, ↓ = declining.</p>';
+  html += trendRow("Score", trends.totalScore, "");
+  html += trendRow("Putts / round", trends.totalPutts, "");
+  html += trendRow("Fairways hit", trends.fairwayPct, "%");
+  html += trendRow("Greens in Regulation", trends.girPct, "%");
+  html += trendRow("Scrambling (Up & Downs)", trends.scramblePct, "%");
+  html += trendRow("Penalties / round", trends.totalPenalties, "");
+
+  // Approach proximity trend
+  const proximity = getApproachProximity(allHistory.slice(-20));
+  if (proximity.length > 0) {
+    html += '<h4 style="margin:20px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);">Approach proximity by club (avg ft from pin)</h4>';
+    html += '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">';
+    for (const p of proximity.slice(0, 8)) {
+      html += '<div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:8px 12px; text-align:center;">';
+      html += '<div style="font-size:11px; color:var(--muted);">' + p.club + '</div>';
+      html += '<div style="font-size:17px; font-weight:700;">' + p.avgLeft + 'ft</div>';
+      html += '<div style="font-size:10px; color:var(--muted);">n=' + p.count + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Mental game: scoring response
+  if (response.afterBogey.n >= 4) {
+    const avg = response.afterBogey.avgVsPar;
+    const label = avg != null
+      ? (avg <= 0 ? "🟢 Bounces back well (" + (avg <= 0 ? avg : "+" + avg) + " avg next hole)"
+                  : "🔴 Compounds mistakes (+" + avg + " avg next hole)")
+      : null;
+    if (label) {
+      html += '<div style="margin-top:16px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:14px;">';
+      html += '<div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:6px;">Mental game — after a bogey</div>';
+      html += '<div style="font-size:15px; font-weight:600;">' + label + '</div>';
+      html += '<div style="font-size:11px; color:var(--muted); margin-top:4px;">Based on ' + response.afterBogey.n + ' holes following a bogey.</div>';
+      html += '</div>';
+    }
+  }
+
+  body.innerHTML = html;
 }
