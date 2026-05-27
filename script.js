@@ -68,6 +68,7 @@ import {
 import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
 import { wireCoachUi, openChatPanel, closeChatPanel } from "./src/screens/coach.js";
 import { renderCategoriesGrid, wireStatsCategories } from "./src/screens/stats.js";
+import { aggregateSG, getTrends } from "./src/data/strokes-gained.js";
 import { wireLoginUi } from "./src/screens/login.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
@@ -399,6 +400,54 @@ function renderHomeDashboard() {
       intelCard.style.display = "";
     } else {
       intelCard.style.display = "none";
+    }
+  }
+
+  // Strokes Gained summary card
+  const sgCard = document.getElementById("homeStrokesGained");
+  const sgBody = document.getElementById("homeStrokesGainedBody");
+  if (sgCard && sgBody) {
+    const sgData = history.length >= 3 ? aggregateSG(history.slice(-10)) : null;
+    const cats = sgData ? [
+      { label: "Off Tee",    val: sgData.offTee.avg,      n: sgData.offTee.n      },
+      { label: "Approach",   val: sgData.approach.avg,    n: sgData.approach.n    },
+      { label: "Arnd Green", val: sgData.aroundGreen.avg, n: sgData.aroundGreen.n },
+      { label: "Putting",    val: sgData.putting.avg,     n: sgData.putting.n     },
+    ].filter(function (c) { return c.val != null && c.n >= 2; }) : [];
+    if (cats.length >= 2) {
+      const worst = cats.reduce(function (a, b) { return a.val < b.val ? a : b; });
+      let html = '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">';
+      for (const c of cats) {
+        const sign = c.val >= 0 ? "+" : "";
+        const col = c.val >= 0.2 ? "var(--green-bright)" : c.val <= -0.3 ? "var(--crimson)" : "var(--ink-soft)";
+        const isWorst = c === worst && worst.val < -0.3;
+        html += '<div style="padding:2px 6px;' + (isWorst ? 'background:rgba(180,30,30,0.07);border-radius:6px;' : '') + '">' +
+          '<span style="font-size:11px;color:var(--muted);">' + c.label + '</span> ' +
+          '<span style="font-weight:700;color:' + col + ';">' + sign + c.val + '</span>' +
+          '</div>';
+      }
+      html += '</div>';
+      if (worst.val < -0.3) {
+        html += '<div style="margin-top:6px;font-size:12px;color:var(--crimson);">↓ Biggest leak: <strong>' + worst.label + '</strong></div>';
+      }
+      sgBody.innerHTML = html;
+      sgCard.dataset.sgWorst = worst.label;
+      sgCard.dataset.sgWorstVal = worst.val;
+      sgCard.style.display = "";
+      if (!sgCard._sgWired) {
+        sgCard._sgWired = true;
+        sgCard.addEventListener("click", function () {
+          const label = sgCard.dataset.sgWorst || "";
+          const val = parseFloat(sgCard.dataset.sgWorstVal);
+          if (label && val < -0.3) {
+            openCoachWithQuestion("My Strokes Gained shows I'm losing the most strokes in " + label + " (" + val.toFixed(2) + "/round vs scratch). What are the root causes and what should I work on to fix it?");
+          } else {
+            openCoachWithQuestion("Walk me through my Strokes Gained numbers and tell me where to focus to lower my score the fastest.");
+          }
+        });
+      }
+    } else {
+      sgCard.style.display = "none";
     }
   }
 
@@ -1622,6 +1671,14 @@ function makeHoleCard(n) {
 
       <div class="putting-section" id="puttingSection-${n}" style="display:none;">
         <h3>Putting</h3>
+
+        <label class="first-putt-dist-label">
+          📍 First putt distance (ft)
+          <input type="number" id="firstPuttDistance-${n}" min="1" max="200"
+                 placeholder="e.g. 18" inputmode="numeric"
+                 style="font-size:18px; font-weight:700; width:100px; text-align:center;" />
+        </label>
+
         <div class="putts-list" id="puttsList-${n}"></div>
         <button type="button" class="add-putt-btn" data-hole="${n}">+ Add Putt</button>
 

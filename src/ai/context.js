@@ -10,6 +10,7 @@ import {
   getHistory, getStrokesGainedLite, getConfidenceClub, getTopAvoid,
   getScoringZone, getApproachProximity, getPracticeTransfer,
 } from "../data/rounds.js";
+import { aggregateSG, getTrends, getScoringResponse } from "../data/strokes-gained.js";
 import {
   getPractice,
   getPuttingInsights,
@@ -158,6 +159,55 @@ export function aiBaseContext() {
     const delta = transfer.avgPuttsRecent - transfer.avgPuttsPrior;
     if (Math.abs(delta) >= 0.5) {
       lines.push("Practice→game (last 7d vs prior 7d): putts " + (delta > 0 ? "+" : "") + delta.toFixed(1) + "/round.");
+    }
+  }
+
+  // Strokes Gained breakdown (requires firstPuttDistance data in rounds)
+  if (history.length >= 3) {
+    const sg = aggregateSG(history.slice(-10));
+    const sgParts = [];
+    if (sg.offTee.avg != null)     sgParts.push("OTT " + (sg.offTee.avg >= 0 ? "+" : "") + sg.offTee.avg);
+    if (sg.approach.avg != null)   sgParts.push("App " + (sg.approach.avg >= 0 ? "+" : "") + sg.approach.avg);
+    if (sg.aroundGreen.avg != null) sgParts.push("ARG " + (sg.aroundGreen.avg >= 0 ? "+" : "") + sg.aroundGreen.avg);
+    if (sg.putting.avg != null)    sgParts.push("Putt " + (sg.putting.avg >= 0 ? "+" : "") + sg.putting.avg);
+    if (sgParts.length > 0) {
+      lines.push("Strokes Gained vs scratch (last 10 rounds): " + sgParts.join(", ") + ".");
+      // Highlight biggest leak
+      const cats = [
+        { name: "Off the Tee", val: sg.offTee.avg },
+        { name: "Approach",    val: sg.approach.avg },
+        { name: "Around Green", val: sg.aroundGreen.avg },
+        { name: "Putting",     val: sg.putting.avg },
+      ].filter(function (c) { return c.val != null; });
+      if (cats.length > 0) {
+        const worst = cats.reduce(function (a, b) { return a.val < b.val ? a : b; });
+        if (worst.val < -0.3) lines.push("Biggest SG leak: " + worst.name + " (" + worst.val + "/round avg).");
+      }
+    }
+  }
+
+  // Performance trends
+  if (history.length >= 5) {
+    const trends = getTrends(history);
+    if (trends) {
+      const trendLines = [];
+      const labels = { totalScore: "Score", totalPutts: "Putts/round", fairwayPct: "Fairway%", girPct: "GIR%", scramblePct: "Scramble%", totalPenalties: "Penalties" };
+      for (const key in trends) {
+        const t = trends[key];
+        if (t.last5 == null || t.last10 == null) continue;
+        if (t.direction !== "flat") {
+          const arrow = t.direction === "improving" ? "↑" : "↓";
+          trendLines.push(labels[key] + " " + arrow + " (last5: " + t.last5 + ", last10: " + t.last10 + ")");
+        }
+      }
+      if (trendLines.length > 0) lines.push("Trends: " + trendLines.join("; ") + ".");
+    }
+    // Mental game: scoring response
+    const response = getScoringResponse(history.slice(-15));
+    if (response.afterBogey.n >= 5) {
+      const avg = response.afterBogey.avgVsPar;
+      const label = avg != null ? (avg <= 0 ? "bounces back well" : "compounds mistakes (avg +" + avg + " next hole)") : null;
+      if (label) lines.push("After a bogey: " + label + " (" + response.afterBogey.n + " data points).");
     }
   }
 
