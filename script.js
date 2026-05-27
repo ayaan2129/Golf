@@ -61,6 +61,8 @@ import {
   renderIronStatsSummary,
   renderDriverStatsSummary,
   renderPracticeActivity,
+  renderPracticeHistory,
+  renderPracticeRangesEditor,
   wirePracticeUi,
 } from "./src/screens/practice-ui.js";
 import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
@@ -592,6 +594,7 @@ function switchTab(tabId) {
     renderChippingStatsSummary();
     renderIronStatsSummary();
     renderDriverStatsSummary();
+    renderPracticeHistory();
   }
   if (tabId === "videosTab") {
     renderVideoLibrary();
@@ -609,6 +612,7 @@ function switchTab(tabId) {
   }
   if (tabId === "profileTab") {
     syncAiStatusOnProfile();
+    renderPracticeRangesEditor();
   }
   if (tabId === "coachTab") {
     // Always show the launcher on (re-)entry; the chat panel is opt-in.

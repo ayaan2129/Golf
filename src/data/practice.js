@@ -16,6 +16,51 @@ export function savePractice(arr) {
   localStorage.setItem("practiceSessions", JSON.stringify(arr));
 }
 
+// Putting distance bands — user-customizable. Each band has a label, a
+// representative distance (used as the stored shot.distance), and a min/max
+// in feet. The defaults are tuned for a junior practising on a course green;
+// users can override via the Profile UI.
+export const DEFAULT_PUTTING_RANGES = [
+  { id: "short", label: "Short",  rep: 3,  min: 0,    max: 3 },
+  { id: "mid",   label: "Mid",    rep: 6,  min: 3,    max: 10 },
+  { id: "long",  label: "Long",   rep: 15, min: 10,   max: 25 },
+  { id: "lag",   label: "Lag",    rep: 35, min: 25,   max: 999 },
+];
+
+export function getPuttingRanges() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("puttingRanges") || "null");
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+  } catch (e) {}
+  return DEFAULT_PUTTING_RANGES.slice();
+}
+
+export function savePuttingRanges(ranges) {
+  if (!Array.isArray(ranges) || ranges.length === 0) return;
+  localStorage.setItem("puttingRanges", JSON.stringify(ranges));
+}
+
+// Same for chipping
+export const DEFAULT_CHIPPING_RANGES = [
+  { id: "close",  label: "Close",  rep: 8,  min: 0,   max: 10 },
+  { id: "medium", label: "Medium", rep: 18, min: 10,  max: 25 },
+  { id: "long",   label: "Long",   rep: 35, min: 25,  max: 50 },
+  { id: "pitch",  label: "Pitch",  rep: 65, min: 50,  max: 999 },
+];
+
+export function getChippingRanges() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("chippingRanges") || "null");
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+  } catch (e) {}
+  return DEFAULT_CHIPPING_RANGES.slice();
+}
+
+export function saveChippingRanges(ranges) {
+  if (!Array.isArray(ranges) || ranges.length === 0) return;
+  localStorage.setItem("chippingRanges", JSON.stringify(ranges));
+}
+
 // Result classifiers used by chipping / iron / driver insights and by their
 // drill UIs to colour result tiles + drive running stats.
 export const CHIP_GOOD = ["Holed", "In 3ft", "In 6ft"];
@@ -82,13 +127,21 @@ export function getPuttingInsights() {
   const sessions = getPractice().filter(function (s) { return s.type === "Putting" && Array.isArray(s.shots); });
   const allShots = [];
   for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
-  const buckets = [
-    { lbl: "0-3 ft", fn: function (sh) { return sh.distance <= 3 && sh.intent === "make"; } },
-    { lbl: "3-5 ft", fn: function (sh) { return sh.distance > 3 && sh.distance <= 5 && sh.intent === "make"; } },
-    { lbl: "5-10 ft", fn: function (sh) { return sh.distance > 5 && sh.distance <= 10 && sh.intent === "make"; } },
-    { lbl: "10-20 ft", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20 && sh.intent === "make"; } },
-    { lbl: "20+ ft", fn: function (sh) { return sh.distance > 20 && sh.intent === "make"; } },
-  ];
+  // Use the user's current putting ranges so the picker card shows the same
+  // bands the user is choosing during the drill. Prefer the shot's stored
+  // rangeId (so explicit user intent always wins at band boundaries); fall
+  // back to distance-bucketing for legacy shots and custom-distance entries.
+  const ranges = getPuttingRanges();
+  const buckets = ranges.map(function (r) {
+    return {
+      lbl: r.label + " (" + (r.max < 999 ? r.min + "-" + r.max : r.min + "+") + " ft)",
+      fn: function (sh) {
+        if (sh.intent !== "make") return false;
+        if (sh.rangeId && sh.rangeId !== "custom") return sh.rangeId === r.id;
+        return sh.distance >= r.min && sh.distance < (r.max >= 999 ? 99999 : r.max);
+      },
+    };
+  });
   const distanceRates = buckets.map(function (b) {
     const set = allShots.filter(b.fn);
     if (set.length === 0) return { label: b.lbl, count: 0, pct: null };

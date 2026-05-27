@@ -797,6 +797,15 @@
         </div>
 
         <div class="profile-section">
+          <h3 class="profile-section-title">Practice ranges</h3>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">Bands you see as pills inside each drill. Edit min/max — leave the highest band's max blank for "+ ft / yd".</p>
+          <h4 style="margin:10px 0 6px; font-size:13px; color:var(--green-deep);">Putting (ft)</h4>
+          <div id="puttingRangesEditor"></div>
+          <h4 style="margin:18px 0 6px; font-size:13px; color:var(--green-deep);">Chipping (yd)</h4>
+          <div id="chippingRangesEditor"></div>
+        </div>
+
+        <div class="profile-section">
           <h3 class="profile-section-title">AI Coach (BYO key)</h3>
           <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">Bring your own xAI Grok key (free credit on signup at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock the AI coach. Each user's key stays on their own device.</p>
           <p id="aiStatusProfile" class="ai-status" style="margin:0 0 10px;">AI coach off — add a key on the Stats tab to enable.</p>
@@ -880,6 +889,11 @@
             <label class="profile-section-title">Recent Driver / Wood Stats</label>
             <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
           </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Your sessions</label>
+            <div id="practiceHistoryList" style="font-size:13px;">No sessions yet. Your first one shows up here.</div>
+          </div>
         </div>
 
         <div id="puttingView" style="display:none;">
@@ -893,14 +907,19 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Conditions</label>
-            <div class="profile-row">
-              <label>Distance</label>
+            <label class="profile-section-title">Distance</label>
+            <div class="pill-group small-pills" id="puttRangePills"><!-- populated from getPuttingRanges() --></div>
+            <div class="profile-row" id="puttCustomDistanceRow" style="display:none; margin-top:8px;">
+              <label>Custom (ft)</label>
               <div style="display:flex; gap:6px; align-items:center;">
                 <input type="number" id="puttDistance" placeholder="ft" min="1" style="width:80px; text-align:right;" />
                 <span style="color:var(--muted); font-size:14px;">ft</span>
               </div>
             </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
             <div class="profile-row">
               <label>Break</label>
               <div class="pill-group small-pills" id="puttBreakPills">
@@ -982,14 +1001,19 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Conditions</label>
-            <div class="profile-row">
-              <label>Distance</label>
+            <label class="profile-section-title">Distance</label>
+            <div class="pill-group small-pills" id="chipRangePills"></div>
+            <div class="profile-row" id="chipCustomDistanceRow" style="display:none; margin-top:8px;">
+              <label>Custom (yd)</label>
               <div style="display:flex; gap:6px; align-items:center;">
                 <input type="number" id="chipDistance" placeholder="yd" min="1" style="width:80px; text-align:right;" />
                 <span style="color:var(--muted); font-size:14px;">yd</span>
               </div>
             </div>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Conditions</label>
             <div class="profile-row">
               <label>Lie</label>
               <div class="pill-group small-pills" id="chipLiePills">
@@ -1199,6 +1223,15 @@
         </div>
       </div>
 
+      <div id="sessionSummaryModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:440px;">
+          <button class="modal-close" id="sessionSummaryClose">×</button>
+          <h3 style="margin:0 0 14px; color:var(--green-deep);" id="sessionSummaryTitle">Session done</h3>
+          <div id="sessionSummaryBody"></div>
+          <button id="sessionSummaryOk" class="ai-action-btn" style="width:100%; margin-top:14px;">OK</button>
+        </div>
+      </div>
+
       <div id="videoPlayerModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
           <button class="modal-close" id="videoModalClose">×</button>
@@ -1258,6 +1291,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527p"></script>
+    <script type="module" src="script.js?v=20260527q"></script>
   </body>
 </html>
