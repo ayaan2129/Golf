@@ -72,13 +72,28 @@
 
     <div id="welcomeScreen" style="display:none;">
       <div class="home-dashboard">
-        <h1 class="home-greeting">Hi, <span id="welcomeName">Player</span></h1>
-        <p class="home-sub" id="homeSub">—</p>
+        <div class="home-hero">
+          <div class="home-hero-avatar" id="homeAvatar">A</div>
+          <div class="home-hero-greet">
+            <p class="home-hero-sub" id="homeSub">—</p>
+            <h1 class="home-hero-title"><span id="homeGreetPrefix">Hi</span>, <span id="welcomeName">Player</span></h1>
+          </div>
+        </div>
 
         <div class="home-stats-row">
           <div class="home-stat"><div class="home-stat-num" id="homeHandicap">—</div><div class="home-stat-lbl">Handicap</div></div>
           <div class="home-stat"><div class="home-stat-num" id="homeBest">—</div><div class="home-stat-lbl">Best</div></div>
           <div class="home-stat"><div class="home-stat-num" id="homeRounds">0</div><div class="home-stat-lbl">Rounds</div></div>
+        </div>
+
+        <div class="home-ongoing-card" id="homeOngoingCard" style="display:none;">
+          <div class="home-ongoing-tag">In Progress</div>
+          <h3 id="homeOngoingTitle">Round</h3>
+          <p id="homeOngoingSub" style="margin:4px 0 12px; opacity:0.85; font-size:13px;">—</p>
+          <div style="display:flex; gap:8px;">
+            <button class="home-cta-btn" id="homeOngoingResume" style="flex:1;">Resume →</button>
+            <button class="btn-secondary danger" id="homeOngoingDiscard" style="flex:0 0 auto;">Discard</button>
+          </div>
         </div>
 
         <div class="home-cta">
@@ -102,6 +117,11 @@
           <p id="homeLastRoundText">No rounds saved yet.</p>
         </div>
 
+        <div class="home-tile" id="homeCoachIntel" style="display:none;">
+          <h3>Coach's quick read</h3>
+          <div id="homeCoachIntelBody" style="font-size:13px;"></div>
+        </div>
+
         <div class="home-tile" id="homeMoral">
           <h3>Today's Boost</h3>
           <p id="homeThoughtText">—</p>
@@ -119,9 +139,12 @@
 
 
       <div id="setupTab" class="tab-page">
-        <div class="setup-hero">
-          <h1 class="setup-hero-title">New Round</h1>
-          <p class="setup-hero-sub">Pick course, tee, and holes. That's it.</p>
+        <div class="setup-hero-card">
+          <div class="setup-hero-icon">⛳</div>
+          <div>
+            <p class="setup-hero-eyebrow">New round</p>
+            <h1 class="setup-hero-title-v2" id="setupHeroCourseName">Pick your course</h1>
+          </div>
         </div>
 
         <div class="setup-card">
@@ -199,6 +222,15 @@
         </div>
 
         <div class="setup-card">
+          <label class="profile-section-title">Stats detail</label>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Basic skips shot-by-shot inputs (just score, putts, chips per hole). Advanced gives full data for the AI Coach.</p>
+          <div class="pill-group" id="statsModePills">
+            <button class="pill" data-stats-mode="basic" type="button">Basic</button>
+            <button class="pill active" data-stats-mode="advanced" type="button">Advanced</button>
+          </div>
+        </div>
+
+        <div class="setup-card">
           <label class="profile-section-title">Game Type</label>
           <div class="pill-group" id="gameTypePills">
             <button class="pill active" data-game="Normal Game" type="button">Normal</button>
@@ -236,7 +268,10 @@
           <div id="customHolesRow"><div id="customHolesChecks"></div></div>
         </div>
 
-        <button id="startRoundBtn" class="home-cta-btn" style="margin-top: 8px;">Start Round →</button>
+        <div style="height:80px;"></div><!-- spacer so sticky CTA doesn't cover content -->
+        <div class="setup-sticky-cta">
+          <button id="startRoundBtn" class="home-cta-btn">Start Round →</button>
+        </div>
       </div>
 
       <div id="clubsTab" class="tab-page" style="display:none;">
@@ -440,6 +475,15 @@
               <div style="display:flex; gap:6px;">
                 <input type="date" id="catFilterFrom" style="padding:6px; border:1px solid var(--border); border-radius:6px;" />
                 <input type="date" id="catFilterTo" style="padding:6px; border:1px solid var(--border); border-radius:6px;" />
+              </div>
+            </div>
+            <div class="profile-row" style="align-items:flex-start;">
+              <label>Time of day</label>
+              <div class="pill-group small-pills" id="catFilterTimePills">
+                <button class="pill active" data-time="all" type="button">All</button>
+                <button class="pill" data-time="morning" type="button">Morning</button>
+                <button class="pill" data-time="afternoon" type="button">Afternoon</button>
+                <button class="pill" data-time="evening" type="button">Evening</button>
               </div>
             </div>
             <div style="display:flex; gap:8px; margin-top:14px;">
@@ -790,6 +834,11 @@
         </div>
 
         <div id="practicePickerView">
+          <div class="setup-card" id="practiceActivityCard">
+            <label class="profile-section-title">Recent activity</label>
+            <div id="practiceActivitySummary" style="font-size:13px; color:var(--ink-soft);">No practice logged yet — start a drill below.</div>
+          </div>
+
           <div class="setup-card">
             <label class="profile-section-title">What are you practising?</label>
             <div class="practice-type-grid">
@@ -1209,6 +1258,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527h"></script>
+    <script type="module" src="script.js?v=20260527p"></script>
   </body>
 </html>

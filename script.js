@@ -17,10 +17,15 @@ import {
   ALL_CLUBS,
   DEFAULT_CLUBS,
 } from "./src/core/courses.js";
-import { getHistory, saveHistory, getUpcoming, saveUpcoming } from "./src/data/rounds.js";
+import {
+  getHistory, saveHistory, getUpcoming, saveUpcoming,
+  getStrokesGainedLite, getConfidenceClub, getTopAvoid,
+  getScoringZone, getPracticeTransfer, getApproachProximity,
+} from "./src/data/rounds.js";
 import {
   getPractice, savePractice,
   getPuttingInsights, getChippingInsights, getIronInsights, getDriverInsights,
+  getPracticeActivity, getPuttingTrend,
   CHIP_GOOD, CHIP_UD,
   IRON_GOOD_RESULTS, IRON_ACCEPTABLE_RESULTS,
   DRV_FAIRWAY_RESULTS, DRV_PLAYABLE_RESULTS,
@@ -55,6 +60,7 @@ import {
   renderChippingStatsSummary,
   renderIronStatsSummary,
   renderDriverStatsSummary,
+  renderPracticeActivity,
   wirePracticeUi,
 } from "./src/screens/practice-ui.js";
 import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
@@ -128,10 +134,45 @@ function renderHomeDashboard() {
   const drawerWelcome = document.getElementById("drawerWelcome");
   if (drawerWelcome) drawerWelcome.textContent = name;
 
+  // Avatar initial
+  const avatar = document.getElementById("homeAvatar");
+  if (avatar) avatar.textContent = (name || "P").charAt(0).toUpperCase();
+
+  // Time-aware greeting prefix
   const today = new Date();
+  const hour = today.getHours();
+  let prefix = "Hi";
+  if (hour < 5) prefix = "Still up";
+  else if (hour < 11) prefix = "Good morning";
+  else if (hour < 14) prefix = "Hi";
+  else if (hour < 18) prefix = "Good afternoon";
+  else if (hour < 22) prefix = "Good evening";
+  else prefix = "Late night";
+  const pfxEl = document.getElementById("homeGreetPrefix");
+  if (pfxEl) pfxEl.textContent = prefix;
+
   const dayStr = today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const sub = document.getElementById("homeSub");
   if (sub) sub.textContent = dayStr;
+
+  // Ongoing round card — shows when there's a saved-in-progress round (`golfRound` in localStorage)
+  const ongoing = document.getElementById("homeOngoingCard");
+  if (ongoing) {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("golfRound") || "null"); } catch (e) {}
+    const hasOngoing = saved && saved.setup && saved.setup.courseSelect && Object.keys(saved.holes || {}).length > 0;
+    ongoing.style.display = hasOngoing ? "" : "none";
+    if (hasOngoing) {
+      const titleEl = document.getElementById("homeOngoingTitle");
+      const subEl = document.getElementById("homeOngoingSub");
+      if (titleEl) titleEl.textContent = saved.setup.courseSelect + (saved.setup.teeSelect ? " · " + saved.setup.teeSelect : "");
+      if (subEl) {
+        const filled = Object.keys(saved.holes || {}).filter(function (k) { return saved.holes[k].shots && saved.holes[k].shots.length > 0; }).length;
+        const total = saved.setup.holesMode === "front9" || saved.setup.holesMode === "back9" ? 9 : 18;
+        subEl.textContent = filled + " of " + total + " holes filled";
+      }
+    }
+  }
 
   const history = getHistory();
   const hcEl = document.getElementById("homeHandicap");
@@ -191,6 +232,38 @@ function renderHomeDashboard() {
 
   const tEl = document.getElementById("homeThoughtText");
   if (tEl) tEl.textContent = getDailyThought();
+
+  // Coach's quick read — Confidence Club + Today's Avoid + last-round SG
+  const intelCard = document.getElementById("homeCoachIntel");
+  const intelBody = document.getElementById("homeCoachIntelBody");
+  if (intelCard && intelBody) {
+    const lines = [];
+    const cclub = getConfidenceClub(getIronInsights(), getDriverInsights());
+    if (cclub) lines.push('<div style="margin:4px 0;"><strong style="color:var(--green-deep);">Confidence club:</strong> ' + cclub.club + ' <span style="color:var(--muted); font-size:11px;">— ' + cclub.why + '</span></div>');
+    const avoid = getTopAvoid(history);
+    if (avoid) lines.push('<div style="margin:4px 0;"><strong style="color:var(--crimson);">Watch out for:</strong> ' + avoid.label + ' <span style="color:var(--muted); font-size:11px;">— ' + avoid.count + ' times in last 5 rounds</span></div>');
+    if (history.length > 0) {
+      const last = history[history.length - 1];
+      const sg = getStrokesGainedLite(last, history);
+      if (sg && sg.score != null) {
+        const sign = sg.score > 0 ? "+" : "";
+        const col = sg.score > 0 ? "var(--green-bright)" : (sg.score < 0 ? "var(--crimson)" : "var(--ink-soft)");
+        let putts = "";
+        if (sg.putts != null) {
+          const psign = sg.putts > 0 ? "+" : "";
+          const pcol = sg.putts > 0 ? "var(--green-bright)" : (sg.putts < 0 ? "var(--crimson)" : "var(--ink-soft)");
+          putts = ' · <span style="color:' + pcol + ';">' + psign + sg.putts + ' putts</span>';
+        }
+        lines.push('<div style="margin:4px 0;"><strong>Last round vs your avg:</strong> <span style="color:' + col + ';">' + sign + sg.score + ' strokes</span>' + putts + '</div>');
+      }
+    }
+    if (lines.length > 0) {
+      intelBody.innerHTML = lines.join("");
+      intelCard.style.display = "";
+    } else {
+      intelCard.style.display = "none";
+    }
+  }
 
   syncDrawerActive("home");
 }
@@ -514,6 +587,7 @@ function switchTab(tabId) {
     renderClubDistances();
   }
   if (tabId === "practiceTab") {
+    renderPracticeActivity();
     renderPuttingStatsSummary();
     renderChippingStatsSummary();
     renderIronStatsSummary();
@@ -594,6 +668,24 @@ document.querySelectorAll(".bt").forEach(function (btn) {
   });
 });
 
+const homeOngoingResume = document.getElementById("homeOngoingResume");
+if (homeOngoingResume) {
+  homeOngoingResume.addEventListener("click", function () {
+    showApp();
+    switchTab("trackerTab");
+  });
+}
+const homeOngoingDiscard = document.getElementById("homeOngoingDiscard");
+if (homeOngoingDiscard) {
+  homeOngoingDiscard.addEventListener("click", function () {
+    if (confirm("Discard the in-progress round? This clears the holes you've filled.")) {
+      if (typeof clearCurrentRound === "function") clearCurrentRound();
+      else { localStorage.removeItem("golfRound"); }
+      renderHomeDashboard();
+    }
+  });
+}
+
 const homeStart = document.getElementById("homeStartBtn");
 if (homeStart) {
   homeStart.addEventListener("click", function () {
@@ -640,6 +732,35 @@ document.querySelectorAll("#greenSpeedPills .pill").forEach(function (pill) {
     document.querySelectorAll("#greenSpeedPills .pill").forEach(function (p) { p.classList.remove("active"); });
     pill.classList.add("active");
     localStorage.setItem("greenSpeedToday", pill.dataset.stimp);
+  });
+});
+
+// Stats detail (Basic / Advanced) pill — drives the existing roundMode
+// (quick = basic = score + putts only; full = advanced = shot-by-shot
+// data feeding the AI Coach).
+function applyStatsMode(mode) {
+  const rmode = mode === "basic" ? "quick" : "full";
+  localStorage.setItem("roundMode", rmode);
+  const sel = document.getElementById("roundMode");
+  if (sel) sel.value = rmode;
+  if (typeof applyRoundMode === "function") applyRoundMode();
+}
+(function restoreStatsMode() {
+  // Derive the pill state from existing roundMode if statsMode isn't set yet.
+  const existingRoundMode = localStorage.getItem("roundMode") || "full";
+  const saved = localStorage.getItem("statsMode") || (existingRoundMode === "quick" ? "basic" : "advanced");
+  applyStatsMode(saved);
+  localStorage.setItem("statsMode", saved);
+  document.querySelectorAll("#statsModePills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.statsMode === saved);
+  });
+})();
+document.querySelectorAll("#statsModePills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#statsModePills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    localStorage.setItem("statsMode", pill.dataset.statsMode);
+    applyStatsMode(pill.dataset.statsMode);
   });
 });
 
@@ -716,6 +837,9 @@ function renderCourseExtras() {
   const notesEl = document.getElementById("courseNotes");
   if (gsEl) gsEl.textContent = c && c.greenSpeed ? "Green speed: " + c.greenSpeed : "";
   if (notesEl) notesEl.textContent = c && c.notes ? c.notes : "";
+  // Hero card title reflects current course
+  const heroTitle = document.getElementById("setupHeroCourseName");
+  if (heroTitle) heroTitle.textContent = c ? (c.location && c.location.name ? c.location.name : courseKey) : "Pick your course";
 }
 
 const courseSelectEl = document.getElementById("courseSelect");
@@ -743,11 +867,11 @@ const homePractice = document.getElementById("homePracticeBtn");
 if (homePractice) {
   homePractice.addEventListener("click", function () {
     showApp();
-    switchTab("statsTab");
-    syncDrawerActive("statsTab");
+    switchTab("practiceTab");
+    syncDrawerActive("practiceTab");
     setTimeout(function () {
-      const practiceCard = document.querySelector(".practice-section");
-      if (practiceCard) practiceCard.scrollIntoView({ behavior: "smooth" });
+      const picker = document.getElementById("practicePickerView");
+      if (picker) picker.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
   });
 }
@@ -1181,6 +1305,18 @@ function makeHoleCard(n) {
 
       <label class="hole-distance">Distance (yards)
         <input type="number" id="holeDistance-${n}" min="0" />
+      </label>
+
+      <label>Pin position
+        <select id="pinPosition-${n}">
+          <option value="">—</option>
+          <option value="Front">Front</option>
+          <option value="Middle">Middle</option>
+          <option value="Back">Back</option>
+          <option value="Front-Left">Front-Left</option>
+          <option value="Back-Right">Back-Right</option>
+          <option value="Tucked">Tucked</option>
+        </select>
       </label>
 
       <h3>Shots</h3>
@@ -1636,6 +1772,7 @@ function saveAll() {
       firstPuttDistance: ((document.getElementById("firstPuttDistance-" + i)) || {}).value || "",
       firstPuttResult: ((document.getElementById("firstPuttResult-" + i)) || {}).value || "",
       missedShortPutt: ((document.getElementById("missedShortPutt-" + i)) || {}).value || "",
+      pinPosition: ((document.getElementById("pinPosition-" + i)) || {}).value || "",
     };
   }
   localStorage.setItem("golfRound", JSON.stringify(data));
@@ -1696,6 +1833,9 @@ function loadAll() {
 
       const fprEl = document.getElementById("firstPuttResult-" + i);
       if (fprEl && hole.firstPuttResult !== undefined) fprEl.value = hole.firstPuttResult;
+
+      const pinEl = document.getElementById("pinPosition-" + i);
+      if (pinEl && hole.pinPosition !== undefined) pinEl.value = hole.pinPosition;
 
       const msEl = document.getElementById("missedShortPutt-" + i);
       if (msEl && hole.missedShortPutt !== undefined) msEl.value = hole.missedShortPutt;
@@ -3888,6 +4028,29 @@ function renderPracticeInsightsCard() {
     }
     makeSection("Tee shots", lines);
   }
+
+  // Practice → Game transfer
+  const activity = getPracticeActivity(7);
+  const transfer = getPracticeTransfer(getHistory(), activity);
+  if (transfer && transfer.recentRoundsN > 0 && transfer.practiceDays > 0) {
+    const lines = [];
+    lines.push({ label: "Practice days (last 7)", value: transfer.practiceDays + " days · " + transfer.practiceShots + " shots" });
+    if (transfer.avgPuttsRecent != null) {
+      let putsLine = transfer.avgPuttsRecent.toFixed(1) + " putts/round";
+      if (transfer.avgPuttsPrior != null) {
+        const delta = transfer.avgPuttsRecent - transfer.avgPuttsPrior;
+        const sign = delta > 0 ? "+" : "";
+        putsLine += " (vs " + sign + delta.toFixed(1) + " prior 7d)";
+      }
+      lines.push({ label: "Recent rounds", value: putsLine });
+    }
+    if (transfer.avgScoreRecent != null && transfer.avgScorePrior != null) {
+      const delta = transfer.avgScoreRecent - transfer.avgScorePrior;
+      const sign = delta > 0 ? "+" : "";
+      lines.push({ label: "Score change", value: sign + delta.toFixed(1) + " strokes" });
+    }
+    makeSection("Practice → Game", lines);
+  }
 }
 
 function buildDemoShot(club, distHit, lie, dir, q, res) {
@@ -4129,8 +4292,10 @@ async function generateHoleTip() {
   }
   let weather = null;
   try { weather = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+  const pinEl = document.getElementById("pinPosition-" + i);
+  const pin = pinEl && pinEl.value ? pinEl.value : null;
   const sys = "You are Coach. 3-4 short bullets max. Be specific to this hole. No emojis.";
-  const userMsg = "Coach a 12-year-old budding pro through hole " + i + ".\nPar: " + parEl.value + ". Distance: " + (distEl && distEl.value || "?") + " yards.\nHis history on this hole: " + (histHere.length > 0 ? JSON.stringify(histHere) : "no prior data") + ".\nWeather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh" : "unknown") + ".\nPlayer context:\n" + aiBaseContext() + "\n\nGive 3-4 bullets: club off the tee, target line, what to avoid, mental cue.";
+  const userMsg = "Coach a 12-year-old budding pro through hole " + i + ".\nPar: " + parEl.value + ". Distance: " + (distEl && distEl.value || "?") + " yards." + (pin ? "\nPin position today: " + pin + "." : "") + "\nHis history on this hole: " + (histHere.length > 0 ? JSON.stringify(histHere) : "no prior data") + ".\nWeather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh" : "unknown") + ".\nPlayer context:\n" + aiBaseContext() + "\n\nGive 3-4 bullets: club off the tee, target line, what to avoid, mental cue.";
   try { setAiOutput(out, await callGrok(sys, userMsg)); }
   catch (e) { setAiOutput(out, "Error: " + e.message); }
 }

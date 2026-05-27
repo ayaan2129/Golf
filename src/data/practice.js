@@ -25,6 +25,58 @@ export const IRON_ACCEPTABLE_RESULTS = ["On target", "Short", "Long"];
 export const DRV_FAIRWAY_RESULTS = ["Fairway"];
 export const DRV_PLAYABLE_RESULTS = ["Fairway", "Light rough L", "Light rough R"];
 
+// Date-window practice activity: how often you've practised lately and how
+// many shots you've logged across each skill in a given window. AI uses
+// this to reason about practice frequency + improvement trends.
+export function getPracticeActivity(daysWindow) {
+  const days = Number(daysWindow) || 30;
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - days * 24 * 3600 * 1000);
+  const sessions = getPractice().filter(function (s) {
+    if (!s.date) return false;
+    return new Date(s.date) >= cutoff;
+  });
+  const daysSet = new Set();
+  const byType = { Putting: 0, Chipping: 0, Irons: 0, Driver: 0 };
+  let totalShots = 0;
+  for (const s of sessions) {
+    if (s.date) daysSet.add(s.date);
+    const n = Array.isArray(s.shots) ? s.shots.length : 0;
+    totalShots += n;
+    if (byType[s.type] != null) byType[s.type] += n;
+  }
+  return {
+    windowDays: days,
+    daysPractised: daysSet.size,
+    sessions: sessions.length,
+    totalShots,
+    byType,
+  };
+}
+
+// Practice trend: same insight, computed over windowed slices so we can
+// say "putting make-rate over the last 30 days was X%, prior 30 days Y%".
+export function getPuttingTrend() {
+  const now = new Date();
+  function windowed(daysBack, daysSpan) {
+    const end = new Date(now.getTime() - daysBack * 24 * 3600 * 1000);
+    const start = new Date(end.getTime() - daysSpan * 24 * 3600 * 1000);
+    const allShots = [];
+    for (const s of getPractice()) {
+      if (s.type !== "Putting" || !Array.isArray(s.shots) || !s.date) continue;
+      const d = new Date(s.date);
+      if (d >= start && d <= end) for (const sh of s.shots) allShots.push(sh);
+    }
+    const make = allShots.filter(function (sh) { return sh.intent === "make"; });
+    const made = make.filter(function (sh) { return sh.result === "Holed"; }).length;
+    return { putts: allShots.length, makeIntent: make.length, made, pct: make.length > 0 ? Math.round(made / make.length * 100) : null };
+  }
+  return {
+    last30: windowed(0, 30),
+    prior30: windowed(30, 30),
+  };
+}
+
 // ----- Putting -----
 export function getPuttingInsights() {
   const sessions = getPractice().filter(function (s) { return s.type === "Putting" && Array.isArray(s.shots); });

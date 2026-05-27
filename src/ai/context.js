@@ -6,13 +6,17 @@ import { calcAge } from "../core/utils.js";
 import { COURSES } from "../core/courses.js";
 import { getCurrentUsername } from "../core/storage.js";
 import { getProfile, getSelectedClubs } from "../data/profile.js";
-import { getHistory } from "../data/rounds.js";
+import {
+  getHistory, getStrokesGainedLite, getConfidenceClub, getTopAvoid,
+  getScoringZone, getApproachProximity, getPracticeTransfer,
+} from "../data/rounds.js";
 import {
   getPractice,
   getPuttingInsights,
   getChippingInsights,
   getIronInsights,
   getDriverInsights,
+  getPracticeActivity,
 } from "../data/practice.js";
 
 export function aiBaseContext() {
@@ -119,6 +123,44 @@ export function aiBaseContext() {
     if (di.leftMisses > di.rightMisses) lines.push("  - Miss bias: left side (" + di.leftMisses + " vs " + di.rightMisses + " right)");
     else if (di.rightMisses > di.leftMisses) lines.push("  - Miss bias: right side (" + di.rightMisses + " vs " + di.leftMisses + " left)");
   }
+  // Coach-style derived insights
+  if (history.length >= 2) {
+    const last = history[history.length - 1];
+    const sg = getStrokesGainedLite(last, history);
+    if (sg && sg.score != null) {
+      const sgLine = "Last round vs personal avg: " + (sg.score > 0 ? "+" : "") + sg.score + " strokes" +
+        (sg.putts != null ? ", " + (sg.putts > 0 ? "+" : "") + sg.putts + " putts" : "") +
+        (sg.penalties != null && sg.penalties !== 0 ? ", " + (sg.penalties > 0 ? "+" : "") + sg.penalties + " pens" : "");
+      lines.push(sgLine + ".");
+    }
+    const zone = getScoringZone(history.slice(-10));
+    if (zone.holes > 0) {
+      lines.push("Scoring zone (last " + Math.min(10, history.length) + " rounds): bogey-save " + (zone.bogeySavePct != null ? zone.bogeySavePct + "%" : "?") +
+        ", birdie conv " + (zone.birdieConversionPct != null ? zone.birdieConversionPct + "%" : "?") +
+        ", 3-putts " + zone.threePutts + " (" + (zone.threePuttPct != null ? zone.threePuttPct + "%" : "?") + " of holes).");
+    }
+    const avoid = getTopAvoid(history);
+    if (avoid) lines.push("Recent miss tendency: " + avoid.label + " (" + avoid.count + "x in last 5 rounds).");
+    const prox = getApproachProximity(history.slice(-10));
+    if (prox.length > 0) {
+      const top = prox.slice(0, 5).map(function (p) { return p.club + " " + p.avgLeft + "ft (n=" + p.count + ")"; }).join(", ");
+      lines.push("Approach proximity (avg ft left to pin): " + top + ".");
+    }
+  }
+  const confidenceClub = getConfidenceClub(getIronInsights(), getDriverInsights());
+  if (confidenceClub) lines.push("Confidence club right now: " + confidenceClub.club + " — " + confidenceClub.why + ".");
+  const activity7 = getPracticeActivity(7);
+  if (activity7.totalShots > 0) {
+    lines.push("Practice (last 7 days): " + activity7.daysPractised + " days, " + activity7.totalShots + " shots (P" + activity7.byType.Putting + " C" + activity7.byType.Chipping + " I" + activity7.byType.Irons + " D" + activity7.byType.Driver + ").");
+  }
+  const transfer = getPracticeTransfer(history, activity7);
+  if (transfer && transfer.avgPuttsRecent != null && transfer.avgPuttsPrior != null) {
+    const delta = transfer.avgPuttsRecent - transfer.avgPuttsPrior;
+    if (Math.abs(delta) >= 0.5) {
+      lines.push("Practice→game (last 7d vs prior 7d): putts " + (delta > 0 ? "+" : "") + delta.toFixed(1) + "/round.");
+    }
+  }
+
   return lines.join("\n");
 }
 

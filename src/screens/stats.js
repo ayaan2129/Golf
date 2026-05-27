@@ -6,8 +6,8 @@
 // Last 5 / Last 20 / Year / Custom selection sticks across visits.
 
 import { COURSES } from "../core/courses.js";
-import { getHistory } from "../data/rounds.js";
-import { getPuttingInsights } from "../data/practice.js";
+import { getHistory, getScoringZone, getPracticeTransfer, getApproachProximity } from "../data/rounds.js";
+import { getPuttingInsights, getPracticeActivity } from "../data/practice.js";
 
 const categoriesFilter = {
   range: "last20",  // last5 | last20 | year | all | custom
@@ -15,7 +15,29 @@ const categoriesFilter = {
   course: "",
   from: "",
   to: "",
+  timeBlock: "all", // all | morning | afternoon | evening
 };
+
+// Time-of-day matcher. Rounds with a timeBlock field (added in PR #5) use it
+// directly; older rounds derive from teeOffTime ("HH:MM" 24-h) or are kept
+// for "all" only.
+function roundMatchesTimeBlock(r, want) {
+  if (want === "all") return true;
+  const tb = (r.timeBlock || "").toLowerCase();
+  if (tb) {
+    if (want === "morning") return tb === "morning";
+    if (want === "afternoon") return tb === "afternoon" || tb === "late afternoon";
+    if (want === "evening") return tb === "evening";
+    return false;
+  }
+  if (!r.teeOffTime) return false;
+  const h = parseInt(String(r.teeOffTime).split(":")[0], 10);
+  if (isNaN(h)) return false;
+  if (want === "morning") return h < 11;
+  if (want === "afternoon") return h >= 11 && h < 17;
+  if (want === "evening") return h >= 17;
+  return false;
+}
 
 function loadCategoriesFilter() {
   try {
@@ -40,6 +62,9 @@ function getFilteredRounds() {
     filtered = filtered.filter(function (r) { return (r.holes || 18) >= 18; });
   } else if (categoriesFilter.holes === "9") {
     filtered = filtered.filter(function (r) { return (r.holes || 18) < 18; });
+  }
+  if (categoriesFilter.timeBlock && categoriesFilter.timeBlock !== "all") {
+    filtered = filtered.filter(function (r) { return roundMatchesTimeBlock(r, categoriesFilter.timeBlock); });
   }
   if (categoriesFilter.range === "last5") filtered = filtered.slice(0, 5);
   else if (categoriesFilter.range === "last20") filtered = filtered.slice(0, 20);
@@ -93,8 +118,9 @@ export function renderCategoriesGrid() {
   const courseLabel = categoriesFilter.course || "All courses";
   const holesLabel = categoriesFilter.holes === "all" ? "18 + 9 holes" : categoriesFilter.holes + " holes only";
   const rangeLabel = ({ last5: "Last 5", last20: "Last 20", year: "This Year", all: "All time", custom: "Custom range" })[categoriesFilter.range];
+  const timeLabel = categoriesFilter.timeBlock && categoriesFilter.timeBlock !== "all" ? " · " + categoriesFilter.timeBlock + " only" : "";
   const summaryEl = document.getElementById("categoriesFilterSummary");
-  if (summaryEl) summaryEl.textContent = courseLabel + " · " + holesLabel + " · " + rangeLabel + " (" + rounds.length + " rounds)";
+  if (summaryEl) summaryEl.textContent = courseLabel + " · " + holesLabel + " · " + rangeLabel + timeLabel + " (" + rounds.length + " rounds)";
 }
 
 function openDeepDive(cat) {
@@ -117,6 +143,11 @@ function openDeepDive(cat) {
   const rounds = getFilteredRounds();
   if (cat === "scoring") renderScoringDeepDive(body, rounds);
   else if (cat === "putting") renderPuttingDeepDive(body, rounds);
+  else if (cat === "fairways") renderFairwaysDeepDive(body, rounds);
+  else if (cat === "greens") renderGreensDeepDive(body, rounds);
+  else if (cat === "updowns") renderUpDownsDeepDive(body, rounds);
+  else if (cat === "sandsaves") renderSandSavesDeepDive(body, rounds);
+  else if (cat === "penalties") renderPenaltiesDeepDive(body, rounds);
   else body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">Deep-dive for <strong>' + titles[cat] + '</strong> is coming next.</p>';
   modal.style.display = "flex";
 }
@@ -142,7 +173,8 @@ function renderScoringDeepDive(body, rounds) {
   let holeTotal = 0;
   const perPar = { 3: { sum: 0, n: 0 }, 4: { sum: 0, n: 0 }, 5: { sum: 0, n: 0 } };
   for (const r of rounds) {
-    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holesRaw = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holes = Array.isArray(holesRaw) ? holesRaw : Object.values(holesRaw);
     for (const h of holes) {
       const par = h.par || 0;
       const score = h.score || 0;
@@ -211,6 +243,17 @@ function renderScoringDeepDive(body, rounds) {
     }
   }
 
+  // Scoring zone: bogey-save / birdie-conversion / 3-putts
+  const zone = getScoringZone(rounds);
+  if (zone.holes > 0) {
+    html += '<div class="dd-section-title">Scoring Zone</div>';
+    html += '<div class="dd-row">';
+    html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Bogey-save %</div><div class="dd-stat-num">' + (zone.bogeySavePct != null ? zone.bogeySavePct + "%" : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + zone.bogeySaves + '/' + zone.bogeySaveAttempts + ' missed-green holes</div></div>';
+    html += '  <div class="dd-stat" style="background:rgba(240,179,35,0.12);"><div class="dd-stat-lbl">Birdie %</div><div class="dd-stat-num">' + (zone.birdieConversionPct != null ? zone.birdieConversionPct + "%" : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + zone.birdiesMade + '/' + zone.birdieAttempts + ' GIR holes</div></div>';
+    html += '</div>';
+    html += '<div class="dd-stat" style="background:rgba(198,40,40,0.08); margin-top:8px;"><div class="dd-stat-lbl">3-putts</div><div class="dd-stat-num">' + zone.threePutts + '</div><div style="font-size:11px; color:var(--muted);">' + (zone.threePuttPct != null ? zone.threePuttPct + "% of holes" : "") + '</div></div>';
+  }
+
   body.innerHTML = html;
 }
 
@@ -239,7 +282,8 @@ function renderPuttingDeepDive(body, rounds) {
   const distData = distanceBuckets.map(function (b) { return { lbl: b.lbl, total: 0, oneputt: 0, girTotal: 0, girOneputt: 0, nonGirTotal: 0, nonGirOneputt: 0 }; });
 
   for (const r of rounds) {
-    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holesRaw = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holes = Array.isArray(holesRaw) ? holesRaw : Object.values(holesRaw);
     for (const h of holes) {
       const putts = h.putts != null ? h.putts : null;
       if (putts == null) continue;
@@ -419,6 +463,450 @@ function renderPuttDistanceRadial(buckets) {
          '</svg></div>';
 }
 
+// ---------- Fairways deep-dive: gauge + miss-side bias + score split + longest drive ----------
+function renderFairwaysDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let fwHit = 0, fwAns = 0, missLeft = 0, missRight = 0;
+  let scoreHitSum = 0, scoreHitN = 0, scoreMissSum = 0, scoreMissN = 0;
+  let longestDrive = null;
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      const score = Number(h.score) || 0;
+      if (par < 4 || !Array.isArray(h.shots) || h.shots.length === 0) continue;
+      const tee = h.shots[0];
+      if (!tee || tee.lie !== "Tee") continue;
+      const hit = tee.result === "Fairway" || tee.result === "On fairway";
+      fwAns++;
+      if (hit) {
+        fwHit++;
+        if (score > 0) { scoreHitSum += score; scoreHitN++; }
+      } else {
+        if (tee.direction === "Left") missLeft++;
+        else if (tee.direction === "Right") missRight++;
+        if (score > 0) { scoreMissSum += score; scoreMissN++; }
+      }
+      const dist = Number(tee.distanceHit);
+      if (dist > 0 && (tee.club || "").toLowerCase().includes("driver")) {
+        if (longestDrive == null || dist > longestDrive) longestDrive = dist;
+      }
+    }
+  }
+  const fwPct = fwAns > 0 ? Math.round(fwHit / fwAns * 100) : null;
+  const scoreHitAvg = scoreHitN > 0 ? scoreHitSum / scoreHitN : null;
+  const scoreMissAvg = scoreMissN > 0 ? scoreMissSum / scoreMissN : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Fairway %</div><div class="dd-stat-num">' + (fwPct != null ? fwPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Holes</div><div class="dd-stat-num">' + fwHit + "/" + fwAns + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-section-title">Where the misses go</div>';
+  html += renderFairwayGauge(missLeft, fwHit, missRight);
+
+  html += '<div class="dd-row" style="margin-top:14px;">';
+  html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Score with Hit</div><div class="dd-stat-num">' + (scoreHitAvg != null ? scoreHitAvg.toFixed(1) : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + scoreHitN + ' holes</div></div>';
+  html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">Score with Miss</div><div class="dd-stat-num">' + (scoreMissAvg != null ? scoreMissAvg.toFixed(1) : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + scoreMissN + ' holes</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-section-title">Longest Drive</div>';
+  html += '<div style="text-align:center; font-size:32px; font-weight:800; color:var(--green-deep); margin-bottom:6px;">' + (longestDrive != null ? longestDrive + "y" : "—") + '</div>';
+  if (longestDrive == null) html += '<p style="text-align:center; font-size:11px; color:var(--muted);">Log a driver-tee shot with a yardage to see your longest.</p>';
+
+  body.innerHTML = html;
+}
+
+function renderFairwayGauge(missLeft, hit, missRight) {
+  const total = missLeft + hit + missRight;
+  if (total === 0) return '<p style="text-align:center; color:var(--muted); font-size:13px;">No tee-shot data yet.</p>';
+  const lPct = Math.round(missLeft / total * 100);
+  const hPct = Math.round(hit / total * 100);
+  const rPct = Math.round(missRight / total * 100);
+  // Semicircle: 180° split into 3 slices proportional to counts
+  const cx = 150, cy = 150, r = 110, sw = 26;
+  const circ = Math.PI * r; // half circumference
+  function arc(start, frac, col) {
+    const len = circ * frac;
+    return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-dasharray="' + len + ' ' + (2 * Math.PI * r) + '" stroke-dashoffset="' + (-start) + '" transform="rotate(180 ' + cx + ' ' + cy + ')" />';
+  }
+  let offset = 0;
+  let arcs = '';
+  arcs += arc(offset, missLeft / total, "#ef9a9a"); offset += circ * (missLeft / total);
+  arcs += arc(offset, hit / total, "#2faf3e"); offset += circ * (hit / total);
+  arcs += arc(offset, missRight / total, "#ef9a9a");
+  return '<div style="display:flex; justify-content:center; padding:8px 0;">' +
+         '<svg viewBox="0 0 300 180" width="290" height="170">' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#eee" stroke-width="' + sw + '" stroke-dasharray="' + circ + ' ' + (2 * Math.PI * r) + '" transform="rotate(180 ' + cx + ' ' + cy + ')" />' +
+         arcs +
+         '<text x="40" y="170" text-anchor="middle" font-size="12" font-weight="700" fill="#888">Miss left</text>' +
+         '<text x="40" y="185" text-anchor="middle" font-size="13" font-weight="800" fill="#c62828">' + lPct + '%</text>' +
+         '<text x="150" y="105" text-anchor="middle" font-size="14" font-weight="800" fill="var(--green-deep)">Hit</text>' +
+         '<text x="150" y="125" text-anchor="middle" font-size="18" font-weight="800" fill="var(--green-deep)">' + hPct + '%</text>' +
+         '<text x="260" y="170" text-anchor="middle" font-size="12" font-weight="700" fill="#888">Miss right</text>' +
+         '<text x="260" y="185" text-anchor="middle" font-size="13" font-weight="800" fill="#c62828">' + rPct + '%</text>' +
+         '</svg></div>';
+}
+
+// ---------- Greens deep-dive: GIR ring + per-par + GIR x FW cross + green-miss compass ----------
+function renderGreensDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let girHit = 0, girAns = 0;
+  const perPar = { 3: { hit: 0, ans: 0 }, 4: { hit: 0, ans: 0 }, 5: { hit: 0, ans: 0 } };
+  let fwHitGreens = 0, fwHitTotal = 0, fwMissGreens = 0, fwMissTotal = 0;
+  let scoreGirSum = 0, scoreGirN = 0, scoreNonGirSum = 0, scoreNonGirN = 0;
+  const missDir = { Long: 0, Short: 0, Left: 0, Right: 0 };
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      const score = Number(h.score) || 0;
+      if (par < 3 || !Array.isArray(h.shots) || h.shots.length === 0) continue;
+      const greenIdx = h.shots.findIndex(function (s) { return s.result === "Green" || s.result === "On green" || s.result === "Holed"; });
+      const gir = greenIdx !== -1 && (greenIdx + 1) <= (par - 2);
+      girAns++;
+      if (gir) girHit++;
+      if (perPar[par]) { perPar[par].ans++; if (gir) perPar[par].hit++; }
+      if (score > 0) {
+        if (gir) { scoreGirSum += score; scoreGirN++; }
+        else { scoreNonGirSum += score; scoreNonGirN++; }
+      }
+      // FW × GIR cross
+      const tee = h.shots[0];
+      if (par >= 4 && tee && tee.lie === "Tee" && tee.result) {
+        const fwHit = (tee.result === "Fairway" || tee.result === "On fairway");
+        if (fwHit) { fwHitTotal++; if (gir) fwHitGreens++; }
+        else { fwMissTotal++; if (gir) fwMissGreens++; }
+      }
+      // Green miss direction — find the approach shot (last shot that's not a putt)
+      if (!gir) {
+        // Approach = last non-Tee shot that has a direction. Walk backwards.
+        for (let i = h.shots.length - 1; i >= 0; i--) {
+          const s = h.shots[i];
+          if (s.direction && (s.direction === "Long" || s.direction === "Short" || s.direction === "Left" || s.direction === "Right")) {
+            missDir[s.direction] = (missDir[s.direction] || 0) + 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+  const girPct = girAns > 0 ? Math.round(girHit / girAns * 100) : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">GIR</div><div class="dd-stat-num">' + (girPct != null ? girPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Holes</div><div class="dd-stat-num">' + girHit + "/" + girAns + '</div></div>';
+  html += '</div>';
+
+  html += renderGirRing(girHit, girAns);
+
+  if (perPar[3].ans + perPar[4].ans + perPar[5].ans > 0) {
+    html += '<div class="dd-section-title">GIR by Par</div>';
+    for (const p of [3, 4, 5]) {
+      const pp = perPar[p];
+      const pct = pp.ans > 0 ? Math.round(pp.hit / pp.ans * 100) : null;
+      const widthPct = pct != null ? pct : 0;
+      html += '<div class="dd-vs-par-row">';
+      html += '  <div class="dd-vs-par-lbl">PAR ' + p + '</div>';
+      html += '  <div class="dd-vs-par-bar-wrap"><div class="dd-vs-par-bar" style="width:' + widthPct + '%; left:0; background:var(--green-bright);"></div></div>';
+      html += '  <div class="dd-vs-par-val">' + (pct != null ? pct + "%" : "—") + '</div>';
+      html += '</div>';
+    }
+  }
+
+  if (fwHitTotal + fwMissTotal > 0) {
+    html += '<div class="dd-section-title">Greens × Fairway</div>';
+    html += '<div class="dd-row">';
+    const fwHitPct = fwHitTotal > 0 ? Math.round(fwHitGreens / fwHitTotal * 100) + "%" : "—";
+    const fwMissPct = fwMissTotal > 0 ? Math.round(fwMissGreens / fwMissTotal * 100) + "%" : "—";
+    html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">After FW Hit</div><div class="dd-stat-num">' + fwHitPct + '</div><div style="font-size:11px; color:var(--muted);">' + fwHitGreens + '/' + fwHitTotal + ' greens</div></div>';
+    html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">After FW Miss</div><div class="dd-stat-num">' + fwMissPct + '</div><div style="font-size:11px; color:var(--muted);">' + fwMissGreens + '/' + fwMissTotal + ' greens</div></div>';
+    html += '</div>';
+  }
+
+  if (scoreGirN + scoreNonGirN > 0) {
+    html += '<div class="dd-section-title">Score Split</div>';
+    html += '<div class="dd-row">';
+    html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">With GIR</div><div class="dd-stat-num">' + (scoreGirN > 0 ? (scoreGirSum / scoreGirN).toFixed(1) : "—") + '</div></div>';
+    html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">Green Missed</div><div class="dd-stat-num">' + (scoreNonGirN > 0 ? (scoreNonGirSum / scoreNonGirN).toFixed(1) : "—") + '</div></div>';
+    html += '</div>';
+  }
+
+  if (missDir.Long + missDir.Short + missDir.Left + missDir.Right > 0) {
+    html += '<div class="dd-section-title">Green Miss Compass</div>';
+    html += renderGreenMissCompass(missDir);
+  }
+
+  body.innerHTML = html;
+}
+
+function renderGirRing(hit, total) {
+  const cx = 100, cy = 100, r = 70, sw = 22;
+  const circ = 2 * Math.PI * r;
+  const frac = total > 0 ? hit / total : 0;
+  const len = circ * frac;
+  const pct = total > 0 ? Math.round(frac * 100) : null;
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 200 200" width="180" height="180">' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#eee" stroke-width="' + sw + '" />' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#2faf3e" stroke-width="' + sw + '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 ' + cx + ' ' + cy + ')" />' +
+         '<text x="100" y="98" text-anchor="middle" font-size="36" font-weight="800" fill="#0b3d0b">' + (pct != null ? pct + "%" : "—") + '</text>' +
+         '<text x="100" y="118" text-anchor="middle" font-size="11" fill="#888">GIR</text>' +
+         '</svg></div>';
+}
+
+function renderGreenMissCompass(d) {
+  const total = d.Long + d.Short + d.Left + d.Right;
+  function pct(v) { return total > 0 ? Math.round(v / total * 100) + "%" : "—"; }
+  // Cross with flag in centre and the 4 direction labels with counts
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 300 240" width="280" height="220">' +
+         // Crosshair lines
+         '<line x1="150" y1="40" x2="150" y2="200" stroke="#eee" stroke-width="2" />' +
+         '<line x1="40" y1="120" x2="260" y2="120" stroke="#eee" stroke-width="2" />' +
+         // Centre flag
+         '<circle cx="150" cy="120" r="22" fill="#2faf3e" />' +
+         '<text x="150" y="127" text-anchor="middle" font-size="22" fill="white">⛳</text>' +
+         // Long (top)
+         '<text x="150" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d0b">Long</text>' +
+         '<text x="150" y="50" text-anchor="middle" font-size="18" font-weight="800" fill="#c62828">' + pct(d.Long) + '</text>' +
+         '<text x="150" y="64" text-anchor="middle" font-size="10" fill="#888">' + d.Long + '</text>' +
+         // Short (bottom)
+         '<text x="150" y="225" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d0b">Short</text>' +
+         '<text x="150" y="208" text-anchor="middle" font-size="18" font-weight="800" fill="#c62828">' + pct(d.Short) + '</text>' +
+         '<text x="150" y="195" text-anchor="middle" font-size="10" fill="#888">' + d.Short + '</text>' +
+         // Left
+         '<text x="32" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d0b">Left</text>' +
+         '<text x="78" y="115" text-anchor="middle" font-size="18" font-weight="800" fill="#c62828">' + pct(d.Left) + '</text>' +
+         '<text x="78" y="130" text-anchor="middle" font-size="10" fill="#888">' + d.Left + '</text>' +
+         // Right
+         '<text x="270" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d0b">Right</text>' +
+         '<text x="222" y="115" text-anchor="middle" font-size="18" font-weight="800" fill="#c62828">' + pct(d.Right) + '</text>' +
+         '<text x="222" y="130" text-anchor="middle" font-size="10" fill="#888">' + d.Right + '</text>' +
+         '</svg></div>';
+}
+
+// ---------- Up & Downs deep-dive: scramble % + chips/round donut + distribution ----------
+function renderUpDownsDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let scrSave = 0, scrAns = 0;
+  let totalChips = 0;
+  const chipDist = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };  // 4 = "3+ chips"
+  let chipsRoundsN = 0;
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    let chipsThisRound = 0;
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      if (par < 3 || !Array.isArray(h.shots)) continue;
+      const greenIdx = h.shots.findIndex(function (s) { return s.result === "Green" || s.result === "On green" || s.result === "Holed"; });
+      const gir = greenIdx !== -1 && (greenIdx + 1) <= (par - 2);
+      const score = Number(h.score) || 0;
+      if (!gir && score > 0) {
+        scrAns++;
+        if (score <= par) scrSave++;
+      }
+      // Count chips: any short-game shot (Wedge / chip-distance) after missing GIR
+      for (const s of h.shots) {
+        const club = (s.club || "").toLowerCase();
+        if ((club.indexOf("wedge") !== -1 || club === "chipper") && s.lie !== "Tee") {
+          chipsThisRound++;
+        }
+      }
+    }
+    totalChips += chipsThisRound;
+    const key = chipsThisRound >= 4 ? 4 : (chipsThisRound > 3 ? 3 : chipsThisRound);
+    chipDist[key] = (chipDist[key] || 0) + 1;
+    chipsRoundsN++;
+  }
+  const scrPct = scrAns > 0 ? Math.round(scrSave / scrAns * 100) : null;
+  const avgChips = chipsRoundsN > 0 ? totalChips / chipsRoundsN : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Scrambling</div><div class="dd-stat-num">' + (scrPct != null ? scrPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Up &amp; Down</div><div class="dd-stat-num">' + scrSave + "/" + scrAns + '</div></div>';
+  html += '</div>';
+
+  if (chipsRoundsN > 0) {
+    html += '<div class="dd-section-title">Chip shots per round</div>';
+    html += renderChipsDonut(chipDist, chipsRoundsN, avgChips);
+    html += '<div class="putt-dist-legend">';
+    const legend = [
+      { key: 0, lbl: "0 Chips", col: "#1b5e20" },
+      { key: 1, lbl: "1 Chip",  col: "#2faf3e" },
+      { key: 2, lbl: "2 Chips", col: "#a5d6a7" },
+      { key: 3, lbl: "3 Chips", col: "#ef9a9a" },
+      { key: 4, lbl: "3+ Chips", col: "#c62828" },
+    ];
+    for (const l of legend) {
+      const c = chipDist[l.key] || 0;
+      const pct = Math.round(c / chipsRoundsN * 100);
+      html += '<div class="putt-dist-chip"><span class="putt-dist-dot" style="background:' + l.col + ';"></span>' + l.lbl + ' · ' + pct + '% (' + c + ')</div>';
+    }
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function renderChipsDonut(buckets, totalRounds, avgChips) {
+  const segments = [
+    { key: 0, col: "#1b5e20" },
+    { key: 1, col: "#2faf3e" },
+    { key: 2, col: "#a5d6a7" },
+    { key: 3, col: "#ef9a9a" },
+    { key: 4, col: "#c62828" },
+  ];
+  const cx = 100, cy = 100, r = 70, stroke = 22;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let arcs = '';
+  for (const seg of segments) {
+    const count = buckets[seg.key] || 0;
+    const frac = count / totalRounds;
+    if (frac === 0) continue;
+    const len = circ * frac;
+    arcs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.col + '" stroke-width="' + stroke + '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')" />';
+    offset += len;
+  }
+  const centerLbl = avgChips != null ? avgChips.toFixed(1) : "—";
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 200 200" width="180" height="180">' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#eee" stroke-width="' + stroke + '" />' +
+         arcs +
+         '<text x="100" y="98" text-anchor="middle" font-size="34" font-weight="800" fill="#0b3d0b">' + centerLbl + '</text>' +
+         '<text x="100" y="118" text-anchor="middle" font-size="11" fill="#888">chips / round</text>' +
+         '</svg></div>';
+}
+
+// ---------- Sand Saves deep-dive ----------
+function renderSandSavesDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let bunkerHoles = 0, sandSaves = 0;
+  let bunkerShots = 0;
+  const perRound = [];
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    let bunkersThisRound = 0;
+    for (const k in holes) {
+      const h = holes[k];
+      if (!Array.isArray(h.shots)) continue;
+      const par = Number(h.par) || 0;
+      const score = Number(h.score) || 0;
+      const fromBunker = h.shots.some(function (s) { return s.lie === "Bunker"; });
+      if (fromBunker) {
+        bunkerHoles++;
+        if (score > 0 && score <= par + 1) sandSaves++;  // Sand save = bogey-or-better from sand
+        bunkersThisRound += h.shots.filter(function (s) { return s.lie === "Bunker"; }).length;
+        bunkerShots += h.shots.filter(function (s) { return s.lie === "Bunker"; }).length;
+      }
+    }
+    perRound.push(bunkersThisRound);
+  }
+  const ssPct = bunkerHoles > 0 ? Math.round(sandSaves / bunkerHoles * 100) : null;
+  const avgBunkers = perRound.length > 0 ? perRound.reduce(function (a, b) { return a + b; }, 0) / perRound.length : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Sand Save %</div><div class="dd-stat-num">' + (ssPct != null ? ssPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">From Sand</div><div class="dd-stat-num">' + sandSaves + "/" + bunkerHoles + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Bunker shots / round</div><div class="dd-stat-num">' + (avgBunkers != null ? avgBunkers.toFixed(1) : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Total bunker shots</div><div class="dd-stat-num">' + bunkerShots + '</div></div>';
+  html += '</div>';
+
+  if (bunkerHoles === 0) {
+    html += '<p style="text-align:center; font-size:13px; color:var(--muted); margin-top:14px;">No bunker shots logged in this filter. Sand save % shows up once you log a bunker shot.</p>';
+  } else {
+    html += '<p style="font-size:11px; color:var(--muted); margin-top:14px; text-align:center;">Sand save = bogey-or-better on a hole where you played a bunker shot.</p>';
+  }
+
+  body.innerHTML = html;
+}
+
+// ---------- Penalties deep-dive ----------
+function renderPenaltiesDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let totalPens = 0;
+  const perRound = [];
+  const penDist = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+  const perPar = { 3: 0, 4: 0, 5: 0 };
+  let cleanRounds = 0;
+  for (const r of rounds) {
+    let pensThisRound = 0;
+    const holes = (r.fullData && r.fullData.holes) || {};
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      if (!Array.isArray(h.shots)) continue;
+      const pens = h.shots.filter(function (s) { return s.result === "Penalty"; }).length;
+      pensThisRound += pens;
+      if (pens > 0 && perPar[par] != null) perPar[par] += pens;
+    }
+    totalPens += pensThisRound;
+    perRound.push(pensThisRound);
+    if (pensThisRound === 0) cleanRounds++;
+    const key = pensThisRound >= 4 ? 4 : pensThisRound;
+    penDist[key] = (penDist[key] || 0) + 1;
+  }
+  const avgPens = perRound.length > 0 ? totalPens / perRound.length : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Avg / Round</div><div class="dd-stat-num">' + (avgPens != null ? avgPens.toFixed(1) : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Total</div><div class="dd-stat-num">' + totalPens + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Clean rounds</div><div class="dd-stat-num">' + cleanRounds + '</div><div style="font-size:11px; color:var(--muted);">' + (perRound.length > 0 ? Math.round(cleanRounds / perRound.length * 100) : 0) + '% of rounds</div></div>';
+  html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">Worst round</div><div class="dd-stat-num">' + (perRound.length > 0 ? Math.max.apply(null, perRound) : 0) + '</div></div>';
+  html += '</div>';
+
+  if (perPar[3] + perPar[4] + perPar[5] > 0) {
+    html += '<div class="dd-section-title">Penalties by Par</div>';
+    const maxV = Math.max(perPar[3], perPar[4], perPar[5], 1);
+    for (const p of [3, 4, 5]) {
+      const v = perPar[p];
+      const widthPct = Math.round(v / maxV * 100);
+      html += '<div class="dd-vs-par-row">';
+      html += '  <div class="dd-vs-par-lbl">PAR ' + p + '</div>';
+      html += '  <div class="dd-vs-par-bar-wrap"><div class="dd-vs-par-bar" style="width:' + widthPct + '%; left:0; background:var(--crimson);"></div></div>';
+      html += '  <div class="dd-vs-par-val">' + v + '</div>';
+      html += '</div>';
+    }
+  }
+
+  body.innerHTML = html;
+}
+
 function openCategoryFilterSheet() {
   const sheet = document.getElementById("categoryFilterSheet");
   if (!sheet) return;
@@ -430,6 +918,9 @@ function openCategoryFilterSheet() {
   }
   document.querySelectorAll("#catFilterHolesPills .pill").forEach(function (p) {
     p.classList.toggle("active", p.dataset.holes === categoriesFilter.holes);
+  });
+  document.querySelectorAll("#catFilterTimePills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.time === (categoriesFilter.timeBlock || "all"));
   });
   document.getElementById("catFilterRange").value = categoriesFilter.range;
   document.getElementById("catFilterFrom").value = categoriesFilter.from || "";
@@ -467,6 +958,12 @@ export function wireStatsCategories() {
       p.classList.add("active");
     });
   });
+  document.querySelectorAll("#catFilterTimePills .pill").forEach(function (p) {
+    p.addEventListener("click", function () {
+      document.querySelectorAll("#catFilterTimePills .pill").forEach(function (x) { x.classList.remove("active"); });
+      p.classList.add("active");
+    });
+  });
 
   const cfr = document.getElementById("catFilterRange");
   if (cfr) cfr.addEventListener("change", function () {
@@ -476,7 +973,9 @@ export function wireStatsCategories() {
   const cfa = document.getElementById("catFilterApply");
   if (cfa) cfa.addEventListener("click", function () {
     const activeHoles = document.querySelector("#catFilterHolesPills .pill.active");
+    const activeTime = document.querySelector("#catFilterTimePills .pill.active");
     categoriesFilter.holes = activeHoles ? activeHoles.dataset.holes : "all";
+    categoriesFilter.timeBlock = activeTime ? activeTime.dataset.time : "all";
     categoriesFilter.course = document.getElementById("catFilterCourse").value || "";
     categoriesFilter.range = document.getElementById("catFilterRange").value;
     categoriesFilter.from = document.getElementById("catFilterFrom").value || "";
@@ -488,7 +987,7 @@ export function wireStatsCategories() {
 
   const cfReset = document.getElementById("catFilterReset");
   if (cfReset) cfReset.addEventListener("click", function () {
-    Object.assign(categoriesFilter, { range: "last20", holes: "all", course: "", from: "", to: "" });
+    Object.assign(categoriesFilter, { range: "last20", holes: "all", course: "", from: "", to: "", timeBlock: "all" });
     saveCategoriesFilter();
     openCategoryFilterSheet();
     renderCategoriesGrid();

@@ -17,10 +17,52 @@ import {
   getChippingInsights,
   getIronInsights,
   getDriverInsights,
+  getPracticeActivity,
+  getPuttingTrend,
   CHIP_UD,
   IRON_GOOD_RESULTS,
   DRV_FAIRWAY_RESULTS,
 } from "../data/practice.js";
+
+// ---------------- Practice activity (recent days + trend) ----------------
+export function renderPracticeActivity() {
+  const el = document.getElementById("practiceActivitySummary");
+  if (!el) return;
+  const a7 = getPracticeActivity(7);
+  const a30 = getPracticeActivity(30);
+  if (a30.totalShots === 0) {
+    el.innerHTML = "No practice logged yet — start a drill below.";
+    return;
+  }
+  function streakLine(window, days, sessions, shots) {
+    return '<div class="stat-line"><span>Last ' + window + ' days</span><span class="stat-num">' + days + ' day' + (days === 1 ? "" : "s") + ' · ' + shots + ' shots</span></div>';
+  }
+  let html = "";
+  html += streakLine(7, a7.daysPractised, a7.sessions, a7.totalShots);
+  html += streakLine(30, a30.daysPractised, a30.sessions, a30.totalShots);
+  // Breakdown by skill (last 30)
+  const byType = a30.byType;
+  const totals = byType.Putting + byType.Chipping + byType.Irons + byType.Driver;
+  if (totals > 0) {
+    html += '<div class="stat-line" style="margin-top:6px;"><span>Last 30 by skill</span><span class="stat-num" style="font-size:12px; font-weight:600;">P' + byType.Putting + ' · C' + byType.Chipping + ' · I' + byType.Irons + ' · D' + byType.Driver + '</span></div>';
+  }
+  // Putting trend (current vs prior 30-day window)
+  const trend = getPuttingTrend();
+  if (trend.last30.makeIntent >= 5) {
+    const cur = trend.last30.pct;
+    const prev = trend.prior30.makeIntent >= 5 ? trend.prior30.pct : null;
+    let arrow = "";
+    let color = "var(--green-deep)";
+    if (prev != null) {
+      const delta = cur - prev;
+      if (delta > 0) { arrow = " ↑ " + delta + " pts"; color = "var(--green-bright)"; }
+      else if (delta < 0) { arrow = " ↓ " + Math.abs(delta) + " pts"; color = "var(--crimson)"; }
+      else arrow = " → 0 pts";
+    }
+    html += '<div class="stat-line"><span>Putting make-rate (30d)</span><span class="stat-num" style="color:' + color + ';">' + cur + '%' + arrow + '</span></div>';
+  }
+  el.innerHTML = html;
+}
 
 // ---------------- Putting ----------------
 const puttingState = {

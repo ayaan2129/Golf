@@ -2,71 +2,100 @@
 
 ## Code architecture
 
-The app is being incrementally modularized from a single `script.js` into
-per-concern ES modules under `src/`. Think of each module like a Flutter
-widget tree: one file = one concern, imports declare its dependencies.
+The app uses ES modules with a Flutter-widget-style file-per-concern layout
+under `src/`. `script.js` is the entry point and orchestration shell —
+it loads as `<script type="module">` and imports everything else.
 
-### Directory layout (target)
+### Directory layout
 
 ```
 /
-├── index.html         # Page shell + tab divs + modals
-├── script.js          # Entry point. Imports from src/* and bootstraps the UI.
-├── style.css          # All styles (will stay one file for now)
+├── index.html              # Page shell + tab divs + modals
+├── script.js               # Entry point + orchestration shell + tracker
+├── style.css               # All styles
 └── src/
     ├── core/
     │   ├── storage.js      # Multi-user localStorage namespace + accounts
     │   ├── utils.js        # todayISO, calcAge, escape helpers
-    │   ├── courses.js      # COURSES static data + clubs lists
-    │   └── nav.js          # (Phase 4) switchTab, drawer, showApp/showWelcome/showLogin
-    ├── data/                # (Phase 2)
-    │   ├── profile.js      # getProfile/saveProfile + clubDistances
-    │   ├── rounds.js       # getHistory, saveRoundToHistory, computeAnalysis
-    │   ├── practice.js     # putting/chipping/iron/driver state + insights
+    │   └── courses.js      # COURSES static data + clubs lists + locationFor
+    ├── data/
+    │   ├── rounds.js       # getHistory, saveHistory, upcoming
+    │   ├── practice.js     # CRUD + 4 insights getters + classifiers
+    │   ├── profile.js      # Profile + clubs + observed-club-carry
     │   ├── videos.js       # IndexedDB blob storage
-    │   └── weather.js      # Open-Meteo fetching
-    ├── ai/                  # (Phase 3)
-    │   ├── grok.js         # callGrok + aiBaseContext + getGrokKey
-    │   └── generators.js   # round report, practice plan, etc.
-    └── screens/             # (Phase 4)
-        ├── login.js
-        ├── home.js
-        ├── setup.js
-        ├── clubs.js
-        ├── tracker.js
-        ├── stats.js
-        ├── practice-ui.js
-        ├── videos-ui.js
-        ├── coach.js
-        └── profile.js
+    │   └── weather.js      # Open-Meteo fetch + code → text
+    ├── ai/
+    │   ├── grok.js         # Two-mode client (direct + proxy)
+    │   ├── context.js      # aiBaseContext + setAiOutput
+    │   └── generators.js   # 9 generators incl. swing vision analyzers
+    └── screens/
+        ├── login.js        # Login + signup (DI nav helpers)
+        ├── practice-ui.js  # 4 drill state machines + summaries + wire
+        ├── videos-ui.js    # Upload + library + modal + compare + wire
+        ├── coach.js        # Chat launcher + panel + rule-based + AI + wire
+        └── stats.js        # Categories grid + filters + deep-dives + wire
 ```
 
-### Current state (after PR #11)
+### What stays in `script.js`
 
-Extracted:
-- `src/core/storage.js`, `src/core/utils.js`, `src/core/courses.js`
-- `src/data/rounds.js`, `src/data/practice.js`, `src/data/profile.js`,
-  `src/data/videos.js`, `src/data/weather.js`
-- `src/ai/grok.js`, `src/ai/context.js`, `src/ai/generators.js`
-- `src/screens/practice-ui.js` — putting / chipping / iron / driver drill
-  state machines + render summaries + `wirePracticeUi()` initializer
-- `src/screens/videos-ui.js` — upload + thumbnail generation + library grid
-  + modal player + linked-shot picker + compare modal + `wireVideosUi()`
-- `src/screens/coach.js` — chat launcher + panel + send + rule-based
-  fallback + AI path via Grok + `wireCoachUi()`
-- `src/screens/stats.js` — Categories grid + Filters sheet + Scoring
-  deep-dive + Putting deep-dive (donut + radial) + `wireStatsCategories()`
-- `src/screens/login.js` — login + signup wiring via dependency-injected
-  nav helpers (`wireLoginUi({showWelcome, showApp, switchTab, ...})`)
+The orchestration shell — boot order, page-level navigation primitives
+(showLogin / showWelcome / showApp / switchTab / syncDrawerActive /
+syncBottomTabs / openDrawer / closeDrawer), the welcome / home dashboard
+renderer, setup tab pill wiring, clubs tab grid, profile field handlers,
+tee-progression goals, monthly summary / calendar / score-trend /
+handicap-trend / weather-impact dashboard cards, and the entire round
+tracker (hole-by-hole UI, shot logging, putt logging, save-round
+computation, analyse-hole logic).
 
-Legacy bridges (will go away in cleanup PR):
-- `window.suggestTeeProgression` — referenced by coach module until the
-  tee-progression helpers move to `src/data/`.
+The tracker is intentionally not extracted: it shares ~30 helper functions
+with the analysis path and the demo-seed path. Splitting them would create
+circular module deps. If a future change makes the tracker self-contained
+enough to extract, it goes in `src/screens/tracker.js`.
 
-Pending (still in script.js):
-- Other screens (login, home, setup, clubs, tracker, profile) — remaining
-  Phase 4 sub-phases
-- Final cleanup — last PR
+### Legacy bridges (window globals)
+
+A few legacy script.js helpers are exposed on `window` so extracted
+modules can call them until they're properly extracted:
+
+- `window.suggestTeeProgression` — used by `src/screens/coach.js`
+
+### Adding new code
+
+- **New utility function** → `src/core/utils.js` or focused module
+- **New screen** → `src/screens/<name>.js`; export `wire<Name>Ui()` and
+  any render functions; call `wire<Name>Ui()` from `script.js` boot
+- **New data concept** → `src/data/<concept>.js`
+- **New AI generator** → `src/ai/generators.js`
+
+### Style
+
+- ES module syntax (`import` / `export`); named exports preferred
+- Module-scope state for screen-specific UI state (drill state, chat
+  history, filter selection); persisted to localStorage where needed
+- No classes unless clearly justified
+- Keep modules small — target < 400 lines
+
+### Boot order (in `script.js`)
+
+1. Side-effect imports (storage namespace installs on first `import`)
+2. Named imports from all modules
+3. Function declarations / global state (legacy)
+4. Top-level event listener wiring (legacy)
+5. Module wirings: `wirePracticeUi()`, `wireVideosUi()`,
+   `wireStatsCategories()`, `wireCoachUi()`, `wireLoginUi(navHelpers)`
+6. Initial boot: `applyUrlActivationToCurrentUser()` then
+   `showWelcome()` or `showLogin()` based on login state
+
+### Deployment
+
+GitHub Pages serves the repo root. Local dev: `python3 -m http.server 8765`
+from repo root, open `http://localhost:8765/index.html`.
+
+### Cache-busting
+
+After any change that ships, bump the `?v=` in `index.html`'s script tag
+(e.g. `script.js?v=20260527h`) so browsers fetch fresh modules.
+
 
 ### Adding new code
 
