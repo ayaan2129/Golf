@@ -4589,6 +4589,7 @@ function seedDemoData(silent) {
     if (fwPct !== null && fwPct < 60) mistakes.push("Missed fairways: " + fwPct + "%.");
     if (totalPutts > 36) mistakes.push("Too many putts: " + totalPutts + ".");
     if (fwPct !== null && fwPct >= 70) strengths.push("Good fairway: " + fwPct + "%.");
+    const hcSnap = buildRoundHandicap("RCGC", "White", coursePar, totalScore);
     return {
       playerName: "Ayaan",
       date: dateStr,
@@ -4598,6 +4599,7 @@ function seedDemoData(silent) {
       coursePar,
       parPlayed: coursePar,
       handicap: 18,
+      ...hcSnap,
       birthday: "2013-08-15",
       ageAtRound: 12,
       weather: weather.summary,
