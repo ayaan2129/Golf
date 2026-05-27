@@ -6,8 +6,8 @@
 // Last 5 / Last 20 / Year / Custom selection sticks across visits.
 
 import { COURSES } from "../core/courses.js";
-import { getHistory } from "../data/rounds.js";
-import { getPuttingInsights } from "../data/practice.js";
+import { getHistory, getScoringZone, getPracticeTransfer, getApproachProximity } from "../data/rounds.js";
+import { getPuttingInsights, getPracticeActivity } from "../data/practice.js";
 
 const categoriesFilter = {
   range: "last20",  // last5 | last20 | year | all | custom
@@ -173,7 +173,8 @@ function renderScoringDeepDive(body, rounds) {
   let holeTotal = 0;
   const perPar = { 3: { sum: 0, n: 0 }, 4: { sum: 0, n: 0 }, 5: { sum: 0, n: 0 } };
   for (const r of rounds) {
-    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holesRaw = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holes = Array.isArray(holesRaw) ? holesRaw : Object.values(holesRaw);
     for (const h of holes) {
       const par = h.par || 0;
       const score = h.score || 0;
@@ -242,6 +243,17 @@ function renderScoringDeepDive(body, rounds) {
     }
   }
 
+  // Scoring zone: bogey-save / birdie-conversion / 3-putts
+  const zone = getScoringZone(rounds);
+  if (zone.holes > 0) {
+    html += '<div class="dd-section-title">Scoring Zone</div>';
+    html += '<div class="dd-row">';
+    html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Bogey-save %</div><div class="dd-stat-num">' + (zone.bogeySavePct != null ? zone.bogeySavePct + "%" : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + zone.bogeySaves + '/' + zone.bogeySaveAttempts + ' missed-green holes</div></div>';
+    html += '  <div class="dd-stat" style="background:rgba(240,179,35,0.12);"><div class="dd-stat-lbl">Birdie %</div><div class="dd-stat-num">' + (zone.birdieConversionPct != null ? zone.birdieConversionPct + "%" : "—") + '</div><div style="font-size:11px; color:var(--muted);">' + zone.birdiesMade + '/' + zone.birdieAttempts + ' GIR holes</div></div>';
+    html += '</div>';
+    html += '<div class="dd-stat" style="background:rgba(198,40,40,0.08); margin-top:8px;"><div class="dd-stat-lbl">3-putts</div><div class="dd-stat-num">' + zone.threePutts + '</div><div style="font-size:11px; color:var(--muted);">' + (zone.threePuttPct != null ? zone.threePuttPct + "% of holes" : "") + '</div></div>';
+  }
+
   body.innerHTML = html;
 }
 
@@ -270,7 +282,8 @@ function renderPuttingDeepDive(body, rounds) {
   const distData = distanceBuckets.map(function (b) { return { lbl: b.lbl, total: 0, oneputt: 0, girTotal: 0, girOneputt: 0, nonGirTotal: 0, nonGirOneputt: 0 }; });
 
   for (const r of rounds) {
-    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holesRaw = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    const holes = Array.isArray(holesRaw) ? holesRaw : Object.values(holesRaw);
     for (const h of holes) {
       const putts = h.putts != null ? h.putts : null;
       if (putts == null) continue;

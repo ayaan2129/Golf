@@ -17,10 +17,15 @@ import {
   ALL_CLUBS,
   DEFAULT_CLUBS,
 } from "./src/core/courses.js";
-import { getHistory, saveHistory, getUpcoming, saveUpcoming } from "./src/data/rounds.js";
+import {
+  getHistory, saveHistory, getUpcoming, saveUpcoming,
+  getStrokesGainedLite, getConfidenceClub, getTopAvoid,
+  getScoringZone, getPracticeTransfer, getApproachProximity,
+} from "./src/data/rounds.js";
 import {
   getPractice, savePractice,
   getPuttingInsights, getChippingInsights, getIronInsights, getDriverInsights,
+  getPracticeActivity, getPuttingTrend,
   CHIP_GOOD, CHIP_UD,
   IRON_GOOD_RESULTS, IRON_ACCEPTABLE_RESULTS,
   DRV_FAIRWAY_RESULTS, DRV_PLAYABLE_RESULTS,
@@ -227,6 +232,38 @@ function renderHomeDashboard() {
 
   const tEl = document.getElementById("homeThoughtText");
   if (tEl) tEl.textContent = getDailyThought();
+
+  // Coach's quick read — Confidence Club + Today's Avoid + last-round SG
+  const intelCard = document.getElementById("homeCoachIntel");
+  const intelBody = document.getElementById("homeCoachIntelBody");
+  if (intelCard && intelBody) {
+    const lines = [];
+    const cclub = getConfidenceClub(getIronInsights(), getDriverInsights());
+    if (cclub) lines.push('<div style="margin:4px 0;"><strong style="color:var(--green-deep);">Confidence club:</strong> ' + cclub.club + ' <span style="color:var(--muted); font-size:11px;">— ' + cclub.why + '</span></div>');
+    const avoid = getTopAvoid(history);
+    if (avoid) lines.push('<div style="margin:4px 0;"><strong style="color:var(--crimson);">Watch out for:</strong> ' + avoid.label + ' <span style="color:var(--muted); font-size:11px;">— ' + avoid.count + ' times in last 5 rounds</span></div>');
+    if (history.length > 0) {
+      const last = history[history.length - 1];
+      const sg = getStrokesGainedLite(last, history);
+      if (sg && sg.score != null) {
+        const sign = sg.score > 0 ? "+" : "";
+        const col = sg.score > 0 ? "var(--green-bright)" : (sg.score < 0 ? "var(--crimson)" : "var(--ink-soft)");
+        let putts = "";
+        if (sg.putts != null) {
+          const psign = sg.putts > 0 ? "+" : "";
+          const pcol = sg.putts > 0 ? "var(--green-bright)" : (sg.putts < 0 ? "var(--crimson)" : "var(--ink-soft)");
+          putts = ' · <span style="color:' + pcol + ';">' + psign + sg.putts + ' putts</span>';
+        }
+        lines.push('<div style="margin:4px 0;"><strong>Last round vs your avg:</strong> <span style="color:' + col + ';">' + sign + sg.score + ' strokes</span>' + putts + '</div>');
+      }
+    }
+    if (lines.length > 0) {
+      intelBody.innerHTML = lines.join("");
+      intelCard.style.display = "";
+    } else {
+      intelCard.style.display = "none";
+    }
+  }
 
   syncDrawerActive("home");
 }
@@ -1270,6 +1307,18 @@ function makeHoleCard(n) {
         <input type="number" id="holeDistance-${n}" min="0" />
       </label>
 
+      <label>Pin position
+        <select id="pinPosition-${n}">
+          <option value="">—</option>
+          <option value="Front">Front</option>
+          <option value="Middle">Middle</option>
+          <option value="Back">Back</option>
+          <option value="Front-Left">Front-Left</option>
+          <option value="Back-Right">Back-Right</option>
+          <option value="Tucked">Tucked</option>
+        </select>
+      </label>
+
       <h3>Shots</h3>
       <div class="shots-list" id="shotsList-${n}"></div>
       <button type="button" class="add-shot-btn" data-hole="${n}">+ Add Shot</button>
@@ -1723,6 +1772,7 @@ function saveAll() {
       firstPuttDistance: ((document.getElementById("firstPuttDistance-" + i)) || {}).value || "",
       firstPuttResult: ((document.getElementById("firstPuttResult-" + i)) || {}).value || "",
       missedShortPutt: ((document.getElementById("missedShortPutt-" + i)) || {}).value || "",
+      pinPosition: ((document.getElementById("pinPosition-" + i)) || {}).value || "",
     };
   }
   localStorage.setItem("golfRound", JSON.stringify(data));
@@ -1783,6 +1833,9 @@ function loadAll() {
 
       const fprEl = document.getElementById("firstPuttResult-" + i);
       if (fprEl && hole.firstPuttResult !== undefined) fprEl.value = hole.firstPuttResult;
+
+      const pinEl = document.getElementById("pinPosition-" + i);
+      if (pinEl && hole.pinPosition !== undefined) pinEl.value = hole.pinPosition;
 
       const msEl = document.getElementById("missedShortPutt-" + i);
       if (msEl && hole.missedShortPutt !== undefined) msEl.value = hole.missedShortPutt;
@@ -3975,6 +4028,29 @@ function renderPracticeInsightsCard() {
     }
     makeSection("Tee shots", lines);
   }
+
+  // Practice → Game transfer
+  const activity = getPracticeActivity(7);
+  const transfer = getPracticeTransfer(getHistory(), activity);
+  if (transfer && transfer.recentRoundsN > 0 && transfer.practiceDays > 0) {
+    const lines = [];
+    lines.push({ label: "Practice days (last 7)", value: transfer.practiceDays + " days · " + transfer.practiceShots + " shots" });
+    if (transfer.avgPuttsRecent != null) {
+      let putsLine = transfer.avgPuttsRecent.toFixed(1) + " putts/round";
+      if (transfer.avgPuttsPrior != null) {
+        const delta = transfer.avgPuttsRecent - transfer.avgPuttsPrior;
+        const sign = delta > 0 ? "+" : "";
+        putsLine += " (vs " + sign + delta.toFixed(1) + " prior 7d)";
+      }
+      lines.push({ label: "Recent rounds", value: putsLine });
+    }
+    if (transfer.avgScoreRecent != null && transfer.avgScorePrior != null) {
+      const delta = transfer.avgScoreRecent - transfer.avgScorePrior;
+      const sign = delta > 0 ? "+" : "";
+      lines.push({ label: "Score change", value: sign + delta.toFixed(1) + " strokes" });
+    }
+    makeSection("Practice → Game", lines);
+  }
 }
 
 function buildDemoShot(club, distHit, lie, dir, q, res) {
@@ -4216,8 +4292,10 @@ async function generateHoleTip() {
   }
   let weather = null;
   try { weather = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+  const pinEl = document.getElementById("pinPosition-" + i);
+  const pin = pinEl && pinEl.value ? pinEl.value : null;
   const sys = "You are Coach. 3-4 short bullets max. Be specific to this hole. No emojis.";
-  const userMsg = "Coach a 12-year-old budding pro through hole " + i + ".\nPar: " + parEl.value + ". Distance: " + (distEl && distEl.value || "?") + " yards.\nHis history on this hole: " + (histHere.length > 0 ? JSON.stringify(histHere) : "no prior data") + ".\nWeather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh" : "unknown") + ".\nPlayer context:\n" + aiBaseContext() + "\n\nGive 3-4 bullets: club off the tee, target line, what to avoid, mental cue.";
+  const userMsg = "Coach a 12-year-old budding pro through hole " + i + ".\nPar: " + parEl.value + ". Distance: " + (distEl && distEl.value || "?") + " yards." + (pin ? "\nPin position today: " + pin + "." : "") + "\nHis history on this hole: " + (histHere.length > 0 ? JSON.stringify(histHere) : "no prior data") + ".\nWeather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh" : "unknown") + ".\nPlayer context:\n" + aiBaseContext() + "\n\nGive 3-4 bullets: club off the tee, target line, what to avoid, mental cue.";
   try { setAiOutput(out, await callGrok(sys, userMsg)); }
   catch (e) { setAiOutput(out, "Error: " + e.message); }
 }
