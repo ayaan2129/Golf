@@ -1,72 +1,22 @@
-// ===== Multi-user storage namespace =====
-// All localStorage keys are auto-prefixed by the currently logged-in user
-// so accounts share the device but never see each other's data.
-(function setupStorageNamespace() {
-  const CUR_KEY = "__currentUser";
-  const ACC_KEY = "accounts";
-  const SKIP = [CUR_KEY, ACC_KEY];
-  const origGet = localStorage.getItem.bind(localStorage);
-  const origSet = localStorage.setItem.bind(localStorage);
-  const origRm = localStorage.removeItem.bind(localStorage);
-
-  // One-time migration: if accounts doesn't exist, create the default Ayaan
-  // account and move any existing unprefixed data into u_ayaan_*.
-  if (!origGet(ACC_KEY)) {
-    const initialAccount = {
-      username: "ayaan",
-      password: "Golf@123",
-      displayName: "Ayaan",
-      createdAt: new Date().toISOString(),
-    };
-    origSet(ACC_KEY, JSON.stringify([initialAccount]));
-    const keysToMigrate = [
-      "roundHistory", "playerProfile", "upcomingRounds", "practiceSessions",
-      "selectedClubs", "customClubs", "currentHoleIndex", "roundMode",
-      "defaultsDate", "defaultsTemp", "currentWeather",
-      "grokApiKey", "aiMode", "demoSeeded", "golfRound", "weatherToday",
-      "golfLoggedIn",
-    ];
-    for (const k of keysToMigrate) {
-      const v = origGet(k);
-      if (v !== null) {
-        origSet("u_ayaan_" + k, v);
-        origRm(k);
-      }
-    }
-  }
-
-  function prefix() {
-    const u = origGet(CUR_KEY);
-    return "u_" + (u || "_anon") + "_";
-  }
-
-  localStorage.getItem = function (k) {
-    if (SKIP.indexOf(k) !== -1) return origGet(k);
-    return origGet(prefix() + k);
-  };
-  localStorage.setItem = function (k, v) {
-    if (SKIP.indexOf(k) !== -1) return origSet(k, v);
-    return origSet(prefix() + k, v);
-  };
-  localStorage.removeItem = function (k) {
-    if (SKIP.indexOf(k) !== -1) return origRm(k);
-    return origRm(prefix() + k);
-  };
-
-  // Expose unscoped helpers for accounts management
-  window.__unscoped = { get: origGet, set: origSet, remove: origRm };
-})();
-
-function getAccounts() {
-  const raw = window.__unscoped.get("accounts");
-  try { return JSON.parse(raw || "[]"); } catch (e) { return []; }
-}
-function saveAccounts(arr) {
-  window.__unscoped.set("accounts", JSON.stringify(arr));
-}
-function getCurrentUsername() {
-  return window.__unscoped.get("__currentUser");
-}
+// Entry point. Imports from ./src/* modules; rest of this file is being
+// extracted screen-by-screen into ./src/screens/*. See CONTRIBUTING.md.
+import {
+  getAccounts,
+  saveAccounts,
+  getCurrentUsername,
+  setCurrentUsername,
+  currentAccount,
+  isLoggedIn,
+} from "./src/core/storage.js";
+import { todayISO, calcAge, escapeAttr, escapeHtml } from "./src/core/utils.js";
+import {
+  COURSES,
+  DEFAULT_COURSE_LOCATION,
+  locationFor,
+  BAD_QUALITIES,
+  ALL_CLUBS,
+  DEFAULT_CLUBS,
+} from "./src/core/courses.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
 // stash them, and clean the URL bar so the credentials don't linger in
@@ -112,20 +62,6 @@ function applyUrlActivationToCurrentUser() {
     if (typeof renderAiStatus === "function") renderAiStatus();
   }
 }
-function setCurrentUsername(u) {
-  if (u) window.__unscoped.set("__currentUser", u);
-  else window.__unscoped.remove("__currentUser");
-}
-function currentAccount() {
-  const u = getCurrentUsername();
-  if (!u) return null;
-  return getAccounts().find(function (a) { return a.username === u; }) || null;
-}
-
-function isLoggedIn() {
-  return !!getCurrentUsername();
-}
-
 function setShellVisible(visible) {
   const header = document.getElementById("appHeader");
   if (header) header.style.display = visible ? "" : "none";
@@ -1703,48 +1639,6 @@ const ACHIEVEMENTS = [
   { id: "tenRounds", name: "10 rounds saved", check: function (rounds) { return rounds.length >= 10; } },
 ];
 
-const COURSES = {
-  RCGC: {
-    location: { lat: 22.5337, lon: 88.3491, tz: "Asia/Kolkata", name: "Royal Calcutta GC" },
-    greenSpeed: "Medium-fast (~10 stimp)",
-    notes: "Historic parkland. Greens read true. Watch the cross-bunkers on hole 4.",
-    pars: [4, 3, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4],
-    tees: {
-      Blue: [359, 161, 442, 570, 410, 425, 421, 401, 429, 439, 451, 394, 233, 426, 503, 354, 382, 437],
-      White: [350, 150, 388, 521, 396, 420, 388, 368, 396, 426, 422, 341, 196, 404, 494, 347, 367, 429],
-      Yellow: [309, 142, 368, 463, 382, 377, 333, 352, 316, 371, 359, 326, 157, 348, 409, 329, 357, 367],
-      Red: [305, 137, 332, 451, 352, 330, 299, 326, 314, 367, 351, 283, 126, 323, 403, 327, 347, 363],
-    },
-  },
-  Tolly: {
-    location: { lat: 22.5113, lon: 88.3464, tz: "Asia/Kolkata", name: "Tollygunge Club" },
-    greenSpeed: "—",
-    notes: "Scorecard pending.",
-    pars: null,
-    tees: null,
-  },
-};
-
-const DEFAULT_COURSE_LOCATION = { lat: 22.5337, lon: 88.3491, tz: "Asia/Kolkata", name: "Kolkata" };
-
-function locationFor(courseKey) {
-  if (courseKey && COURSES[courseKey] && COURSES[courseKey].location) return COURSES[courseKey].location;
-  return DEFAULT_COURSE_LOCATION;
-}
-
-const BAD_QUALITIES = ["Top", "Duff", "Slice", "Hook"];
-
-const ALL_CLUBS = [
-  "Driver", "Mini Driver",
-  "2 Wood", "3 Wood", "4 Wood", "5 Wood", "7 Wood", "9 Wood",
-  "1 Hybrid", "2 Hybrid", "3 Hybrid", "4 Hybrid", "5 Hybrid", "6 Hybrid", "7 Hybrid",
-  "1 Iron", "2 Iron", "3 Iron", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron",
-  "Pitching Wedge", "Gap Wedge", "Sand Wedge", "Lob Wedge",
-  "Chipper", "Putter",
-];
-
-const DEFAULT_CLUBS = ["Driver", "3 Wood", "4 Hybrid", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Sand Wedge", "Lob Wedge", "Putter"];
-
 const THOUGHTS = [
   "Practice doesn't make perfect. Perfect practice does.",
   "One shot at a time. The next shot is the most important.",
@@ -1769,21 +1663,6 @@ function getDailyThought() {
   return THOUGHTS[dayNumber % THOUGHTS.length];
 }
 
-function todayISO() {
-  const d = new Date();
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-
-function calcAge(birthDateStr) {
-  if (!birthDateStr) return null;
-  const today = new Date();
-  const birth = new Date(birthDateStr);
-  if (isNaN(birth.getTime())) return null;
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1;
-  return age;
-}
 
 function ageBenchmarkText(age, history) {
   if (age == null) return "";
@@ -7194,8 +7073,6 @@ async function openVideoCompare(idA, idB) {
   modal._objectUrlB = urlB;
 }
 
-function escapeAttr(s) { return String(s || "").replace(/"/g, "&quot;"); }
-function escapeHtml(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 const _videoUploadBtn = document.getElementById("videoUploadBtn");
 const _videoRecordBtn = document.getElementById("videoRecordBtn");
