@@ -17,6 +17,26 @@ import {
   ALL_CLUBS,
   DEFAULT_CLUBS,
 } from "./src/core/courses.js";
+import { getHistory, saveHistory, getUpcoming, saveUpcoming } from "./src/data/rounds.js";
+import {
+  getPractice, savePractice,
+  getPuttingInsights, getChippingInsights, getIronInsights, getDriverInsights,
+  CHIP_GOOD, CHIP_UD,
+  IRON_GOOD_RESULTS, IRON_ACCEPTABLE_RESULTS,
+  DRV_FAIRWAY_RESULTS, DRV_PLAYABLE_RESULTS,
+} from "./src/data/practice.js";
+import {
+  getProfile, saveProfile, setProfileField,
+  getClubDistance, setClubDistance,
+  getSelectedClubs, saveSelectedClubs,
+  getObservedClubCarry,
+  MAX_CLUBS,
+} from "./src/data/profile.js";
+import {
+  openVideoDB, putVideoBlob, getVideoBlob, deleteVideoBlob,
+  getVideoIndex, saveVideoIndex, videoNewId,
+} from "./src/data/videos.js";
+import { fetchWeatherForDate, weatherCodeToText } from "./src/data/weather.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
 // stash them, and clean the URL bar so the credentials don't linger in
@@ -384,54 +404,6 @@ async function loadTemperatureForDate(dateStr) {
   out.textContent = text;
   localStorage.setItem("defaultsTemp", text);
   localStorage.setItem("currentWeather", JSON.stringify(w));
-}
-
-async function fetchWeatherForDate(dateStr, courseKey) {
-  if (!dateStr) return null;
-  const loc = locationFor(courseKey);
-  const today = todayISO();
-  const isPast = dateStr < today;
-  const base = isPast
-    ? "https://archive-api.open-meteo.com/v1/archive"
-    : "https://api.open-meteo.com/v1/forecast";
-  const url = base +
-    "?latitude=" + loc.lat + "&longitude=" + loc.lon +
-    "&start_date=" + dateStr + "&end_date=" + dateStr +
-    "&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max,precipitation_sum" +
-    "&timezone=" + encodeURIComponent(loc.tz);
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const d = data.daily || {};
-    return {
-      date: dateStr,
-      courseKey: courseKey || null,
-      locationName: loc.name,
-      tempMax: d.temperature_2m_max ? d.temperature_2m_max[0] : null,
-      tempMin: d.temperature_2m_min ? d.temperature_2m_min[0] : null,
-      code: d.weathercode ? d.weathercode[0] : null,
-      condition: weatherCodeToText(d.weathercode ? d.weathercode[0] : null),
-      windKmh: d.windspeed_10m_max ? d.windspeed_10m_max[0] : null,
-      precipMm: d.precipitation_sum ? d.precipitation_sum[0] : null,
-    };
-  } catch (e) {
-    return null;
-  }
-}
-
-function weatherCodeToText(code) {
-  if (code == null) return "—";
-  if (code === 0) return "Clear";
-  if (code === 1 || code === 2) return "Partly cloudy";
-  if (code === 3) return "Overcast";
-  if (code === 45 || code === 48) return "Fog";
-  if (code >= 51 && code <= 57) return "Drizzle";
-  if (code >= 61 && code <= 67) return "Rain";
-  if (code >= 71 && code <= 77) return "Snow";
-  if (code >= 80 && code <= 82) return "Showers";
-  if (code >= 95 && code <= 99) return "Thunderstorm";
-  return "Mild";
 }
 
 document.getElementById("loginBtn").addEventListener("click", function () {
@@ -849,39 +821,6 @@ const puttingState = {
   conditions: { distance: 5, break: "straight", slope: "flat", speed: "medium", intent: "make", circle: 5 },
 };
 
-function getPuttingInsights() {
-  const sessions = getPractice().filter(function (s) { return s.type === "Putting" && Array.isArray(s.shots); });
-  const allShots = [];
-  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
-  const buckets = [
-    { lbl: "0-3 ft", fn: function (sh) { return sh.distance <= 3 && sh.intent === "make"; } },
-    { lbl: "3-5 ft", fn: function (sh) { return sh.distance > 3 && sh.distance <= 5 && sh.intent === "make"; } },
-    { lbl: "5-10 ft", fn: function (sh) { return sh.distance > 5 && sh.distance <= 10 && sh.intent === "make"; } },
-    { lbl: "10-20 ft", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20 && sh.intent === "make"; } },
-    { lbl: "20+ ft", fn: function (sh) { return sh.distance > 20 && sh.intent === "make"; } },
-  ];
-  const distanceRates = buckets.map(function (b) {
-    const set = allShots.filter(b.fn);
-    if (set.length === 0) return { label: b.lbl, count: 0, pct: null };
-    const made = set.filter(function (sh) { return sh.result === "Holed"; }).length;
-    return { label: b.lbl, count: set.length, pct: Math.round(made / set.length * 100) };
-  });
-  const misses = allShots.filter(function (sh) { return sh.intent === "make" && sh.result !== "Holed"; });
-  let topMiss = null;
-  if (misses.length > 0) {
-    const dirCounts = {};
-    for (const m of misses) dirCounts[m.result] = (dirCounts[m.result] || 0) + 1;
-    topMiss = Object.keys(dirCounts).sort(function (a, b) { return dirCounts[b] - dirCounts[a]; })[0];
-  }
-  const lagShots = allShots.filter(function (sh) { return sh.intent === "lag"; });
-  let lag = null;
-  if (lagShots.length > 0) {
-    const inCircle = lagShots.filter(function (sh) { return sh.result === "Holed" || sh.result === "In Circle"; }).length;
-    lag = { count: lagShots.length, inCirclePct: Math.round(inCircle / lagShots.length * 100) };
-  }
-  return { totalShots: allShots.length, sessions: sessions.length, distanceRates, topMiss, lag };
-}
-
 function renderPuttingStatsSummary() {
   const el = document.getElementById("puttStatsSummary");
   if (!el) return;
@@ -992,8 +931,6 @@ const chippingState = {
   conditions: { distance: 20, lie: "fairway", slope: "flat", club: "SW" },
 };
 
-const CHIP_GOOD = ["Holed", "In 3ft", "In 6ft"];
-const CHIP_UD = ["Holed", "In 3ft", "In 6ft"]; // up-and-down likely
 
 function setChipPill(group, key, value) {
   document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
@@ -1061,48 +998,6 @@ function recordChip(result) {
   updateChippingRunningStat();
 }
 
-function getChippingInsights() {
-  const sessions = getPractice().filter(function (s) { return s.type === "Chipping" && Array.isArray(s.shots); });
-  const allShots = [];
-  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
-  function udRate(set) {
-    if (set.length === 0) return null;
-    const ud = set.filter(function (sh) { return CHIP_UD.indexOf(sh.result) !== -1; }).length;
-    return { count: set.length, ud, pct: Math.round(ud / set.length * 100) };
-  }
-  const buckets = [
-    { lbl: "0-10 y", fn: function (sh) { return sh.distance <= 10; } },
-    { lbl: "10-20 y", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20; } },
-    { lbl: "20-40 y", fn: function (sh) { return sh.distance > 20 && sh.distance <= 40; } },
-    { lbl: "40+ y", fn: function (sh) { return sh.distance > 40; } },
-  ];
-  const distanceRates = buckets.map(function (b) {
-    const r = udRate(allShots.filter(b.fn));
-    return { label: b.lbl, count: r ? r.count : 0, pct: r ? r.pct : null };
-  });
-  const lieGroups = {};
-  for (const sh of allShots) {
-    if (!lieGroups[sh.lie]) lieGroups[sh.lie] = [];
-    lieGroups[sh.lie].push(sh);
-  }
-  const lieRates = Object.keys(lieGroups).map(function (k) {
-    const r = udRate(lieGroups[k]);
-    return { lie: k, count: r.count, pct: r.pct };
-  }).sort(function (a, b) { return b.count - a.count; });
-  // Mishit count (chunked / bladed)
-  const mishits = allShots.filter(function (sh) { return sh.result === "Chunked" || sh.result === "Bladed"; });
-  const mishitPct = allShots.length > 0 ? Math.round(mishits.length / allShots.length * 100) : null;
-  // Top miss type
-  let topMiss = null;
-  const misses = allShots.filter(function (sh) { return CHIP_GOOD.indexOf(sh.result) === -1; });
-  if (misses.length > 0) {
-    const c = {};
-    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
-    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
-  }
-  return { totalShots: allShots.length, sessions: sessions.length, distanceRates, lieRates, mishitPct, topMiss };
-}
-
 function renderChippingStatsSummary() {
   const el = document.getElementById("chipStatsSummary");
   if (!el) return;
@@ -1128,8 +1023,6 @@ const ironState = {
   conditions: { club: "7i", shape: "straight", target: null },
 };
 
-const IRON_GOOD_RESULTS = ["On target"];
-const IRON_ACCEPTABLE_RESULTS = ["On target", "Short", "Long"]; // distance errors only, no side miss
 
 function setIronPill(group, key, value) {
   document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
@@ -1200,52 +1093,6 @@ function recordIron(result) {
   document.getElementById("ironCarry").value = "";
 }
 
-function getIronInsights() {
-  const sessions = getPractice().filter(function (s) { return s.type === "Irons" && Array.isArray(s.shots); });
-  const allShots = [];
-  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
-  // Per-club stats
-  const byClub = {};
-  for (const sh of allShots) {
-    if (!byClub[sh.club]) byClub[sh.club] = [];
-    byClub[sh.club].push(sh);
-  }
-  const clubStats = [];
-  const clubOrder = ["3i","4i","5i","6i","7i","8i","9i","PW","3H","4H","5H"];
-  for (const c of clubOrder) {
-    if (!byClub[c]) continue;
-    const set = byClub[c];
-    const carries = set.map(function (s) { return s.carry; }).filter(function (v) { return typeof v === "number" && v > 0; });
-    const avg = carries.length ? Math.round(carries.reduce(function (a, b) { return a + b; }, 0) / carries.length) : null;
-    const min = carries.length ? Math.min.apply(null, carries) : null;
-    const max = carries.length ? Math.max.apply(null, carries) : null;
-    const good = set.filter(function (sh) { return IRON_GOOD_RESULTS.indexOf(sh.result) !== -1; }).length;
-    clubStats.push({
-      club: c,
-      count: set.length,
-      avgCarry: avg,
-      minCarry: min,
-      maxCarry: max,
-      onTargetPct: Math.round(good / set.length * 100),
-    });
-  }
-  // Miss directions
-  const misses = allShots.filter(function (sh) { return IRON_GOOD_RESULTS.indexOf(sh.result) === -1; });
-  let topMiss = null;
-  if (misses.length > 0) {
-    const c = {};
-    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
-    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
-  }
-  // Shape distribution
-  const shapeCounts = {};
-  for (const sh of allShots) shapeCounts[sh.shape] = (shapeCounts[sh.shape] || 0) + 1;
-  // Pure-strike (not fat/thin/OB)
-  const pure = allShots.filter(function (sh) { return ["Fat", "Thin", "OB"].indexOf(sh.result) === -1; }).length;
-  const pureStrikePct = allShots.length > 0 ? Math.round(pure / allShots.length * 100) : null;
-  return { totalShots: allShots.length, sessions: sessions.length, clubStats, topMiss, shapeCounts, pureStrikePct };
-}
-
 function renderIronStatsSummary() {
   const el = document.getElementById("ironStatsSummary");
   if (!el) return;
@@ -1274,8 +1121,6 @@ const driverState = {
   conditions: { club: "Driver", shape: "straight" },
 };
 
-const DRV_FAIRWAY_RESULTS = ["Fairway"];
-const DRV_PLAYABLE_RESULTS = ["Fairway", "Light rough L", "Light rough R"];
 
 function setDrvPill(group, key, value) {
   document.querySelectorAll("#" + group + " .pill").forEach(function (p) {
@@ -1346,50 +1191,6 @@ function recordDriver(result) {
   document.getElementById("drvTotal").value = "";
 }
 
-function getDriverInsights() {
-  const sessions = getPractice().filter(function (s) { return s.type === "Driver" && Array.isArray(s.shots); });
-  const allShots = [];
-  for (const s of sessions) for (const sh of s.shots) allShots.push(sh);
-  // Per-club stats
-  const byClub = {};
-  for (const sh of allShots) {
-    if (!byClub[sh.club]) byClub[sh.club] = [];
-    byClub[sh.club].push(sh);
-  }
-  const clubStats = [];
-  const order = ["Driver","3W","5W","3H","4H"];
-  for (const c of order) {
-    if (!byClub[c]) continue;
-    const set = byClub[c];
-    const carries = set.map(function (s) { return s.carry; }).filter(function (v) { return typeof v === "number" && v > 0; });
-    const totals = set.map(function (s) { return s.total; }).filter(function (v) { return typeof v === "number" && v > 0; });
-    const fw = set.filter(function (sh) { return DRV_FAIRWAY_RESULTS.indexOf(sh.result) !== -1; }).length;
-    const playable = set.filter(function (sh) { return DRV_PLAYABLE_RESULTS.indexOf(sh.result) !== -1; }).length;
-    clubStats.push({
-      club: c,
-      count: set.length,
-      avgCarry: carries.length ? Math.round(carries.reduce(function (a, b) { return a + b; }, 0) / carries.length) : null,
-      avgTotal: totals.length ? Math.round(totals.reduce(function (a, b) { return a + b; }, 0) / totals.length) : null,
-      fairwayPct: Math.round(fw / set.length * 100),
-      playablePct: Math.round(playable / set.length * 100),
-    });
-  }
-  // Miss side bias
-  const leftMisses = allShots.filter(function (sh) { return sh.result === "Light rough L" || sh.shape === "hook" || sh.shape === "pull"; }).length;
-  const rightMisses = allShots.filter(function (sh) { return sh.result === "Light rough R" || sh.shape === "slice" || sh.shape === "push"; }).length;
-  // Shape distribution
-  const shapeCounts = {};
-  for (const sh of allShots) shapeCounts[sh.shape] = (shapeCounts[sh.shape] || 0) + 1;
-  // Top miss
-  let topMiss = null;
-  const misses = allShots.filter(function (sh) { return DRV_FAIRWAY_RESULTS.indexOf(sh.result) === -1; });
-  if (misses.length > 0) {
-    const c = {};
-    for (const m of misses) c[m.result] = (c[m.result] || 0) + 1;
-    topMiss = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
-  }
-  return { totalShots: allShots.length, sessions: sessions.length, clubStats, topMiss, shapeCounts, leftMisses, rightMisses };
-}
 
 function renderDriverStatsSummary() {
   const el = document.getElementById("driverStatsSummary");
@@ -1750,72 +1551,6 @@ function getAllAvailableClubs() {
   return ALL_CLUBS.concat(getCustomClubs());
 }
 
-function getProfile() {
-  try {
-    return JSON.parse(localStorage.getItem("playerProfile") || "{}");
-  } catch (e) { return {}; }
-}
-
-function saveProfile(p) {
-  localStorage.setItem("playerProfile", JSON.stringify(p));
-}
-
-function setProfileField(key, value) {
-  const p = getProfile();
-  p[key] = value;
-  saveProfile(p);
-}
-
-function getClubDistance(club) {
-  const p = getProfile();
-  if (p.clubDistances && p.clubDistances[club] != null) return p.clubDistances[club];
-  return null;
-}
-
-function setClubDistance(club, distance) {
-  const p = getProfile();
-  if (!p.clubDistances) p.clubDistances = {};
-  if (distance === "" || distance == null) delete p.clubDistances[club];
-  else p.clubDistances[club] = Number(distance) || 0;
-  saveProfile(p);
-}
-
-function getObservedClubCarry(club) {
-  // Maps bag-display names ("7 Iron") to practice short codes ("7i") and looks up
-  // the observed avg carry across iron + driver practice sessions.
-  const aliases = {
-    "Driver": ["Driver"],
-    "3 Wood": ["3W"],
-    "5 Wood": ["5W"],
-    "3 Hybrid": ["3H"],
-    "4 Hybrid": ["4H"],
-    "5 Hybrid": ["5H"],
-    "3 Iron": ["3i"],
-    "4 Iron": ["4i"],
-    "5 Iron": ["5i"],
-    "6 Iron": ["6i"],
-    "7 Iron": ["7i"],
-    "8 Iron": ["8i"],
-    "9 Iron": ["9i"],
-    "Pitching Wedge": ["PW"],
-    "Sand Wedge": ["SW"],
-    "Lob Wedge": ["LW"],
-  };
-  const codes = aliases[club] || [club];
-  let ii = typeof getIronInsights === "function" ? getIronInsights() : null;
-  let di = typeof getDriverInsights === "function" ? getDriverInsights() : null;
-  for (const code of codes) {
-    if (ii && ii.clubStats) {
-      const hit = ii.clubStats.find(function (c) { return c.club === code; });
-      if (hit && hit.avgCarry != null && hit.count >= 3) return { carry: hit.avgCarry, count: hit.count };
-    }
-    if (di && di.clubStats) {
-      const hit = di.clubStats.find(function (c) { return c.club === code; });
-      if (hit && hit.avgCarry != null && hit.count >= 3) return { carry: hit.avgCarry, count: hit.count };
-    }
-  }
-  return null;
-}
 
 function renderClubDistances() {
   const list = document.getElementById("clubDistancesList");
@@ -1876,22 +1611,6 @@ function renderClubDistances() {
     });
     list.appendChild(applyAll);
   }
-}
-
-const MAX_CLUBS = 14;
-
-function getSelectedClubs() {
-  const raw = localStorage.getItem("selectedClubs");
-  if (raw === null) return DEFAULT_CLUBS.slice();
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-  } catch (e) {}
-  return DEFAULT_CLUBS.slice();
-}
-
-function saveSelectedClubs(arr) {
-  localStorage.setItem("selectedClubs", JSON.stringify(arr));
 }
 
 function updateClubsCounter() {
@@ -3995,18 +3714,6 @@ function initDashboard() {
   });
 }
 
-function getHistory() {
-  return JSON.parse(localStorage.getItem("roundHistory") || "[]");
-}
-
-function getUpcoming() {
-  return JSON.parse(localStorage.getItem("upcomingRounds") || "[]");
-}
-
-function saveUpcoming(arr) {
-  localStorage.setItem("upcomingRounds", JSON.stringify(arr));
-}
-
 function parseDate(str) {
   if (!str) return null;
   const parts = str.split("-");
@@ -5419,15 +5126,6 @@ function renderWeatherImpact() {
   }
 }
 
-function getPractice() {
-  try { return JSON.parse(localStorage.getItem("practiceSessions") || "[]"); }
-  catch (e) { return []; }
-}
-
-function savePractice(arr) {
-  localStorage.setItem("practiceSessions", JSON.stringify(arr));
-}
-
 function addPracticeSession() {
   const date = document.getElementById("practiceDate").value || todayISO();
   const area = document.getElementById("practiceArea").value || "Range";
@@ -6637,73 +6335,6 @@ renderClubDistances();
 
 // Now that all constants and functions are initialized, decide which
 // ---------------- Swing Video Library (Phase 6) ----------------
-const VIDEO_DB_NAME = "golfVideosDB";
-const VIDEO_STORE = "videoBlobs";
-let _videoDbPromise = null;
-
-function openVideoDB() {
-  if (_videoDbPromise) return _videoDbPromise;
-  _videoDbPromise = new Promise(function (resolve, reject) {
-    if (!window.indexedDB) { reject(new Error("IndexedDB not supported")); return; }
-    const req = indexedDB.open(VIDEO_DB_NAME, 1);
-    req.onupgradeneeded = function (e) {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(VIDEO_STORE)) {
-        db.createObjectStore(VIDEO_STORE);
-      }
-    };
-    req.onsuccess = function () { resolve(req.result); };
-    req.onerror = function () { reject(req.error); };
-  });
-  return _videoDbPromise;
-}
-
-function putVideoBlob(id, blob) {
-  return openVideoDB().then(function (db) {
-    return new Promise(function (resolve, reject) {
-      const tx = db.transaction(VIDEO_STORE, "readwrite");
-      tx.objectStore(VIDEO_STORE).put(blob, id);
-      tx.oncomplete = function () { resolve(); };
-      tx.onerror = function () { reject(tx.error); };
-    });
-  });
-}
-
-function getVideoBlob(id) {
-  return openVideoDB().then(function (db) {
-    return new Promise(function (resolve, reject) {
-      const tx = db.transaction(VIDEO_STORE, "readonly");
-      const req = tx.objectStore(VIDEO_STORE).get(id);
-      req.onsuccess = function () { resolve(req.result); };
-      req.onerror = function () { reject(req.error); };
-    });
-  });
-}
-
-function deleteVideoBlob(id) {
-  return openVideoDB().then(function (db) {
-    return new Promise(function (resolve, reject) {
-      const tx = db.transaction(VIDEO_STORE, "readwrite");
-      tx.objectStore(VIDEO_STORE).delete(id);
-      tx.oncomplete = function () { resolve(); };
-      tx.onerror = function () { reject(tx.error); };
-    });
-  });
-}
-
-function getVideoIndex() {
-  try { return JSON.parse(localStorage.getItem("videoLibrary") || "[]"); }
-  catch (e) { return []; }
-}
-
-function saveVideoIndex(arr) {
-  localStorage.setItem("videoLibrary", JSON.stringify(arr));
-}
-
-function videoNewId() {
-  return "v_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-}
-
 function generateVideoThumb(file) {
   return new Promise(function (resolve) {
     const url = URL.createObjectURL(file);
