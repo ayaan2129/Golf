@@ -50,10 +50,12 @@ Extracted:
 - `src/ai/grok.js`, `src/ai/context.js`, `src/ai/generators.js`
 - `src/screens/practice-ui.js` — putting / chipping / iron / driver drill
   state machines + render summaries + `wirePracticeUi()` initializer
+- `src/screens/videos-ui.js` — upload + thumbnail generation + library grid
+  + modal player + linked-shot picker + compare modal + `wireVideosUi()`
 
 Pending (still in script.js):
-- Other screens (login, home, setup, clubs, tracker, stats, videos-ui,
-  coach, profile) — Phase 4b–4d
+- Other screens (login, home, setup, clubs, tracker, stats, coach,
+  profile) — Phase 4c–4e
 - Final cleanup — last PR
 
 ### Adding new code
