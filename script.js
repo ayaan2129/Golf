@@ -126,6 +126,110 @@ function showLogin() {
   setShellVisible(false);
 }
 
+// Returns the single most actionable practice weakness as { label, cue, metric }
+// or null if there's not enough data to say anything specific.
+function getPracticeInsight(pi, ci, ii, di) {
+  const cues = [];
+
+  // --- Putting: worst make-rate bucket with enough data ---
+  if (pi && pi.distanceRates) {
+    var worstBucket = null, worstPct = 100;
+    for (var i = 0; i < pi.distanceRates.length; i++) {
+      var b = pi.distanceRates[i];
+      if (b.count >= 5 && b.pct !== null && b.pct < worstPct) {
+        worstPct = b.pct; worstBucket = b;
+      }
+    }
+    if (worstBucket && worstPct < 65) {
+      cues.push({
+        score: 65 - worstPct,
+        label: worstBucket.label + " — " + worstPct + "% make rate",
+        cue: "Drill " + worstBucket.label.split(" ")[0].toLowerCase() + " putts: 10-ball sets, one target, no rushing. Aim above 65%.",
+      });
+    }
+  }
+
+  // --- Putting: lag distance control ---
+  if (pi && pi.lag && pi.lag.count >= 5 && pi.lag.inCirclePct < 60) {
+    cues.push({
+      score: 60 - pi.lag.inCirclePct,
+      label: "Lag putting — " + pi.lag.inCirclePct + "% in circle",
+      cue: "Practise 30-40 ft lags: land in a 3-ft circle. Soft hands, feel the pace, don't think direction.",
+    });
+  }
+
+  // --- Putting: left/right miss tendency ---
+  if (pi && pi.topMiss && pi.totalShots >= 10) {
+    var missLabel = pi.topMiss;
+    var missCue = null;
+    if (missLabel === "Left") missCue = "Missing left consistently — check your aim at address, aim slightly right of hole and trust it.";
+    else if (missLabel === "Right") missCue = "Missing right consistently — square your putter face at address, hold the follow-through straight.";
+    if (missCue) cues.push({ score: 18, label: "Putting miss: " + missLabel.toLowerCase(), cue: missCue });
+  }
+
+  // --- Chipping: mishit rate (fat/blade) ---
+  if (ci && ci.totalShots >= 8 && ci.mishitPct !== null && ci.mishitPct > 15) {
+    cues.push({
+      score: ci.mishitPct - 15,
+      label: "Chipping — " + ci.mishitPct + "% chunk/blade rate",
+      cue: "Weight forward at address (60% lead foot), brush turf first. Slow practice swings before each rep.",
+    });
+  }
+
+  // --- Chipping: worst up-and-down bucket ---
+  if (ci && ci.distanceRates) {
+    var worstChip = null, worstChipPct = 100;
+    for (var j = 0; j < ci.distanceRates.length; j++) {
+      var cb = ci.distanceRates[j];
+      if (cb.count >= 5 && cb.pct !== null && cb.pct < worstChipPct) {
+        worstChipPct = cb.pct; worstChip = cb;
+      }
+    }
+    if (worstChip && worstChipPct < 50) {
+      cues.push({
+        score: (50 - worstChipPct) * 0.7,
+        label: worstChip.label + " chip — " + worstChipPct + "% up & down",
+        cue: "Pick a specific landing spot 1-2 ft onto the green, let the ball roll to the pin. Commit to the landing.",
+      });
+    }
+  }
+
+  // --- Irons: pure strike rate ---
+  if (ii && ii.totalShots >= 10 && ii.pureStrikePct !== null && ii.pureStrikePct < 65) {
+    cues.push({
+      score: 65 - ii.pureStrikePct,
+      label: "Iron contact — " + ii.pureStrikePct + "% pure",
+      cue: "Ball first, turf second. Slow back, pause at the top, drive hips first. Fat/thin = rushing the downswing.",
+    });
+  }
+
+  // --- Irons: directional miss ---
+  if (ii && ii.topMiss && ii.totalShots >= 10) {
+    var ironMiss = ii.topMiss, ironCue = null;
+    if (ironMiss === "Right") ironCue = "Irons trending right — check your grip (both thumbs on top), start down with the hips, not the arms.";
+    else if (ironMiss === "Left") ironCue = "Irons trending left — don't flip the hands through impact, keep the trail elbow close on the way down.";
+    else if (ironMiss === "Short") ironCue = "Coming up short on irons — are you catching it thin? Take one more club and swing at 90%.";
+    if (ironCue) cues.push({ score: 20, label: "Iron miss: " + ironMiss.toLowerCase(), cue: ironCue });
+  }
+
+  // --- Driver: fairway rate ---
+  if (di && di.totalShots >= 5) {
+    var drvFw = null;
+    if (di.clubStats && di.clubStats.length > 0) drvFw = di.clubStats[0].fairwayPct;
+    if (drvFw !== null && drvFw < 40) {
+      var sideBias = (di.rightMisses || 0) > (di.leftMisses || 0) ? "right" : ((di.leftMisses || 0) > (di.rightMisses || 0) ? "left" : null);
+      var drvCue = "Tee it at 85% — a smooth swing finds more fairways than a hard one.";
+      if (sideBias === "right") drvCue = "Driver missing right: tee the ball higher, close stance slightly, think 'swing left of target'.";
+      else if (sideBias === "left") drvCue = "Driver missing left: relax grip pressure, feel the club face square at impact, don't flip.";
+      cues.push({ score: 40 - drvFw, label: "Driver — " + drvFw + "% fairways", cue: drvCue });
+    }
+  }
+
+  if (cues.length === 0) return null;
+  cues.sort(function (a, b) { return b.score - a.score; });
+  return cues[0];
+}
+
 function renderHomeDashboard() {
   const profile = getProfile();
   const acct = currentAccount();
@@ -264,6 +368,21 @@ function renderHomeDashboard() {
       intelCard.style.display = "";
     } else {
       intelCard.style.display = "none";
+    }
+  }
+
+  // Practice insight card — rule-based cue from practice data
+  const piCard = document.getElementById("homePracticeInsight");
+  const piLabel = document.getElementById("homePracticeInsightLabel");
+  const piCue = document.getElementById("homePracticeInsightCue");
+  if (piCard && piLabel && piCue) {
+    const insight = getPracticeInsight(getPuttingInsights(), getChippingInsights(), getIronInsights(), getDriverInsights());
+    if (insight) {
+      piLabel.textContent = insight.label;
+      piCue.textContent = insight.cue;
+      piCard.style.display = "";
+    } else {
+      piCard.style.display = "none";
     }
   }
 
