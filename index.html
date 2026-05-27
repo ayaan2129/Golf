@@ -101,8 +101,9 @@
           <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice</button>
         </div>
 
-        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.15), rgba(47, 175, 62, 0.1)); border:1px solid var(--gold);">
-          <h3 style="margin:0 0 6px;">🤖 Turn on the AI Coach</h3>
+        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.15), rgba(47, 175, 62, 0.1)); border:1px solid var(--gold); position:relative;">
+          <button id="byoDismissBtn" style="position:absolute; top:8px; right:10px; background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; line-height:1; padding:2px 4px;">×</button>
+          <h3 style="margin:0 0 6px; padding-right:24px;">🤖 Turn on the AI Coach</h3>
           <p style="margin:0 0 10px; font-size:13px;">Bring your own API key (free credit at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock AI round reports, practice plans, and swing analysis tailored to your data.</p>
           <button class="home-cta-btn secondary" data-go-tab="statsTab" id="byoOpenSettingsBtn" style="font-size:13px; padding:8px 14px;">Add your key →</button>
         </div>
@@ -1326,6 +1327,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527t"></script>
+    <script type="module" src="script.js?v=20260527u"></script>
   </body>
 </html>

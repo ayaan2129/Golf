@@ -438,15 +438,20 @@ function renderWelcome() {
   }
   nameEl.textContent = name;
 
-  // BYO banner: show only when the AI coach isn't configured yet
+  // BYO banner: show when AI not configured and user hasn't dismissed it
   const byo = document.getElementById("byoBanner");
-  if (byo) byo.style.display = (typeof aiEnabled === "function" && aiEnabled()) ? "none" : "";
+  if (byo) {
+    const dismissed = localStorage.getItem("byoBannerDismissed") === "1";
+    const aiOn = typeof aiEnabled === "function" && aiEnabled();
+    byo.style.display = (aiOn || dismissed) ? "none" : "";
+  }
   const byoBtn = document.getElementById("byoOpenSettingsBtn");
   if (byoBtn && !byoBtn._wired) {
     byoBtn._wired = true;
     byoBtn.addEventListener("click", function () {
       showApp();
       switchTab("statsTab");
+      syncBottomTabs("statsTab");
       setTimeout(function () {
         const card = document.getElementById("grokApiKey");
         if (card) {
@@ -454,6 +459,15 @@ function renderWelcome() {
           card.focus();
         }
       }, 250);
+    });
+  }
+  const byoDismiss = document.getElementById("byoDismissBtn");
+  if (byoDismiss && !byoDismiss._wired) {
+    byoDismiss._wired = true;
+    byoDismiss.addEventListener("click", function () {
+      localStorage.setItem("byoBannerDismissed", "1");
+      const b = document.getElementById("byoBanner");
+      if (b) b.style.display = "none";
     });
   }
 
@@ -918,13 +932,32 @@ document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
 function autoSetTodayOnSetup() {
   const dateInput = document.getElementById("roundDate");
   if (dateInput) dateInput.value = todayISO();
-  // Tee-off time: default to now if blank, derive block label
+  // Tee-off time: default to now if blank
   const timeInput = document.getElementById("teeOffTime");
   if (timeInput && !timeInput.value) {
     const now = new Date();
     timeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
   }
   renderTimeBlockLabel();
+  // Pre-fill course + tee from last round so returning users don't start blank
+  const hist = getHistory();
+  if (hist.length > 0) {
+    const last = hist[hist.length - 1];
+    const sel = document.getElementById("courseSelect");
+    if (sel && !sel.value && last.courseName) {
+      const opt = Array.from(sel.options).find(function (o) { return o.value === last.courseName; });
+      if (opt) {
+        sel.value = last.courseName;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    if (last.tee) {
+      const teePill = document.querySelector('#teePillGroup .pill[data-tee="' + last.tee + '"]');
+      if (teePill && !document.querySelector('#teePillGroup .pill.active')) {
+        teePill.click();
+      }
+    }
+  }
 }
 autoSetTodayOnSetup();
 
@@ -991,6 +1024,7 @@ if (startRoundBtn) {
     showApp();
     switchTab("trackerTab");
     syncDrawerActive("trackerTab");
+    syncBottomTabs("trackerTab");
   });
 }
 const homePractice = document.getElementById("homePracticeBtn");
