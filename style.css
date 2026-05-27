@@ -203,7 +203,9 @@ body { padding: 0; }
   padding: 16px 8px 12px;
   text-align: center;
   box-shadow: var(--card-shadow);
+  transition: border-color 0.15s;
 }
+.home-stat[title]:hover { border-color: var(--green-mid); }
 
 .home-stat-num {
   font-size: 28px;
@@ -353,26 +355,7 @@ body { padding: 0; }
   letter-spacing: 0;
 }
 
-.home-cta {
-  margin: 14px auto;
-  max-width: 340px;
-}
-
-.home-cta-btn {
-  width: 100%;
-  padding: 18px;
-  background: linear-gradient(180deg, var(--gold), #d8a000);
-  color: var(--ink);
-  border: none;
-  border-radius: 16px;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(245, 184, 0, 0.45);
-  letter-spacing: 0.5px;
-}
-
-.home-cta-btn:active { transform: translateY(1px); }
+/* .home-cta and .home-cta-btn canonical rules are above (line ~225) */
 
 .home-tile {
   background: white;
@@ -381,6 +364,12 @@ body { padding: 0; }
   padding: 14px 16px;
   margin: 10px 0;
   box-shadow: var(--card-shadow);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.home-tile[style*="cursor: pointer"]:active,
+.home-tile[style*="cursor:pointer"]:active {
+  transform: scale(0.985);
+  box-shadow: var(--card-shadow-lg);
 }
 
 .home-tile h3 {
@@ -1044,49 +1033,105 @@ textarea { resize: vertical; }
 
 /* LOGIN SCREEN */
 .login-screen {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  box-sizing: border-box;
-  background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-mid) 60%, var(--green-light) 100%);
-  margin: -12px -12px 0;
-}
-
-.login-screen {
-  background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-mid) 60%, var(--green-bright) 100%);
+  overflow-y: auto;
+  background: linear-gradient(160deg, var(--green-deep) 0%, var(--green-mid) 55%, var(--green-bright) 100%);
 }
 
 .login-box {
   background: white;
   border-radius: var(--radius-lg);
-  padding: 36px 28px 28px;
+  padding: 32px 26px 26px;
   width: 100%;
   max-width: 360px;
   box-sizing: border-box;
   box-shadow: var(--card-shadow-xl);
 }
 
-.login-box h1 {
-  color: var(--green-deep);
-  margin: 0 0 6px;
-  font-size: 28px;
+.login-logo {
+  font-size: 44px;
   text-align: center;
-  font-weight: 800;
-  letter-spacing: -0.6px;
-}
-.login-box h2 {
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  margin: 0 0 24px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 10px;
 }
 
-.login-box button, .welcome-box button {
+.login-box h1 {
+  color: var(--green-deep);
+  margin: 0 0 4px;
+  font-size: 26px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.login-tagline {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0 0 24px;
+}
+
+.login-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.login-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+.login-label input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 15px;
+  background: var(--fairway);
+  transition: border-color 0.15s;
+}
+.login-label input:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  background: white;
+}
+
+.login-btn-primary {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--green-bright), var(--green-mid));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(19, 122, 44, 0.30);
+  letter-spacing: -0.2px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.login-btn-primary:active { transform: translateY(1px); opacity: 0.92; }
+
+.welcome-box button {
   width: 100%;
   margin-top: 14px;
   padding: 15px;
@@ -1100,8 +1145,7 @@ textarea { resize: vertical; }
   box-shadow: 0 8px 24px rgba(19, 122, 44, 0.32);
   letter-spacing: -0.2px;
 }
-
-.login-box button:active, .welcome-box button:active { transform: translateY(1px); }
+.welcome-box button:active { transform: translateY(1px); }
 
 .login-error {
   margin-top: 10px;
@@ -2166,28 +2210,96 @@ textarea { resize: vertical; }
   font-weight: 700;
 }
 
+/* Legacy .mode-toggle kept for compat */
 .mode-toggle {
-  background: white;
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin: 8px auto;
-  max-width: 340px;
-  box-shadow: var(--card-shadow);
-  border-left: 5px solid var(--water);
+  display: none;
 }
 
-.mode-toggle label {
+/* ── Tracker hero bar ── */
+.tracker-hero {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  margin: 0 auto 0;
+  max-width: 460px;
+}
+.tracker-hero-eyebrow {
+  margin: 0 0 1px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tracker-hero-title {
   margin: 0;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--green-deep);
+  line-height: 1.1;
 }
 
-.mode-toggle select {
-  flex: 1;
-  margin: 0;
+/* Mode as a compact collapsible in the header */
+.tracker-mode-toggle {
+  font-size: 12px;
+}
+.tracker-mode-toggle > summary {
+  list-style: none;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  background: white;
+  user-select: none;
+}
+.tracker-mode-toggle > summary::-webkit-details-marker { display: none; }
+.tracker-mode-toggle[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.tracker-mode-toggle select {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: white;
+}
+
+/* AI tip as a collapsible */
+.tracker-ai-details {
+  margin: 8px auto;
+  max-width: 420px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.tracker-ai-details > summary {
+  list-style: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--purple);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.tracker-ai-details > summary::-webkit-details-marker { display: none; }
+.tracker-ai-details > summary::after {
+  content: '▾';
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.tracker-ai-details[open] > summary::after { transform: rotate(-180deg); }
+.tracker-ai-inner {
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--border);
 }
 
 .quick-row {
@@ -3106,14 +3218,51 @@ textarea { resize: vertical; }
   color: white;
 }
 
+/* ── Setup: collapsible "More options" ── */
+.setup-more-options {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 4px;
+}
+.setup-more-options > summary {
+  list-style: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  user-select: none;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.setup-more-options > summary::-webkit-details-marker { display: none; }
+.setup-more-options > summary::after {
+  content: '▾';
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+.setup-more-options[open] > summary::after { transform: rotate(-180deg); }
+
+/* Subscript label inside stimp pills */
+.pill-sub {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.65;
+  margin-left: 2px;
+}
+
 .setup-sticky-cta {
   position: fixed;
-  bottom: 0;
+  bottom: 60px; /* sits above the bottom nav bar */
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(232, 245, 233, 0), rgba(232, 245, 233, 0.95) 30%);
+  padding: 12px 16px 12px;
+  background: linear-gradient(180deg, rgba(232, 245, 233, 0), rgba(232, 245, 233, 0.97) 30%);
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -3183,3 +3332,9 @@ body.drill-mode .setup-hero {
   transition: background 0.05s, transform 0.05s;
 }
 
+
+/* Practice insight card on home screen */
+.home-practice-insight {
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(135deg, rgba(240,179,35,0.07), rgba(47,175,62,0.04));
+}

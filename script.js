@@ -117,6 +117,8 @@ function applyUrlActivationToCurrentUser() {
 function setShellVisible(visible) {
   const header = document.getElementById("appHeader");
   if (header) header.style.display = visible ? "" : "none";
+  const nav = document.getElementById("bottomNav");
+  if (nav) nav.style.display = visible ? "" : "none";
 }
 
 function showLogin() {
@@ -124,6 +126,110 @@ function showLogin() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "none";
   setShellVisible(false);
+}
+
+// Returns the single most actionable practice weakness as { label, cue, metric }
+// or null if there's not enough data to say anything specific.
+function getPracticeInsight(pi, ci, ii, di) {
+  const cues = [];
+
+  // --- Putting: worst make-rate bucket with enough data ---
+  if (pi && pi.distanceRates) {
+    var worstBucket = null, worstPct = 100;
+    for (var i = 0; i < pi.distanceRates.length; i++) {
+      var b = pi.distanceRates[i];
+      if (b.count >= 5 && b.pct !== null && b.pct < worstPct) {
+        worstPct = b.pct; worstBucket = b;
+      }
+    }
+    if (worstBucket && worstPct < 65) {
+      cues.push({
+        score: 65 - worstPct,
+        label: worstBucket.label + " — " + worstPct + "% make rate",
+        cue: "Drill " + worstBucket.label.split(" ")[0].toLowerCase() + " putts: 10-ball sets, one target, no rushing. Aim above 65%.",
+      });
+    }
+  }
+
+  // --- Putting: lag distance control ---
+  if (pi && pi.lag && pi.lag.count >= 5 && pi.lag.inCirclePct < 60) {
+    cues.push({
+      score: 60 - pi.lag.inCirclePct,
+      label: "Lag putting — " + pi.lag.inCirclePct + "% in circle",
+      cue: "Practise 30-40 ft lags: land in a 3-ft circle. Soft hands, feel the pace, don't think direction.",
+    });
+  }
+
+  // --- Putting: left/right miss tendency ---
+  if (pi && pi.topMiss && pi.totalShots >= 10) {
+    var missLabel = pi.topMiss;
+    var missCue = null;
+    if (missLabel === "Left") missCue = "Missing left consistently — check your aim at address, aim slightly right of hole and trust it.";
+    else if (missLabel === "Right") missCue = "Missing right consistently — square your putter face at address, hold the follow-through straight.";
+    if (missCue) cues.push({ score: 18, label: "Putting miss: " + missLabel.toLowerCase(), cue: missCue });
+  }
+
+  // --- Chipping: mishit rate (fat/blade) ---
+  if (ci && ci.totalShots >= 8 && ci.mishitPct !== null && ci.mishitPct > 15) {
+    cues.push({
+      score: ci.mishitPct - 15,
+      label: "Chipping — " + ci.mishitPct + "% chunk/blade rate",
+      cue: "Weight forward at address (60% lead foot), brush turf first. Slow practice swings before each rep.",
+    });
+  }
+
+  // --- Chipping: worst up-and-down bucket ---
+  if (ci && ci.distanceRates) {
+    var worstChip = null, worstChipPct = 100;
+    for (var j = 0; j < ci.distanceRates.length; j++) {
+      var cb = ci.distanceRates[j];
+      if (cb.count >= 5 && cb.pct !== null && cb.pct < worstChipPct) {
+        worstChipPct = cb.pct; worstChip = cb;
+      }
+    }
+    if (worstChip && worstChipPct < 50) {
+      cues.push({
+        score: (50 - worstChipPct) * 0.7,
+        label: worstChip.label + " chip — " + worstChipPct + "% up & down",
+        cue: "Pick a specific landing spot 1-2 ft onto the green, let the ball roll to the pin. Commit to the landing.",
+      });
+    }
+  }
+
+  // --- Irons: pure strike rate ---
+  if (ii && ii.totalShots >= 10 && ii.pureStrikePct !== null && ii.pureStrikePct < 65) {
+    cues.push({
+      score: 65 - ii.pureStrikePct,
+      label: "Iron contact — " + ii.pureStrikePct + "% pure",
+      cue: "Ball first, turf second. Slow back, pause at the top, drive hips first. Fat/thin = rushing the downswing.",
+    });
+  }
+
+  // --- Irons: directional miss ---
+  if (ii && ii.topMiss && ii.totalShots >= 10) {
+    var ironMiss = ii.topMiss, ironCue = null;
+    if (ironMiss === "Right") ironCue = "Irons trending right — check your grip (both thumbs on top), start down with the hips, not the arms.";
+    else if (ironMiss === "Left") ironCue = "Irons trending left — don't flip the hands through impact, keep the trail elbow close on the way down.";
+    else if (ironMiss === "Short") ironCue = "Coming up short on irons — are you catching it thin? Take one more club and swing at 90%.";
+    if (ironCue) cues.push({ score: 20, label: "Iron miss: " + ironMiss.toLowerCase(), cue: ironCue });
+  }
+
+  // --- Driver: fairway rate ---
+  if (di && di.totalShots >= 5) {
+    var drvFw = null;
+    if (di.clubStats && di.clubStats.length > 0) drvFw = di.clubStats[0].fairwayPct;
+    if (drvFw !== null && drvFw < 40) {
+      var sideBias = (di.rightMisses || 0) > (di.leftMisses || 0) ? "right" : ((di.leftMisses || 0) > (di.rightMisses || 0) ? "left" : null);
+      var drvCue = "Tee it at 85% — a smooth swing finds more fairways than a hard one.";
+      if (sideBias === "right") drvCue = "Driver missing right: tee the ball higher, close stance slightly, think 'swing left of target'.";
+      else if (sideBias === "left") drvCue = "Driver missing left: relax grip pressure, feel the club face square at impact, don't flip.";
+      cues.push({ score: 40 - drvFw, label: "Driver — " + drvFw + "% fairways", cue: drvCue });
+    }
+  }
+
+  if (cues.length === 0) return null;
+  cues.sort(function (a, b) { return b.score - a.score; });
+  return cues[0];
 }
 
 function renderHomeDashboard() {
@@ -178,7 +284,26 @@ function renderHomeDashboard() {
 
   const history = getHistory();
   const hcEl = document.getElementById("homeHandicap");
-  if (hcEl) hcEl.textContent = profile.handicap != null ? profile.handicap : "—";
+  const hcStat = document.getElementById("homeHandicapStat");
+  if (hcEl) {
+    if (profile.handicap != null) {
+      hcEl.textContent = profile.handicap;
+      if (hcStat) hcStat.style.cursor = "";
+    } else {
+      hcEl.textContent = "—";
+      if (hcStat) {
+        hcStat.title = "Set in Profile";
+        hcStat.style.cursor = "pointer";
+        if (!hcStat._wired) {
+          hcStat._wired = true;
+          hcStat.addEventListener("click", function () {
+            showApp(); switchTab("profileTab");
+            syncDrawerActive("profileTab"); syncBottomTabs("profileTab");
+          });
+        }
+      }
+    }
+  }
   const bestEl = document.getElementById("homeBest");
   if (bestEl) {
     const scores = history.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
@@ -188,48 +313,58 @@ function renderHomeDashboard() {
   if (roundsEl) roundsEl.textContent = history.length;
 
   const wxText = document.getElementById("homeWeatherText");
-  if (wxText) {
-    let w = null;
-    try { w = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
-    if (w) {
-      wxText.textContent = Math.round(w.tempMax || 0) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
-    } else {
-      // Auto-fetch today's weather for the default course
-      const t = todayISO();
-      const def = (document.getElementById("courseSelect") || {}).value || "RCGC";
-      loadTemperatureForDate(t);
-      const c = document.getElementById("homeCourse");
-      if (c) c.textContent = def;
-      wxText.textContent = "Loading...";
-    }
-  }
+  const wxTile = document.getElementById("homeWeatherTile");
   const courseEl = document.getElementById("homeCourse");
   if (courseEl) {
     const defaultCourse = (history.length > 0 ? history[history.length - 1].courseName : "RCGC") || "RCGC";
     courseEl.textContent = defaultCourse;
   }
-
-  const lastEl = document.getElementById("homeLastRoundText");
-  if (lastEl) {
-    if (history.length === 0) {
-      lastEl.textContent = "No rounds yet — tap Start a Round.";
+  if (wxText) {
+    let w = null;
+    try { w = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
+    if (w && w.tempMax != null) {
+      wxText.textContent = Math.round(w.tempMax) + "°C high · wind " + Math.round(w.windKmh || 0) + " km/h · " + (w.condition || "—");
+      if (wxTile) wxTile.style.display = "";
     } else {
-      const r = history[history.length - 1];
-      const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
-      lastEl.textContent = r.courseName + " " + (r.tee || "") + " · " + (r.date || "") + " · " + r.totalScore + " (" + diff + ")";
+      if (wxTile) wxTile.style.display = "none";
     }
   }
 
+  const lastTitleEl = document.getElementById("homeLastRoundTitle");
+  const lastEl = document.getElementById("homeLastRoundText");
+  if (history.length === 0) {
+    if (lastTitleEl) lastTitleEl.style.display = "none";
+    if (lastEl) lastEl.textContent = "No rounds yet — tap Start a Round.";
+  } else {
+    const r = history[history.length - 1];
+    const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
+    const scoreCol = r.scoreVsPar < 0 ? "var(--green-mid)" : r.scoreVsPar <= 5 ? "var(--ink)" : "var(--crimson)";
+    if (lastTitleEl) {
+      lastTitleEl.style.display = "";
+      lastTitleEl.innerHTML = r.courseName + (r.tee ? ' <span style="font-size:12px;font-weight:600;color:var(--muted);">' + r.tee + ' tees</span>' : "") +
+        ' <span style="color:' + scoreCol + ';">' + r.totalScore + ' (' + diff + ')</span>';
+    }
+    if (lastEl) lastEl.textContent = r.date || "";
+  }
+
   const fEl = document.getElementById("homeFocusText");
+  const fCard = document.getElementById("homeFocusCard");
   if (fEl) {
     const recent = history.slice(-3);
     const allMistakes = [];
     for (const r of recent) for (const m of (r.mistakes || [])) allMistakes.push(m);
     if (allMistakes.length > 0) {
-      fEl.textContent = "Work on: " + allMistakes[0];
+      fEl.textContent = allMistakes[0];
+      if (fCard) { fCard.style.display = ""; fCard.dataset.hasPattern = "1"; }
+    } else if (history.length > 0) {
+      // Rounds logged but no mistakes tagged — positive signal, no actionable click
+      fEl.textContent = "No patterns flagged in your last 3 rounds. Keep going.";
+      if (fCard) { fCard.style.display = ""; fCard.dataset.hasPattern = "0"; }
     } else {
-      fEl.textContent = "Pick a target every shot. Stay smooth.";
+      // No rounds at all — hide the card
+      if (fCard) { fCard.style.display = "none"; fCard.dataset.hasPattern = "0"; }
     }
+    if (typeof refreshFocusCardCursor === "function") refreshFocusCardCursor();
   }
 
   const tEl = document.getElementById("homeThoughtText");
@@ -267,6 +402,21 @@ function renderHomeDashboard() {
     }
   }
 
+  // Practice insight card — rule-based cue from practice data
+  const piCard = document.getElementById("homePracticeInsight");
+  const piLabel = document.getElementById("homePracticeInsightLabel");
+  const piCue = document.getElementById("homePracticeInsightCue");
+  if (piCard && piLabel && piCue) {
+    const insight = getPracticeInsight(getPuttingInsights(), getChippingInsights(), getIronInsights(), getDriverInsights());
+    if (insight) {
+      piLabel.textContent = insight.label;
+      piCue.textContent = insight.cue;
+      piCard.style.display = "";
+    } else {
+      piCard.style.display = "none";
+    }
+  }
+
   syncDrawerActive("home");
 }
 
@@ -292,6 +442,7 @@ function showWelcome() {
   document.getElementById("appScreen").style.display = "none";
   setShellVisible(true);
   syncBottomTabs("home");
+  autoSeedIfNeeded(); // seed demo data on first login for ayaan account
   renderHomeDashboard();
   renderWelcome();
 }
@@ -317,15 +468,20 @@ function renderWelcome() {
   }
   nameEl.textContent = name;
 
-  // BYO banner: show only when the AI coach isn't configured yet
+  // BYO banner: show when AI not configured and user hasn't dismissed it
   const byo = document.getElementById("byoBanner");
-  if (byo) byo.style.display = (typeof aiEnabled === "function" && aiEnabled()) ? "none" : "";
+  if (byo) {
+    const dismissed = localStorage.getItem("byoBannerDismissed") === "1";
+    const aiOn = typeof aiEnabled === "function" && aiEnabled();
+    byo.style.display = (aiOn || dismissed) ? "none" : "";
+  }
   const byoBtn = document.getElementById("byoOpenSettingsBtn");
   if (byoBtn && !byoBtn._wired) {
     byoBtn._wired = true;
     byoBtn.addEventListener("click", function () {
       showApp();
       switchTab("statsTab");
+      syncBottomTabs("statsTab");
       setTimeout(function () {
         const card = document.getElementById("grokApiKey");
         if (card) {
@@ -333,6 +489,15 @@ function renderWelcome() {
           card.focus();
         }
       }, 250);
+    });
+  }
+  const byoDismiss = document.getElementById("byoDismissBtn");
+  if (byoDismiss && !byoDismiss._wired) {
+    byoDismiss._wired = true;
+    byoDismiss.addEventListener("click", function () {
+      localStorage.setItem("byoBannerDismissed", "1");
+      const b = document.getElementById("byoBanner");
+      if (b) b.style.display = "none";
     });
   }
 
@@ -653,8 +818,10 @@ document.addEventListener("click", function (e) {
 });
 
 function syncBottomTabs(tabId) {
+  // trackerTab sits within the Round flow — highlight the Round button
+  const mapped = tabId === "trackerTab" ? "setupTab" : tabId;
   document.querySelectorAll(".bt").forEach(function (b) {
-    if (b.dataset.goTab === tabId) b.classList.add("active");
+    if (b.dataset.goTab === mapped) b.classList.add("active");
     else b.classList.remove("active");
   });
 }
@@ -677,6 +844,8 @@ if (homeOngoingResume) {
   homeOngoingResume.addEventListener("click", function () {
     showApp();
     switchTab("trackerTab");
+    syncBottomTabs("trackerTab");
+    syncDrawerActive("trackerTab");
   });
 }
 const homeOngoingDiscard = document.getElementById("homeOngoingDiscard");
@@ -696,6 +865,64 @@ if (homeStart) {
     showApp();
     switchTab("setupTab");
     syncDrawerActive("setupTab");
+    syncBottomTabs("setupTab");
+  });
+}
+
+// Deep-link a home card tap → Coach Chat with a pre-filled question
+function openCoachWithQuestion(question) {
+  showApp();
+  switchTab("coachTab");
+  syncDrawerActive("coachTab");
+  syncBottomTabs("coachTab");
+  openChatPanel();
+  const input = document.getElementById("chatInput");
+  if (input) {
+    input.value = question;
+    input.focus();
+    // Auto-send if AI is enabled
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn && typeof aiEnabled === "function" && aiEnabled()) {
+      setTimeout(function () { sendBtn.click(); }, 120);
+    }
+  }
+}
+
+// Work On This card → ask coach about that specific mistake pattern
+const focusCard = document.getElementById("homeFocusCard");
+if (focusCard) {
+  focusCard.addEventListener("click", function () {
+    if (focusCard.dataset.hasPattern !== "1") return;
+    const txt = (document.getElementById("homeFocusText") || {}).textContent || "";
+    if (!txt || txt === "—") return;
+    openCoachWithQuestion("I keep making this mistake: " + txt + ". What's causing it and how do I fix it?");
+  });
+}
+// Cursor reflects whether the card is actionable; renderHomeDashboard sets
+// data-has-pattern when there's a real mistake to discuss.
+function refreshFocusCardCursor() {
+  if (!focusCard) return;
+  focusCard.style.cursor = focusCard.dataset.hasPattern === "1" ? "pointer" : "default";
+}
+
+// Coach Intel card → ask about confidence club or avoidance pattern
+const intelCard2 = document.getElementById("homeCoachIntel");
+if (intelCard2) {
+  intelCard2.style.cursor = "pointer";
+  intelCard2.addEventListener("click", function () {
+    openCoachWithQuestion("Based on my recent rounds, what's my biggest scoring opportunity right now?");
+  });
+}
+
+// Practice Focus card → ask about that specific practice weakness
+const piCard2 = document.getElementById("homePracticeInsight");
+if (piCard2) {
+  piCard2.style.cursor = "pointer";
+  piCard2.addEventListener("click", function () {
+    const label = (document.getElementById("homePracticeInsightLabel") || {}).textContent || "";
+    const cue = (document.getElementById("homePracticeInsightCue") || {}).textContent || "";
+    const q = label ? "My practice shows I need to work on: " + label + ". " + cue + " Give me a specific drill to fix this." : "What should I focus on in practice today?";
+    openCoachWithQuestion(q);
   });
 }
 
@@ -792,13 +1019,32 @@ document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
 function autoSetTodayOnSetup() {
   const dateInput = document.getElementById("roundDate");
   if (dateInput) dateInput.value = todayISO();
-  // Tee-off time: default to now if blank, derive block label
+  // Tee-off time: default to now if blank
   const timeInput = document.getElementById("teeOffTime");
   if (timeInput && !timeInput.value) {
     const now = new Date();
     timeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
   }
   renderTimeBlockLabel();
+  // Pre-fill course + tee from last round so returning users don't start blank
+  const hist = getHistory();
+  if (hist.length > 0) {
+    const last = hist[hist.length - 1];
+    const sel = document.getElementById("courseSelect");
+    if (sel && !sel.value && last.courseName) {
+      const opt = Array.from(sel.options).find(function (o) { return o.value === last.courseName; });
+      if (opt) {
+        sel.value = last.courseName;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    if (last.tee) {
+      const teePill = document.querySelector('#teePillGroup .pill[data-tee="' + last.tee + '"]');
+      if (teePill && !document.querySelector('#teePillGroup .pill.active')) {
+        teePill.click();
+      }
+    }
+  }
 }
 autoSetTodayOnSetup();
 
@@ -850,21 +1096,54 @@ const courseSelectEl = document.getElementById("courseSelect");
 if (courseSelectEl) {
   courseSelectEl.addEventListener("change", function () {
     renderCourseExtras();
+    updateSetupSummary();
     const d = todayISO();
     loadTemperatureForDate(d);
   });
 }
 
+function updateSetupSummary() {
+  const el = document.getElementById("setupRoundSummary");
+  if (!el) return;
+  const courseVal = (document.getElementById("courseSelect") || {}).value || "";
+  const teeActive = document.querySelector("#teePillGroup .pill.active");
+  const holesActive = document.querySelector("#holesPillGroup .pill.active");
+  const parts = [];
+  if (courseVal && courseVal !== "Other") parts.push(courseVal);
+  else if (courseVal === "Other") {
+    const custom = ((document.getElementById("customCourseName") || {}).value || "").trim();
+    if (custom) parts.push(custom);
+  }
+  if (teeActive) parts.push(teeActive.dataset.tee + " tees");
+  if (holesActive) parts.push(holesActive.dataset.holes === "18" ? "18 holes" : holesActive.dataset.holes.replace("9", " 9"));
+  el.textContent = parts.length > 0 ? parts.join(" · ") : "";
+}
+
+// Wire tee + holes pill clicks to also refresh summary
+document.querySelectorAll("#teePillGroup .pill, #holesPillGroup .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setTimeout(updateSetupSummary, 50); });
+});
+
 // Start Round button
 const startRoundBtn = document.getElementById("startRoundBtn");
 if (startRoundBtn) {
   startRoundBtn.addEventListener("click", function () {
-    // Default to today's date if Advanced not filled
     const dateInput = document.getElementById("roundDate");
     if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    // Sync tracker hero title with chosen course
+    const courseVal = (document.getElementById("courseSelect") || {}).value || "";
+    const heroTitle = document.getElementById("trackerCourseName");
+    if (heroTitle && courseVal) {
+      const courseData = typeof COURSES !== "undefined" && COURSES[courseVal];
+      heroTitle.textContent = courseData && courseData.location ? courseData.location.name : courseVal;
+    }
+    // Rebuild holes and fill course data fresh on each round start
+    buildHoles();
+    applyCourseData();
     showApp();
     switchTab("trackerTab");
     syncDrawerActive("trackerTab");
+    syncBottomTabs("trackerTab");
   });
 }
 const homePractice = document.getElementById("homePracticeBtn");
@@ -873,6 +1152,7 @@ if (homePractice) {
     showApp();
     switchTab("practiceTab");
     syncDrawerActive("practiceTab");
+    syncBottomTabs("practiceTab");
     setTimeout(function () {
       const picker = document.getElementById("practicePickerView");
       if (picker) picker.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -897,6 +1177,7 @@ document.querySelectorAll(".drawer-item").forEach(function (item) {
       switchTab(target);
     }
     syncDrawerActive(target);
+    syncBottomTabs(target);
     closeDrawer();
   });
 });
@@ -3026,7 +3307,8 @@ if (postReview) {
   postReview.addEventListener("input", handleChange);
 }
 
-document.getElementById("saveRoundBtn").addEventListener("click", function () {
+const saveRoundBtnEl = document.getElementById("saveRoundBtn");
+if (saveRoundBtnEl) saveRoundBtnEl.addEventListener("click", function () {
   if (getTotalScore() === 0) {
     alert("Add some shots before saving the round.");
     return;
@@ -3037,13 +3319,15 @@ document.getElementById("saveRoundBtn").addEventListener("click", function () {
   }
 });
 
-document.getElementById("resetBtn").addEventListener("click", function () {
+const resetBtnEl = document.getElementById("resetBtn");
+if (resetBtnEl) resetBtnEl.addEventListener("click", function () {
   if (confirm("Start a new round? This will clear all holes (not your previous rounds).")) {
     clearCurrentRound();
   }
 });
 
-document.getElementById("logoutBtn").addEventListener("click", function () {
+const logoutBtnEl = document.getElementById("logoutBtn");
+if (logoutBtnEl) logoutBtnEl.addEventListener("click", function () {
   if (confirm("Log out? Your saved rounds will stay safe.")) {
     localStorage.removeItem("golfLoggedIn");
     showLogin();
@@ -4239,14 +4523,73 @@ function seedDemoData(silent) {
   const merged = existing.concat(rounds);
   localStorage.setItem("roundHistory", JSON.stringify(merged));
 
-  // Practice sessions
+  // Practice sessions — use the live shot-array schema so insights render.
+  // Putting shots: { intent: "make"|"lag", rangeId, distance, result }
+  // Chipping shots: { rangeId, distance, lie, result }
+  // Iron shots:    { club, carry, shape, result }
+  // Driver shots:  { club, carry, total, shape, result }
+  function mkSession(date, type, focus, notes, shots) {
+    return { date, type, area: type, focus, notes, shots, duration: 30, savedAt: new Date().toISOString() };
+  }
+  const puttingShots1 = [
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Left" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Holed" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Short" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Left" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Holed" },
+    { intent: "lag",  rangeId: "lag",   distance: 35, result: "In Circle" },
+    { intent: "lag",  rangeId: "lag",   distance: 35, result: "Short" },
+  ];
+  const puttingShots2 = [
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "Short" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "long", distance: 15, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Right" },
+  ];
+  const chippingShots = [
+    { rangeId: "close",  distance: 8,  lie: "Fairway", result: "In 3ft" },
+    { rangeId: "close",  distance: 8,  lie: "Fairway", result: "Holed" },
+    { rangeId: "close",  distance: 8,  lie: "Rough",   result: "In 6ft" },
+    { rangeId: "medium", distance: 18, lie: "Rough",   result: "Chunked" },
+    { rangeId: "medium", distance: 18, lie: "Fairway", result: "In 6ft" },
+    { rangeId: "medium", distance: 18, lie: "Sand",    result: "Bladed" },
+    { rangeId: "long",   distance: 35, lie: "Rough",   result: "In 6ft" },
+  ];
+  const ironShots = [
+    { club: "7i", carry: 130, shape: "straight", result: "On target" },
+    { club: "7i", carry: 128, shape: "draw",     result: "On target" },
+    { club: "7i", carry: 122, shape: "fade",     result: "Short" },
+    { club: "7i", carry: 132, shape: "straight", result: "On target" },
+    { club: "7i", carry: 118, shape: "fade",     result: "Fat" },
+    { club: "8i", carry: 118, shape: "straight", result: "On target" },
+    { club: "8i", carry: 115, shape: "straight", result: "Short" },
+    { club: "PW", carry: 95,  shape: "straight", result: "On target" },
+    { club: "PW", carry: 92,  shape: "draw",     result: "Short" },
+  ];
+  const driverShots = [
+    { club: "Driver", carry: 210, total: 230, shape: "straight", result: "Fairway" },
+    { club: "Driver", carry: 205, total: 225, shape: "fade",     result: "Light rough R" },
+    { club: "Driver", carry: 215, total: 235, shape: "straight", result: "Fairway" },
+    { club: "Driver", carry: 200, total: 218, shape: "slice",    result: "Light rough R" },
+    { club: "Driver", carry: 208, total: 228, shape: "fade",     result: "Light rough R" },
+    { club: "Driver", carry: 195, total: 215, shape: "slice",    result: "OB R" },
+    { club: "3W",     carry: 195, total: 210, shape: "straight", result: "Fairway" },
+    { club: "3W",     carry: 190, total: 205, shape: "draw",     result: "Fairway" },
+  ];
   const practices = [
-    { date: daysAgo(40), area: "Putting", duration: 30, focus: "3-foot circle drill", notes: "Holed 4 of 5 last attempt", savedAt: new Date().toISOString() },
-    { date: daysAgo(35), area: "Range", duration: 45, focus: "7-iron half swings", notes: "Cleaner contact", savedAt: new Date().toISOString() },
-    { date: daysAgo(20), area: "Chipping", duration: 30, focus: "Sand wedge 15-25 yards", notes: "", savedAt: new Date().toISOString() },
-    { date: daysAgo(10), area: "Range", duration: 60, focus: "Driver tempo work", notes: "Less right miss", savedAt: new Date().toISOString() },
-    { date: daysAgo(6), area: "Putting", duration: 30, focus: "Lag putts 30+ feet", notes: "Most ended within 4 ft", savedAt: new Date().toISOString() },
-    { date: daysAgo(2), area: "Mixed", duration: 90, focus: "Short game routine", notes: "Range + chip + putt", savedAt: new Date().toISOString() },
+    mkSession(daysAgo(40), "Putting",  "3-foot circle drill",     "Holed 4 of 5 last attempt", puttingShots1),
+    mkSession(daysAgo(35), "Irons",    "7-iron half swings",      "Cleaner contact", ironShots.slice(0, 5)),
+    mkSession(daysAgo(20), "Chipping", "Sand wedge 15-25 yards",  "", chippingShots),
+    mkSession(daysAgo(10), "Driver",   "Driver tempo work",       "Less right miss", driverShots),
+    mkSession(daysAgo(6),  "Putting",  "Lag putts 30+ feet",      "Most ended within 4 ft", puttingShots2),
+    mkSession(daysAgo(2),  "Irons",    "8-iron + PW gapping",     "Smooth tempo", ironShots.slice(5)),
   ];
   const existingP = JSON.parse(localStorage.getItem("practiceSessions") || "[]");
   localStorage.setItem("practiceSessions", JSON.stringify(existingP.concat(practices)));
@@ -4258,12 +4601,14 @@ function seedDemoData(silent) {
 }
 
 function autoSeedIfNeeded() {
-  // Intentionally disabled: in a multi-user world, auto-seeding leaks demo
-  // data into every new account's namespace on first visit. Users who want
-  // sample data can click 'Seed Ayaan demo data' on the AI Coach card (or
-  // we'll wire a dedicated demo flow later). For real accounts, the app
-  // starts empty as it should.
-  return;
+  // Only auto-seed for the primary 'ayaan' account on first visit.
+  // Other accounts start empty (no leakage).
+  const user = getCurrentUsername();
+  if (user !== "ayaan") return;
+  if (localStorage.getItem("demoSeeded")) return;
+  if (getHistory().length > 0) return; // already has real data
+  seedDemoData(true /* silent */);
+  localStorage.setItem("demoSeeded", "1");
 }
 
 function wipeAllLocalData() {
@@ -5378,7 +5723,6 @@ if (addCustomBtn && customInput) {
 });
 
 buildCustomHoleChecks();
-autoSeedIfNeeded();
 buildHoles();
 loadAll();
 toggleSetupRows();
@@ -5407,4 +5751,9 @@ if (isLoggedIn()) {
   showWelcome();
 } else {
   showLogin();
+}
+
+// Register service worker for offline/PWA support
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(function () {});
 }

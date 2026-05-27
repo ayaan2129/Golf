@@ -1,0 +1,28 @@
+{
+  "name": "Golf Tracker — Ayaan",
+  "short_name": "Golf",
+  "description": "Track rounds, log practice, get coached — for junior golfers.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b3d0b",
+  "theme_color": "#137a2c",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["sports", "health", "education"],
+  "lang": "en",
+  "dir": "ltr"
+}
