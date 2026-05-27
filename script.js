@@ -3269,7 +3269,8 @@ document.getElementById("resetBtn").addEventListener("click", function () {
   }
 });
 
-document.getElementById("logoutBtn").addEventListener("click", function () {
+const logoutBtnEl = document.getElementById("logoutBtn");
+if (logoutBtnEl) logoutBtnEl.addEventListener("click", function () {
   if (confirm("Log out? Your saved rounds will stay safe.")) {
     localStorage.removeItem("golfLoggedIn");
     showLogin();
