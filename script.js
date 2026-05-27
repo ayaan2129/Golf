@@ -7351,6 +7351,7 @@ function openDeepDive(cat) {
   const rounds = getFilteredRounds();
 
   if (cat === "scoring") renderScoringDeepDive(body, rounds);
+  else if (cat === "putting") renderPuttingDeepDive(body, rounds);
   else {
     body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">Deep-dive for <strong>' + titles[cat] + '</strong> is coming next.</p>';
   }
@@ -7452,6 +7453,221 @@ function renderScoringDeepDive(body, rounds) {
   }
 
   body.innerHTML = html;
+}
+
+// ---------- Putting deep-dive: donut + distribution + radial putt-distance chart ----------
+function renderPuttingDeepDive(body, rounds) {
+  const practice = typeof getPuttingInsights === "function" ? getPuttingInsights() : null;
+  if (rounds.length === 0 && (!practice || practice.totalShots === 0)) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No round or practice data in this filter yet.</p>';
+    return;
+  }
+
+  const totalPuttsArr = rounds.map(function (r) { return r.totalPutts; }).filter(function (v) { return v != null && !isNaN(v); });
+  const avgPutts = totalPuttsArr.length ? totalPuttsArr.reduce(function (a, b) { return a + b; }, 0) / totalPuttsArr.length : null;
+
+  const puttBuckets = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+  let totalHoles = 0;
+  const perPar = { 3: { sum: 0, n: 0 }, 4: { sum: 0, n: 0 }, 5: { sum: 0, n: 0 } };
+  const girPutts = { sum: 0, n: 0 };
+  const nonGirPutts = { sum: 0, n: 0 };
+  const distanceBuckets = [
+    { lbl: "<1m", min: 0, max: 3.3 },
+    { lbl: "1-2m", min: 3.3, max: 6.6 },
+    { lbl: "2-4m", min: 6.6, max: 13 },
+    { lbl: "4-8m", min: 13, max: 26 },
+    { lbl: "+", min: 26, max: 9999 },
+  ];
+  const distData = distanceBuckets.map(function (b) { return { lbl: b.lbl, total: 0, oneputt: 0, girTotal: 0, girOneputt: 0, nonGirTotal: 0, nonGirOneputt: 0 }; });
+
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || r.activeHoles || [];
+    for (const h of holes) {
+      const putts = h.putts != null ? h.putts : null;
+      if (putts == null) continue;
+      totalHoles++;
+      const key = putts >= 4 ? 4 : putts;
+      puttBuckets[key] = (puttBuckets[key] || 0) + 1;
+      if (perPar[h.par]) { perPar[h.par].sum += putts; perPar[h.par].n++; }
+      if (h.gir) { girPutts.sum += putts; girPutts.n++; }
+      else { nonGirPutts.sum += putts; nonGirPutts.n++; }
+      const fpd = parseFloat(h.firstPuttDistance);
+      if (fpd > 0) {
+        const oneputt = (h.firstPuttResult === "Holed");
+        for (let i = 0; i < distanceBuckets.length; i++) {
+          const meta = distanceBuckets[i];
+          if (fpd >= meta.min && fpd < meta.max) {
+            distData[i].total++; if (oneputt) distData[i].oneputt++;
+            if (h.gir) { distData[i].girTotal++; if (oneputt) distData[i].girOneputt++; }
+            else { distData[i].nonGirTotal++; if (oneputt) distData[i].nonGirOneputt++; }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  let html = "";
+  // Top stats
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Round</div><div class="dd-stat-num">' + (avgPutts != null ? avgPutts.toFixed(1) : "—") + '</div></div>';
+  const ppHoleVal = totalHoles > 0 ? (rounds.reduce(function (s, r) { return s + (r.totalPutts || 0); }, 0) / totalHoles).toFixed(2) : "—";
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Hole</div><div class="dd-stat-num">' + ppHoleVal + '</div></div>';
+  html += '</div>';
+
+  // Donut + distribution legend
+  if (totalHoles > 0) {
+    html += '<div class="dd-section-title">Putts Per Hole Distribution</div>';
+    html += renderPuttsDonut(puttBuckets, totalHoles, avgPutts);
+    html += '<div class="putt-dist-legend">';
+    const legend = [
+      { key: 0, lbl: "0 putts", col: "#1b5e20" },
+      { key: 1, lbl: "1 putt",  col: "#2faf3e" },
+      { key: 2, lbl: "2 putts", col: "#a5d6a7" },
+      { key: 3, lbl: "3 putts", col: "#ef9a9a" },
+      { key: 4, lbl: "3+ putts", col: "#c62828" },
+    ];
+    for (const l of legend) {
+      const c = puttBuckets[l.key] || 0;
+      const pct = Math.round(c / totalHoles * 100);
+      html += '<div class="putt-dist-chip"><span class="putt-dist-dot" style="background:' + l.col + ';"></span>' + l.lbl + ' · ' + pct + '% (' + c + ')</div>';
+    }
+    html += '</div>';
+  }
+
+  // Per-par averages
+  if (perPar[3].n + perPar[4].n + perPar[5].n > 0) {
+    html += '<div class="dd-section-title">Average Per Hole · By Par</div>';
+    for (const p of [3, 4, 5]) {
+      const pp = perPar[p];
+      const a = pp.n > 0 ? pp.sum / pp.n : null;
+      const widthPct = a != null ? Math.min(100, (a / 3) * 100) : 0;
+      html += '<div class="dd-vs-par-row">';
+      html += '  <div class="dd-vs-par-lbl">PAR ' + p + '</div>';
+      html += '  <div class="dd-vs-par-bar-wrap"><div class="dd-vs-par-bar" style="width:' + widthPct + '%; left:0; background:var(--green-bright);"></div></div>';
+      html += '  <div class="dd-vs-par-val">' + (a != null ? a.toFixed(2) : "—") + '</div>';
+      html += '</div>';
+    }
+  }
+
+  // GIR split
+  if (girPutts.n + nonGirPutts.n > 0) {
+    html += '<div class="dd-section-title">Putts Per Hole · GIR Split</div>';
+    html += '<div class="dd-row">';
+    const girAvg = girPutts.n ? (girPutts.sum / girPutts.n).toFixed(2) : "—";
+    const nonGirAvg = nonGirPutts.n ? (nonGirPutts.sum / nonGirPutts.n).toFixed(2) : "—";
+    html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Green Hit</div><div class="dd-stat-num">' + girAvg + '</div><div style="font-size:11px; color:var(--muted);">' + girPutts.n + ' holes</div></div>';
+    html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">Green Missed</div><div class="dd-stat-num">' + nonGirAvg + '</div><div style="font-size:11px; color:var(--muted);">' + nonGirPutts.n + ' holes</div></div>';
+    html += '</div>';
+  }
+
+  // Merge practice library make-intent putting into the radial
+  if (practice && practice.totalShots > 0) {
+    const mapping = [
+      { from: "0-3 ft",   to: "<1m"  },
+      { from: "3-5 ft",   to: "1-2m" },
+      { from: "5-10 ft",  to: "2-4m" },
+      { from: "10-20 ft", to: "4-8m" },
+      { from: "20+ ft",   to: "+"    },
+    ];
+    for (const m of mapping) {
+      const p = practice.distanceRates.find(function (x) { return x.label === m.from; });
+      if (!p || p.count === 0) continue;
+      const idx = distData.findIndex(function (b) { return b.lbl === m.to; });
+      if (idx === -1) continue;
+      const made = Math.round((p.pct || 0) * p.count / 100);
+      distData[idx].total += p.count;
+      distData[idx].oneputt += made;
+    }
+  }
+
+  if (distData.some(function (d) { return d.total > 0; })) {
+    html += '<div class="dd-section-title">Putting Distances · One-putt %</div>';
+    html += '<p style="font-size:11px; color:var(--muted); margin:0 0 10px;">Merged from rounds (first-putt distance) + practice putting drills.</p>';
+    html += renderPuttDistanceRadial(distData);
+
+    if (distData.some(function (d) { return d.girTotal + d.nonGirTotal > 0; })) {
+      html += '<div class="dd-row" style="margin-top:14px;">';
+      html += '  <div><div class="dd-stat-lbl" style="text-align:left; margin-bottom:6px;">Green Hit</div>';
+      for (const d of distData) {
+        const pct = d.girTotal > 0 ? Math.round(d.girOneputt / d.girTotal * 100) + "%" : "—";
+        html += '<div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0; border-bottom:1px solid var(--border);"><span>' + d.lbl + '</span><span style="font-weight:700;">' + pct + '</span></div>';
+      }
+      html += '</div>';
+      html += '  <div><div class="dd-stat-lbl" style="text-align:left; margin-bottom:6px;">Green Miss</div>';
+      for (const d of distData) {
+        const pct = d.nonGirTotal > 0 ? Math.round(d.nonGirOneputt / d.nonGirTotal * 100) + "%" : "—";
+        html += '<div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0; border-bottom:1px solid var(--border);"><span>' + d.lbl + '</span><span style="font-weight:700;">' + pct + '</span></div>';
+      }
+      html += '</div>';
+      html += '</div>';
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+function renderPuttsDonut(buckets, totalHoles, avgPutts) {
+  const segments = [
+    { key: 0, col: "#1b5e20" },
+    { key: 1, col: "#2faf3e" },
+    { key: 2, col: "#a5d6a7" },
+    { key: 3, col: "#ef9a9a" },
+    { key: 4, col: "#c62828" },
+  ];
+  const cx = 100, cy = 100, r = 70, stroke = 22;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let arcs = '';
+  for (const seg of segments) {
+    const count = buckets[seg.key] || 0;
+    const frac = count / totalHoles;
+    if (frac === 0) continue;
+    const len = circ * frac;
+    arcs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.col + '" stroke-width="' + stroke + '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')" />';
+    offset += len;
+  }
+  const centerLbl = avgPutts != null ? avgPutts.toFixed(1) : "—";
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 200 200" width="180" height="180">' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#eee" stroke-width="' + stroke + '" />' +
+         arcs +
+         '<text x="100" y="98" text-anchor="middle" font-size="34" font-weight="800" fill="#0b3d0b">' + centerLbl + '</text>' +
+         '<text x="100" y="118" text-anchor="middle" font-size="11" fill="#888">putts / round</text>' +
+         '</svg></div>';
+}
+
+function renderPuttDistanceRadial(buckets) {
+  // Half-circle with 5 concentric arcs. Outermost = farthest distance.
+  // Labels are placed ABOVE the chart in a horizontal row, with a leader
+  // line dropping to each ring's apex so they don't overlap.
+  const cx = 160, cy = 170, baseR = 24, ringStep = 22;
+  const arr = buckets.map(function (b, i) {
+    const pct = b.total > 0 ? Math.round(b.oneputt / b.total * 100) : null;
+    const r = baseR + ringStep * (buckets.length - i - 1);
+    const opacity = pct != null ? Math.max(0.18, Math.min(1, pct / 100 * 1.1)) : 0.05;
+    return { lbl: b.lbl, total: b.total, pct: pct, r: r, opacity: opacity };
+  });
+  let rings = '';
+  for (let i = 0; i < arr.length; i++) {
+    const L = arr[i];
+    rings += '<path d="M ' + (cx - L.r) + ' ' + cy + ' A ' + L.r + ' ' + L.r + ' 0 0 1 ' + (cx + L.r) + ' ' + cy + ' L ' + cx + ' ' + cy + ' Z" fill="#2faf3e" fill-opacity="' + L.opacity + '" stroke="white" stroke-width="2" />';
+  }
+  // Top label row: distance bands spread evenly across the width above the chart
+  let topLabels = '';
+  const slotWidth = 320 / arr.length; // viewBox is 320 wide
+  for (let i = 0; i < arr.length; i++) {
+    const L = arr[i];
+    const slotX = slotWidth * (i + 0.5);
+    topLabels += '<text x="' + slotX + '" y="14" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d0b">' + L.lbl + '</text>';
+    topLabels += '<text x="' + slotX + '" y="30" text-anchor="middle" font-size="13" font-weight="800" fill="#2faf3e">' + (L.pct != null ? L.pct + "%" : "—") + '</text>';
+    topLabels += '<text x="' + slotX + '" y="44" text-anchor="middle" font-size="9" fill="#888">' + (L.total > 0 ? "n=" + L.total : "") + '</text>';
+  }
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 320 180" width="300" height="170">' +
+         topLabels +
+         rings +
+         '</svg></div>';
 }
 
 // ---------- Filter sheet ----------

@@ -2954,6 +2954,30 @@ textarea { resize: vertical; }
 .dd-vs-par-bar { position: absolute; top: 0; bottom: 0; background: var(--crimson); border-radius: 4px; }
 .dd-vs-par-val { width: 50px; text-align: right; font-size: 13px; font-weight: 800; color: var(--ink); }
 
+.putt-dist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 8px;
+  margin: 4px 0 12px;
+}
+.putt-dist-chip {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg);
+  padding: 4px 9px;
+  border-radius: 14px;
+  color: var(--ink-soft);
+}
+.putt-dist-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 @media (min-width: 600px) {
   body { padding: 16px; }
   .calendar { gap: 6px; }
