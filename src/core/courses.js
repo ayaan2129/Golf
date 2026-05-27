@@ -14,6 +14,12 @@ export const COURSES = {
       Yellow: [309, 142, 368, 463, 382, 377, 333, 352, 316, 371, 359, 326, 157, 348, 409, 329, 357, 367],
       Red: [305, 137, 332, 451, 352, 330, 299, 326, 314, 367, 351, 283, 126, 323, 403, 327, 347, 363],
     },
+    // USGA Course Rating + Slope per tee. Used to convert Handicap Index ↔ Course Handicap.
+    // Yellow/Red pending — fill in when known.
+    ratings: {
+      Blue:  { cr: 75.3, slope: 137 },
+      White: { cr: 73.3, slope: 131 },
+    },
   },
   Tolly: {
     location: { lat: 22.5113, lon: 88.3464, tz: "Asia/Kolkata", name: "Tollygunge Club" },
