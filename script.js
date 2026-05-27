@@ -1073,9 +1073,18 @@ document.querySelectorAll("#teePillGroup .pill, #holesPillGroup .pill").forEach(
 const startRoundBtn = document.getElementById("startRoundBtn");
 if (startRoundBtn) {
   startRoundBtn.addEventListener("click", function () {
-    // Default to today's date if Advanced not filled
     const dateInput = document.getElementById("roundDate");
     if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    // Sync tracker hero title with chosen course
+    const courseVal = (document.getElementById("courseSelect") || {}).value || "";
+    const heroTitle = document.getElementById("trackerCourseName");
+    if (heroTitle && courseVal) {
+      const courseData = typeof COURSES !== "undefined" && COURSES[courseVal];
+      heroTitle.textContent = courseData && courseData.location ? courseData.location.name : courseVal;
+    }
+    // Rebuild holes and fill course data fresh on each round start
+    buildHoles();
+    applyCourseData();
     showApp();
     switchTab("trackerTab");
     syncDrawerActive("trackerTab");

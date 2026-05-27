@@ -365,15 +365,19 @@
       </div>
 
       <div id="trackerTab" class="tab-page" style="display:none;">
-        <h2 class="section-header">Playing Now</h2>
-
-        <div class="mode-toggle">
-          <label>Round mode:
+        <!-- Tracker hero: course name + progress -->
+        <div class="tracker-hero">
+          <div class="tracker-hero-left">
+            <p class="tracker-hero-eyebrow">Playing Now</p>
+            <h1 class="tracker-hero-title" id="trackerCourseName">RCGC</h1>
+          </div>
+          <details class="tracker-mode-toggle">
+            <summary>Mode</summary>
             <select id="roundMode">
               <option value="full">Full (shot by shot)</option>
-              <option value="quick">Quick (just score + putts)</option>
+              <option value="quick">Quick (score + putts)</option>
             </select>
-          </label>
+          </details>
         </div>
 
         <div class="hole-progress-bar">
@@ -388,16 +392,16 @@
           <button id="nextHoleBtn" class="hole-nav-btn primary">Next →</button>
         </div>
 
-        <div class="ai-card" style="margin: 8px auto; max-width:340px;">
-          <h3>AI Tip for This Hole</h3>
-          <button id="aiHoleTipBtn" class="ai-action-btn">Get AI hole tip</button>
-          <div id="aiHoleTipOutput" class="ai-output"></div>
-        </div>
+        <details class="tracker-ai-details">
+          <summary>AI Tip for This Hole</summary>
+          <div class="tracker-ai-inner">
+            <button id="aiHoleTipBtn" class="ai-action-btn">Get AI hole tip</button>
+            <div id="aiHoleTipOutput" class="ai-output"></div>
+          </div>
+        </details>
 
         <div class="page-nav">
-          <button class="btn-back" data-go="clubsTab">← Back: Clubs</button>
-          <button class="btn-next" data-go="statsTab">Finish: Coach &amp; Stats →</button>
-          <button id="logoutBtn">Logout</button>
+          <button class="btn-next" data-go="statsTab">Finish Round &amp; See Stats →</button>
         </div>
       </div>
 
@@ -1364,6 +1368,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527x"></script>
+    <script type="module" src="script.js?v=20260527z"></script>
   </body>
 </html>

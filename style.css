@@ -2204,28 +2204,96 @@ textarea { resize: vertical; }
   font-weight: 700;
 }
 
+/* Legacy .mode-toggle kept for compat */
 .mode-toggle {
-  background: white;
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin: 8px auto;
-  max-width: 340px;
-  box-shadow: var(--card-shadow);
-  border-left: 5px solid var(--water);
+  display: none;
 }
 
-.mode-toggle label {
+/* ── Tracker hero bar ── */
+.tracker-hero {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  margin: 0 auto 0;
+  max-width: 460px;
+}
+.tracker-hero-eyebrow {
+  margin: 0 0 1px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tracker-hero-title {
   margin: 0;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--green-deep);
+  line-height: 1.1;
 }
 
-.mode-toggle select {
-  flex: 1;
-  margin: 0;
+/* Mode as a compact collapsible in the header */
+.tracker-mode-toggle {
+  font-size: 12px;
+}
+.tracker-mode-toggle > summary {
+  list-style: none;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  background: white;
+  user-select: none;
+}
+.tracker-mode-toggle > summary::-webkit-details-marker { display: none; }
+.tracker-mode-toggle[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.tracker-mode-toggle select {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: white;
+}
+
+/* AI tip as a collapsible */
+.tracker-ai-details {
+  margin: 8px auto;
+  max-width: 420px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.tracker-ai-details > summary {
+  list-style: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--purple);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.tracker-ai-details > summary::-webkit-details-marker { display: none; }
+.tracker-ai-details > summary::after {
+  content: '▾';
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.tracker-ai-details[open] > summary::after { transform: rotate(-180deg); }
+.tracker-ai-inner {
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--border);
 }
 
 .quick-row {
