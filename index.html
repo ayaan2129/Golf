@@ -885,9 +885,12 @@
       </div>
 
       <div id="practiceTab" class="tab-page" style="display:none;">
-        <div class="setup-hero">
-          <h1 class="setup-hero-title">Practice</h1>
-          <p class="setup-hero-sub" id="practiceSubText">Quick log per shot. Builds % over time.</p>
+        <div class="setup-hero-card" style="margin-bottom:0;">
+          <div class="setup-hero-icon">🎯</div>
+          <div>
+            <p class="setup-hero-eyebrow">Training</p>
+            <h1 class="setup-hero-title-v2" id="practiceSubText">Practice Range</h1>
+          </div>
         </div>
 
         <div id="practicePickerView">
@@ -904,38 +907,40 @@
                 <div class="ptt-label">Putting</div>
               </button>
               <button class="practice-type-tile" data-prac="chipping">
-                <div class="ptt-icon">◐</div>
+                <div class="ptt-icon">🌾</div>
                 <div class="ptt-label">Chipping</div>
               </button>
               <button class="practice-type-tile" data-prac="iron">
-                <div class="ptt-icon">─</div>
+                <div class="ptt-icon">🎯</div>
                 <div class="ptt-label">Irons</div>
               </button>
               <button class="practice-type-tile" data-prac="driver">
-                <div class="ptt-icon">▲</div>
+                <div class="ptt-icon">🔥</div>
                 <div class="ptt-label">Driver</div>
               </button>
             </div>
           </div>
 
-          <div class="setup-card">
-            <label class="profile-section-title">Recent Putting Stats</label>
-            <div id="puttStatsSummary">Log some putts to see your make rate.</div>
-          </div>
+          <div id="practiceStatsSection">
+            <div class="setup-card">
+              <label class="profile-section-title">Putting</label>
+              <div id="puttStatsSummary">Log some putts to see your make rate.</div>
+            </div>
 
-          <div class="setup-card">
-            <label class="profile-section-title">Recent Chipping Stats</label>
-            <div id="chipStatsSummary">Log some chips to see your up-and-down rate.</div>
-          </div>
+            <div class="setup-card">
+              <label class="profile-section-title">Chipping</label>
+              <div id="chipStatsSummary">Log some chips to see your up-and-down rate.</div>
+            </div>
 
-          <div class="setup-card">
-            <label class="profile-section-title">Recent Iron Stats</label>
-            <div id="ironStatsSummary">Log some iron shots to see your yardage gapping.</div>
-          </div>
+            <div class="setup-card">
+              <label class="profile-section-title">Irons</label>
+              <div id="ironStatsSummary">Log some iron shots to see your yardage gapping.</div>
+            </div>
 
-          <div class="setup-card">
-            <label class="profile-section-title">Recent Driver / Wood Stats</label>
-            <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
+            <div class="setup-card">
+              <label class="profile-section-title">Driver</label>
+              <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
+            </div>
           </div>
 
           <div class="setup-card">
@@ -1368,6 +1373,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527z"></script>
+    <script type="module" src="script.js?v=202605270"></script>
   </body>
 </html>
