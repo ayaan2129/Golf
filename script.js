@@ -880,6 +880,9 @@ function switchTab(tabId) {
     syncAiStatusOnProfile();
     renderPracticeRangesEditor();
   }
+  if (tabId === "settingsTab") {
+    if (typeof renderAiStatus === "function") renderAiStatus();
+  }
   if (tabId === "coachTab") {
     // Always show the launcher on (re-)entry; the chat panel is opt-in.
     const launcher = document.getElementById("chatLauncher");
@@ -900,7 +903,7 @@ function syncAiStatusOnProfile() {
     el.textContent = "AI coach ON — your key is set.";
     el.classList.add("on");
   } else {
-    el.textContent = "AI coach off — add a key on the Stats tab to enable.";
+    el.textContent = "AI coach off — add a key in Settings to enable.";
     el.classList.remove("on");
   }
 }
@@ -911,7 +914,7 @@ document.addEventListener("click", function (e) {
   const target = btn.dataset.go;
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab") {
+  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab" || target === "settingsTab") {
     showApp();
     switchTab(target);
     syncBottomTabs(target);
@@ -1297,6 +1300,16 @@ if (drawerLogout) {
 const profileLogout = document.getElementById("profileLogoutBtn");
 if (profileLogout) {
   profileLogout.addEventListener("click", function () {
+    if (confirm("Log out?")) {
+      setCurrentUsername(null);
+      showLogin();
+    }
+  });
+}
+
+const settingsLogout = document.getElementById("settingsLogoutBtn");
+if (settingsLogout) {
+  settingsLogout.addEventListener("click", function () {
     if (confirm("Log out?")) {
       setCurrentUsername(null);
       showLogin();
@@ -3715,7 +3728,7 @@ function initDashboard() {
   const goToAiSettingsBtn = document.getElementById("goToAiSettingsBtn");
   if (goToAiSettingsBtn) {
     goToAiSettingsBtn.addEventListener("click", function () {
-      switchTab("statsTab");
+      switchTab("settingsTab");
       setTimeout(function () {
         const card = document.getElementById("grokApiKey");
         if (card) {
@@ -4829,17 +4842,24 @@ function startVoiceInput() {
 }
 
 function renderAiStatus() {
+  const onText = function () {
+    return getProxyUrl()
+      ? "AI coach ON — routing through your proxy (key stays on server)."
+      : "AI coach ON — calling Grok directly with your local key.";
+  };
+  const offTextStats = "AI coach off — add a key in Settings to enable.";
+  const offTextSettings = "AI coach off — add an AI Proxy URL or a Grok API key above to enable.";
+  const enabled = aiEnabled();
+
   const el = document.getElementById("aiStatus");
   if (el) {
-    if (aiEnabled()) {
-      el.textContent = getProxyUrl()
-        ? "AI coach ON — routing through your proxy (key stays on server)."
-        : "AI coach ON — calling Grok directly with your local key.";
-      el.classList.add("on");
-    } else {
-      el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
-      el.classList.remove("on");
-    }
+    el.textContent = enabled ? onText() : offTextStats;
+    el.classList.toggle("on", enabled);
+  }
+  const elS = document.getElementById("aiStatusSettings");
+  if (elS) {
+    elS.textContent = enabled ? onText() : offTextSettings;
+    elS.classList.toggle("on", enabled);
   }
   if (typeof syncAiStatusOnProfile === "function") syncAiStatusOnProfile();
 }
