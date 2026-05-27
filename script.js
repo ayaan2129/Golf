@@ -284,7 +284,26 @@ function renderHomeDashboard() {
 
   const history = getHistory();
   const hcEl = document.getElementById("homeHandicap");
-  if (hcEl) hcEl.textContent = profile.handicap != null ? profile.handicap : "—";
+  const hcStat = document.getElementById("homeHandicapStat");
+  if (hcEl) {
+    if (profile.handicap != null) {
+      hcEl.textContent = profile.handicap;
+      if (hcStat) hcStat.style.cursor = "";
+    } else {
+      hcEl.textContent = "—";
+      if (hcStat) {
+        hcStat.title = "Set in Profile";
+        hcStat.style.cursor = "pointer";
+        if (!hcStat._wired) {
+          hcStat._wired = true;
+          hcStat.addEventListener("click", function () {
+            showApp(); switchTab("profileTab");
+            syncDrawerActive("profileTab"); syncBottomTabs("profileTab");
+          });
+        }
+      }
+    }
+  }
   const bestEl = document.getElementById("homeBest");
   if (bestEl) {
     const scores = history.map(function (r) { return r.totalScore; }).filter(function (s) { return s > 0; });
@@ -315,26 +334,39 @@ function renderHomeDashboard() {
     courseEl.textContent = defaultCourse;
   }
 
+  const lastTitleEl = document.getElementById("homeLastRoundTitle");
   const lastEl = document.getElementById("homeLastRoundText");
-  if (lastEl) {
-    if (history.length === 0) {
-      lastEl.textContent = "No rounds yet — tap Start a Round.";
-    } else {
-      const r = history[history.length - 1];
-      const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
-      lastEl.textContent = r.courseName + " " + (r.tee || "") + " · " + (r.date || "") + " · " + r.totalScore + " (" + diff + ")";
+  if (history.length === 0) {
+    if (lastTitleEl) lastTitleEl.style.display = "none";
+    if (lastEl) lastEl.textContent = "No rounds yet — tap Start a Round.";
+  } else {
+    const r = history[history.length - 1];
+    const diff = r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : "" + r.scoreVsPar;
+    const scoreCol = r.scoreVsPar < 0 ? "var(--green-mid)" : r.scoreVsPar <= 5 ? "var(--ink)" : "var(--crimson)";
+    if (lastTitleEl) {
+      lastTitleEl.style.display = "";
+      lastTitleEl.innerHTML = r.courseName + (r.tee ? ' <span style="font-size:12px;font-weight:600;color:var(--muted);">' + r.tee + ' tees</span>' : "") +
+        ' <span style="color:' + scoreCol + ';">' + r.totalScore + ' (' + diff + ')</span>';
     }
+    if (lastEl) lastEl.textContent = r.date || "";
   }
 
   const fEl = document.getElementById("homeFocusText");
+  const fCard = document.getElementById("homeFocusCard");
   if (fEl) {
     const recent = history.slice(-3);
     const allMistakes = [];
     for (const r of recent) for (const m of (r.mistakes || [])) allMistakes.push(m);
     if (allMistakes.length > 0) {
-      fEl.textContent = "Work on: " + allMistakes[0];
+      fEl.textContent = allMistakes[0];
+      if (fCard) fCard.style.display = "";
+    } else if (history.length > 0) {
+      // Rounds logged but no mistakes tagged — positive signal
+      fEl.textContent = "No patterns flagged in your last 3 rounds. Keep going.";
+      if (fCard) fCard.style.display = "";
     } else {
-      fEl.textContent = "Pick a target every shot. Stay smooth.";
+      // No rounds at all — hide the card
+      if (fCard) fCard.style.display = "none";
     }
   }
 

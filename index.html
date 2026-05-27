@@ -79,6 +79,8 @@
 
     <div id="welcomeScreen" style="display:none;">
       <div class="home-dashboard">
+
+        <!-- Hero: greeting + avatar -->
         <div class="home-hero">
           <div class="home-hero-avatar" id="homeAvatar">A</div>
           <div class="home-hero-greet">
@@ -87,12 +89,23 @@
           </div>
         </div>
 
+        <!-- Quick stats -->
         <div class="home-stats-row">
-          <div class="home-stat"><div class="home-stat-num" id="homeHandicap">—</div><div class="home-stat-lbl">Handicap</div></div>
-          <div class="home-stat"><div class="home-stat-num" id="homeBest">—</div><div class="home-stat-lbl">Best</div></div>
-          <div class="home-stat"><div class="home-stat-num" id="homeRounds">0</div><div class="home-stat-lbl">Rounds</div></div>
+          <div class="home-stat" id="homeHandicapStat">
+            <div class="home-stat-num" id="homeHandicap">—</div>
+            <div class="home-stat-lbl">Handicap</div>
+          </div>
+          <div class="home-stat">
+            <div class="home-stat-num" id="homeBest">—</div>
+            <div class="home-stat-lbl">Best Score</div>
+          </div>
+          <div class="home-stat">
+            <div class="home-stat-num" id="homeRounds">0</div>
+            <div class="home-stat-lbl">Rounds</div>
+          </div>
         </div>
 
+        <!-- Ongoing round (conditional) -->
         <div class="home-ongoing-card" id="homeOngoingCard" style="display:none;">
           <div class="home-ongoing-tag">In Progress</div>
           <h3 id="homeOngoingTitle">Round</h3>
@@ -103,31 +116,16 @@
           </div>
         </div>
 
+        <!-- Primary CTAs -->
         <div class="home-cta">
           <button class="home-cta-btn" id="homeStartBtn">Start a Round →</button>
-          <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice</button>
+          <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice →</button>
         </div>
 
-        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.15), rgba(47, 175, 62, 0.1)); border:1px solid var(--gold); position:relative;">
-          <button id="byoDismissBtn" style="position:absolute; top:8px; right:10px; background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; line-height:1; padding:2px 4px;">×</button>
-          <h3 style="margin:0 0 6px; padding-right:24px;">🤖 Turn on the AI Coach</h3>
-          <p style="margin:0 0 10px; font-size:13px;">Bring your own API key (free credit at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock AI round reports, practice plans, and swing analysis tailored to your data.</p>
-          <button class="home-cta-btn secondary" data-go-tab="statsTab" id="byoOpenSettingsBtn" style="font-size:13px; padding:8px 14px;">Add your key →</button>
-        </div>
-
-        <div class="home-tile home-place">
-          <h3>Today at <span id="homeCourse">RCGC</span></h3>
-          <p id="homeWeatherText">—</p>
-        </div>
-
-        <div class="home-tile">
-          <h3>Last Round</h3>
-          <p id="homeLastRoundText">No rounds saved yet.</p>
-        </div>
-
+        <!-- Actionable coach insights (shown when data exists) -->
         <div class="home-tile" id="homeCoachIntel" style="display:none;">
-          <h3>Coach's quick read</h3>
-          <div id="homeCoachIntelBody" style="font-size:13px;"></div>
+          <h3>Coach's Quick Read</h3>
+          <div id="homeCoachIntelBody" style="font-size:13px; line-height:1.6;"></div>
         </div>
 
         <div class="home-tile home-practice-insight" id="homePracticeInsight" style="display:none;">
@@ -136,15 +134,38 @@
           <p id="homePracticeInsightCue" style="margin:0; font-size:13px; line-height:1.5;"></p>
         </div>
 
+        <!-- Round mistake pattern (always shown, updates with data) -->
+        <div class="home-tile" id="homeFocusCard">
+          <h3>Work On This</h3>
+          <p id="homeFocusText">—</p>
+        </div>
+
+        <!-- Last round + course/weather -->
+        <div class="home-tile">
+          <h3>Last Round</h3>
+          <p id="homeLastRoundTitle" style="font-weight:700; margin:0 0 2px; font-size:15px;">—</p>
+          <p id="homeLastRoundText" style="margin:0; font-size:13px; color:var(--muted);">No rounds saved yet.</p>
+        </div>
+
+        <div class="home-tile home-place">
+          <h3>Today at <span id="homeCourse">RCGC</span></h3>
+          <p id="homeWeatherText">—</p>
+        </div>
+
+        <!-- BYO AI banner — dismissable, at bottom so it doesn't block content -->
+        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.12), rgba(47, 175, 62, 0.08)); border:1px solid var(--gold); position:relative;">
+          <button id="byoDismissBtn" style="position:absolute; top:8px; right:10px; background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; line-height:1; padding:2px 4px;">×</button>
+          <h3 style="margin:0 0 6px; padding-right:24px;">Unlock AI Coaching</h3>
+          <p style="margin:0 0 10px; font-size:13px; color:var(--ink-soft);">Add your free xAI key to get AI round reports, practice plans, and swing analysis.</p>
+          <button class="home-cta-btn secondary" data-go-tab="statsTab" id="byoOpenSettingsBtn" style="font-size:13px; padding:8px 14px;">Add your key →</button>
+        </div>
+
+        <!-- Motivational quote — bottom, not competing with actionable tiles -->
         <div class="home-tile" id="homeMoral">
           <h3>Today's Boost</h3>
           <p id="homeThoughtText">—</p>
         </div>
 
-        <div class="home-tile">
-          <h3>Coach's Focus Today</h3>
-          <p id="homeFocusText">—</p>
-        </div>
       </div>
     </div>
 
@@ -1334,6 +1355,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527v"></script>
+    <script type="module" src="script.js?v=20260527w"></script>
   </body>
 </html>

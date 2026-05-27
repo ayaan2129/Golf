@@ -203,7 +203,9 @@ body { padding: 0; }
   padding: 16px 8px 12px;
   text-align: center;
   box-shadow: var(--card-shadow);
+  transition: border-color 0.15s;
 }
+.home-stat[title]:hover { border-color: var(--green-mid); }
 
 .home-stat-num {
   font-size: 28px;
@@ -353,26 +355,7 @@ body { padding: 0; }
   letter-spacing: 0;
 }
 
-.home-cta {
-  margin: 14px auto;
-  max-width: 340px;
-}
-
-.home-cta-btn {
-  width: 100%;
-  padding: 18px;
-  background: linear-gradient(180deg, var(--gold), #d8a000);
-  color: var(--ink);
-  border: none;
-  border-radius: 16px;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(245, 184, 0, 0.45);
-  letter-spacing: 0.5px;
-}
-
-.home-cta-btn:active { transform: translateY(1px); }
+/* .home-cta and .home-cta-btn canonical rules are above (line ~225) */
 
 .home-tile {
   background: white;
