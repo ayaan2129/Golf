@@ -69,6 +69,10 @@ import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
 import { wireCoachUi, openChatPanel, closeChatPanel } from "./src/screens/coach.js";
 import { renderCategoriesGrid, wireStatsCategories } from "./src/screens/stats.js";
 import { aggregateSG, getTrends } from "./src/data/strokes-gained.js";
+import {
+  getRating, courseHandicap, differential, buildRoundHandicap,
+  getIndexHistory, recordIndex,
+} from "./src/data/handicap.js";
 import { wireLoginUi } from "./src/screens/login.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
@@ -683,6 +687,7 @@ function renderWelcome() {
     const p = getProfile();
     if (p.handicap != null) hcapInput.value = p.handicap;
   }
+  renderHandicapIndexUi();
 
   const birthdayInput = document.getElementById("birthdayInput");
   if (birthdayInput) {
@@ -749,7 +754,54 @@ if (hcapInputInit) {
     const v = hcapInputInit.value === "" ? null : Number(hcapInputInit.value);
     setProfileField("handicap", v);
     renderPlayerCard();
+    renderHandicapIndexUi();
+    if (typeof renderHomeDashboard === "function") renderHomeDashboard();
   });
+}
+
+const hcapLogBtn = document.getElementById("handicapIndexLogBtn");
+if (hcapLogBtn) {
+  hcapLogBtn.addEventListener("click", function () {
+    const valEl = document.getElementById("handicapInput");
+    const dateEl = document.getElementById("handicapIndexDateInput");
+    const v = valEl && valEl.value !== "" ? Number(valEl.value) : null;
+    if (v == null || !isFinite(v)) { alert("Enter a handicap index first."); return; }
+    const date = (dateEl && dateEl.value) || todayISO();
+    recordIndex(v, date);
+    renderHandicapIndexUi();
+    renderPlayerCard();
+    if (typeof renderHomeDashboard === "function") renderHomeDashboard();
+  });
+}
+
+function renderHandicapIndexUi() {
+  const p = getProfile();
+  const dateInput = document.getElementById("handicapIndexDateInput");
+  if (dateInput && !dateInput.value) dateInput.value = todayISO();
+  const meta = document.getElementById("handicapIndexMeta");
+  const dateLbl = document.getElementById("handicapIndexDateLabel");
+  if (meta && dateLbl) {
+    if (p.handicapIndexDate) {
+      meta.style.display = "";
+      dateLbl.textContent = p.handicapIndexDate;
+    } else {
+      meta.style.display = "none";
+    }
+  }
+  const histRow = document.getElementById("handicapHistoryRow");
+  const histList = document.getElementById("handicapHistoryList");
+  const hist = getIndexHistory();
+  if (histRow && histList) {
+    if (hist.length > 0) {
+      histRow.style.display = "";
+      const last = hist.slice(-6).reverse();
+      histList.innerHTML = last.map(function (h) {
+        return '<div>' + h.date + ' — <strong>' + h.value + '</strong></div>';
+      }).join("");
+    } else {
+      histRow.style.display = "none";
+    }
+  }
 }
 
 const birthdayInputInit = document.getElementById("birthdayInput");
@@ -2040,12 +2092,36 @@ function updateCourseInfoFromInputs() {
   document.getElementById("ciBack9").textContent = back9 || "—";
 }
 
+function renderCourseHandicapInfo() {
+  const courseKey = (document.getElementById("courseSelect") || {}).value || "";
+  const teeKey = (document.getElementById("teeSelect") || {}).value || "";
+  const box = document.getElementById("courseHandicapInfo");
+  if (!box) return;
+  const rating = getRating(courseKey, teeKey);
+  const profile = getProfile();
+  const index = profile.handicap != null ? Number(profile.handicap) : null;
+  if (!rating || index == null) {
+    box.style.display = "none";
+    return;
+  }
+  const course = COURSES[courseKey];
+  const par = course && Array.isArray(course.pars) ? course.pars.reduce(function (a, b) { return a + b; }, 0) : null;
+  const ch = courseHandicap(index, rating.slope, rating.cr, par);
+  if (ch == null) { box.style.display = "none"; return; }
+  const valEl = document.getElementById("courseHandicapValue");
+  const brkEl = document.getElementById("courseHandicapBreakdown");
+  if (valEl) valEl.textContent = ch;
+  if (brkEl) brkEl.textContent = "Index " + index + " · " + teeKey + " tees CR " + rating.cr + " / Slope " + rating.slope + " · Par " + par;
+  box.style.display = "";
+}
+
 function applyCourseData() {
   const courseKey = document.getElementById("courseSelect").value;
   const teeKey = document.getElementById("teeSelect").value;
   const courseInfo = document.getElementById("courseInfo");
   const courseNotice = document.getElementById("courseNotice");
   const course = COURSES[courseKey];
+  renderCourseHandicapInfo();
 
   if (courseKey === "Tolly") {
     courseInfo.style.display = "none";
@@ -2868,6 +2944,12 @@ function saveRoundToHistory() {
     coursePar,
     parPlayed: parForRound,
     handicap: (getProfile().handicap !== undefined ? getProfile().handicap : null),
+    ...buildRoundHandicap(
+      document.getElementById("courseSelect").value,
+      document.getElementById("teeSelect").value,
+      parForRound,
+      totalScore
+    ),
     birthday: getProfile().birthday || null,
     ageAtRound: calcAge(getProfile().birthday),
     weather: localStorage.getItem("defaultsTemp") || "",
@@ -4410,6 +4492,13 @@ function seedDemoData(silent) {
   // Profile
   const profile = getProfile();
   profile.handicap = 18;
+  profile.handicapIndexDate = "2026-05-01";
+  profile.handicapIndexHistory = [
+    { date: "2026-02-01", value: 22.4 },
+    { date: "2026-03-01", value: 20.8 },
+    { date: "2026-04-01", value: 19.1 },
+    { date: "2026-05-01", value: 18.0 },
+  ];
   profile.birthday = "2013-08-15";
   profile.clubDistances = profile.clubDistances || {};
   Object.assign(profile.clubDistances, {
@@ -5212,16 +5301,24 @@ function renderHandicapTrend() {
   if (!card) return;
   card.innerHTML = "";
   const h = document.createElement("h3");
-  h.textContent = "Handicap Trend";
+  h.textContent = "Handicap Index Trend";
   card.appendChild(h);
 
-  const history = getHistory()
-    .filter(function (r) { return typeof r.handicap === "number" && r.date; })
-    .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  // Prefer the dedicated index history (monthly agency updates).
+  // Fall back to per-round handicap snapshots for legacy rounds.
+  const indexHist = getIndexHistory();
+  let history;
+  if (indexHist.length >= 2) {
+    history = indexHist.map(function (h) { return { date: h.date, handicap: h.value }; });
+  } else {
+    history = getHistory()
+      .filter(function (r) { return typeof r.handicap === "number" && r.date; })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  }
 
   if (history.length < 2) {
     const p = document.createElement("p");
-    p.textContent = "Save at least 2 rounds with a handicap set on the Welcome page to see your trend.";
+    p.textContent = "Log at least 2 monthly index updates in Profile to see your trend.";
     card.appendChild(p);
     return;
   }

@@ -101,7 +101,7 @@
         <div class="home-stats-row">
           <div class="home-stat" id="homeHandicapStat">
             <div class="home-stat-num" id="homeHandicap">—</div>
-            <div class="home-stat-lbl">Handicap</div>
+            <div class="home-stat-lbl">Index</div>
           </div>
           <div class="home-stat">
             <div class="home-stat-num" id="homeBest">—</div>
@@ -375,6 +375,10 @@
               <option value="Red">Red</option>
             </select>
           </label>
+          <div id="courseHandicapInfo" style="display:none; margin-top:10px; padding:10px 12px; background:rgba(46,125,50,0.06); border-left:3px solid var(--green-mid); border-radius:6px; font-size:13px; line-height:1.5;">
+            <div><strong>Course Handicap:</strong> <span id="courseHandicapValue" style="color:var(--green-deep); font-weight:700; font-size:16px;">—</span></div>
+            <div id="courseHandicapBreakdown" style="font-size:11px; color:var(--muted); margin-top:2px;">—</div>
+          </div>
         </div>
 
         <div class="page-nav">
@@ -865,8 +869,23 @@
             <span class="profile-row-value" id="pcAge">—</span>
           </div>
           <div class="profile-row">
-            <label>Handicap</label>
-            <input type="number" id="handicapInput" step="0.1" placeholder="18" />
+            <label>Handicap Index <span style="font-size:11px;font-weight:500;color:var(--muted);">(global, e.g. from GHIN/IGU)</span></label>
+            <input type="number" id="handicapInput" step="0.1" placeholder="13.0" />
+          </div>
+          <div class="profile-row" id="handicapIndexMeta" style="display:none;">
+            <label>Last update</label>
+            <span class="profile-row-value" id="handicapIndexDateLabel">—</span>
+          </div>
+          <div class="profile-row">
+            <label>Log monthly update</label>
+            <span style="display:flex; gap:6px; align-items:center;">
+              <input type="date" id="handicapIndexDateInput" style="max-width:160px;" />
+              <button type="button" id="handicapIndexLogBtn" class="btn-secondary" style="padding:6px 12px;">Log</button>
+            </span>
+          </div>
+          <div class="profile-row" id="handicapHistoryRow" style="display:none;">
+            <label>Index history</label>
+            <div class="profile-row-value" id="handicapHistoryList" style="font-size:12px;line-height:1.6;"></div>
           </div>
         </div>
 
@@ -1415,6 +1434,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=202605278"></script>
+    <script type="module" src="script.js?v=202605279"></script>
   </body>
 </html>

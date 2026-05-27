@@ -11,6 +11,7 @@ import {
   getScoringZone, getApproachProximity, getPracticeTransfer,
 } from "../data/rounds.js";
 import { aggregateSG, getTrends, getScoringResponse } from "../data/strokes-gained.js";
+import { getRating, courseHandicap, getIndexHistory } from "../data/handicap.js";
 import {
   getPractice,
   getPuttingInsights,
@@ -36,12 +37,28 @@ export function aiBaseContext() {
   const lines = [];
   lines.push("Player: " + playerName + ", age " + age + ", based in Kolkata India.");
   lines.push("Dream: " + dream + ". Junior aspiring pro.");
-  lines.push("Handicap: " + hc + ".");
+  lines.push("Handicap Index: " + hc + (profile.handicapIndexDate ? " (updated " + profile.handicapIndexDate + ")" : "") + ".");
+  const indexHist = getIndexHistory();
+  if (indexHist.length >= 2) {
+    const first = indexHist[0], last = indexHist[indexHist.length - 1];
+    const delta = (last.value - first.value).toFixed(1);
+    const dir = last.value < first.value ? "down" : (last.value > first.value ? "up" : "flat");
+    lines.push("Index trend: " + indexHist.length + " readings from " + first.date + " to " + last.date + ", " + dir + " " + Math.abs(delta) + " strokes overall.");
+  }
   if (course) {
     let locLine = "Home course: " + (course.name || courseKey);
     if (course.location) locLine += " (lat " + course.location.lat + ", lon " + course.location.lon + ")";
     if (course.greenSpeed) locLine += ", typical greens " + course.greenSpeed;
     lines.push(locLine + ".");
+    const tee = ((document.getElementById("teeSelect") || {}).value) || "";
+    const rating = getRating(courseKey, tee);
+    if (rating && profile.handicap != null && Array.isArray(course.pars)) {
+      const par = course.pars.reduce(function (a, b) { return a + b; }, 0);
+      const ch = courseHandicap(Number(profile.handicap), rating.slope, rating.cr, par);
+      if (ch != null) {
+        lines.push("Course Handicap at " + (course.name || courseKey) + " " + tee + ": " + ch + " (CR " + rating.cr + " / Slope " + rating.slope + " / Par " + par + ").");
+      }
+    }
     const greensToday = localStorage.getItem("greenSpeedToday");
     if (greensToday) lines.push("Greens today: " + greensToday + ".");
     if (course.notes) lines.push("Course notes: " + course.notes);
@@ -64,6 +81,8 @@ export function aiBaseContext() {
         "scramble " + (r.scramblePct != null ? r.scramblePct + "%" : "?"),
         "pens " + (r.totalPenalties != null ? r.totalPenalties : "?"),
       ];
+      if (r.courseHandicap != null) parts.push("CH " + r.courseHandicap);
+      if (r.differential != null) parts.push("diff " + r.differential);
       if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
       if (r.greenSpeed) parts.push("greens " + r.greenSpeed);
       if (r.teeOffTime) parts.push("tee-off " + r.teeOffTime + (r.timeBlock ? " (" + r.timeBlock + ")" : ""));
