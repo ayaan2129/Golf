@@ -128,10 +128,45 @@ function renderHomeDashboard() {
   const drawerWelcome = document.getElementById("drawerWelcome");
   if (drawerWelcome) drawerWelcome.textContent = name;
 
+  // Avatar initial
+  const avatar = document.getElementById("homeAvatar");
+  if (avatar) avatar.textContent = (name || "P").charAt(0).toUpperCase();
+
+  // Time-aware greeting prefix
   const today = new Date();
+  const hour = today.getHours();
+  let prefix = "Hi";
+  if (hour < 5) prefix = "Still up";
+  else if (hour < 11) prefix = "Good morning";
+  else if (hour < 14) prefix = "Hi";
+  else if (hour < 18) prefix = "Good afternoon";
+  else if (hour < 22) prefix = "Good evening";
+  else prefix = "Late night";
+  const pfxEl = document.getElementById("homeGreetPrefix");
+  if (pfxEl) pfxEl.textContent = prefix;
+
   const dayStr = today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const sub = document.getElementById("homeSub");
   if (sub) sub.textContent = dayStr;
+
+  // Ongoing round card — shows when there's a saved-in-progress round (`golfRound` in localStorage)
+  const ongoing = document.getElementById("homeOngoingCard");
+  if (ongoing) {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("golfRound") || "null"); } catch (e) {}
+    const hasOngoing = saved && saved.setup && saved.setup.courseSelect && Object.keys(saved.holes || {}).length > 0;
+    ongoing.style.display = hasOngoing ? "" : "none";
+    if (hasOngoing) {
+      const titleEl = document.getElementById("homeOngoingTitle");
+      const subEl = document.getElementById("homeOngoingSub");
+      if (titleEl) titleEl.textContent = saved.setup.courseSelect + (saved.setup.teeSelect ? " · " + saved.setup.teeSelect : "");
+      if (subEl) {
+        const filled = Object.keys(saved.holes || {}).filter(function (k) { return saved.holes[k].shots && saved.holes[k].shots.length > 0; }).length;
+        const total = saved.setup.holesMode === "front9" || saved.setup.holesMode === "back9" ? 9 : 18;
+        subEl.textContent = filled + " of " + total + " holes filled";
+      }
+    }
+  }
 
   const history = getHistory();
   const hcEl = document.getElementById("homeHandicap");
@@ -593,6 +628,24 @@ document.querySelectorAll(".bt").forEach(function (btn) {
     }
   });
 });
+
+const homeOngoingResume = document.getElementById("homeOngoingResume");
+if (homeOngoingResume) {
+  homeOngoingResume.addEventListener("click", function () {
+    showApp();
+    switchTab("trackerTab");
+  });
+}
+const homeOngoingDiscard = document.getElementById("homeOngoingDiscard");
+if (homeOngoingDiscard) {
+  homeOngoingDiscard.addEventListener("click", function () {
+    if (confirm("Discard the in-progress round? This clears the holes you've filled.")) {
+      if (typeof clearCurrentRound === "function") clearCurrentRound();
+      else { localStorage.removeItem("golfRound"); }
+      renderHomeDashboard();
+    }
+  });
+}
 
 const homeStart = document.getElementById("homeStartBtn");
 if (homeStart) {

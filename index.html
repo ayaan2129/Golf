@@ -72,13 +72,28 @@
 
     <div id="welcomeScreen" style="display:none;">
       <div class="home-dashboard">
-        <h1 class="home-greeting">Hi, <span id="welcomeName">Player</span></h1>
-        <p class="home-sub" id="homeSub">—</p>
+        <div class="home-hero">
+          <div class="home-hero-avatar" id="homeAvatar">A</div>
+          <div class="home-hero-greet">
+            <p class="home-hero-sub" id="homeSub">—</p>
+            <h1 class="home-hero-title"><span id="homeGreetPrefix">Hi</span>, <span id="welcomeName">Player</span></h1>
+          </div>
+        </div>
 
         <div class="home-stats-row">
           <div class="home-stat"><div class="home-stat-num" id="homeHandicap">—</div><div class="home-stat-lbl">Handicap</div></div>
           <div class="home-stat"><div class="home-stat-num" id="homeBest">—</div><div class="home-stat-lbl">Best</div></div>
           <div class="home-stat"><div class="home-stat-num" id="homeRounds">0</div><div class="home-stat-lbl">Rounds</div></div>
+        </div>
+
+        <div class="home-ongoing-card" id="homeOngoingCard" style="display:none;">
+          <div class="home-ongoing-tag">In Progress</div>
+          <h3 id="homeOngoingTitle">Round</h3>
+          <p id="homeOngoingSub" style="margin:4px 0 12px; opacity:0.85; font-size:13px;">—</p>
+          <div style="display:flex; gap:8px;">
+            <button class="home-cta-btn" id="homeOngoingResume" style="flex:1;">Resume →</button>
+            <button class="btn-secondary danger" id="homeOngoingDiscard" style="flex:0 0 auto;">Discard</button>
+          </div>
         </div>
 
         <div class="home-cta">
@@ -1218,6 +1233,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527k"></script>
+    <script type="module" src="script.js?v=20260527l"></script>
   </body>
 </html>
