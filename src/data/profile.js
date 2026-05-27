@@ -52,6 +52,56 @@ export function saveSelectedClubs(arr) {
 // Maps bag display names ("7 Iron") to practice short codes ("7i") and
 // returns the observed avg carry across iron + driver practice sessions
 // when at least 3 shots are logged.
+// Per-club shot-length yardage matrix. Each club maps to baseline calm,
+// sea-level, ~70°F carry yards for full / ¾ / half / ¼ swings. The
+// adjusted-for-today figures (altitude, temp, wind) are computed at
+// render time — only baselines are stored.
+export const SHOT_TYPES = [
+  { key: "full", label: "Full" },
+  { key: "threeQ", label: "¾" },
+  { key: "half", label: "Half" },
+  { key: "quarter", label: "¼" },
+];
+
+export function getYardageMatrix() {
+  const p = getProfile();
+  return p.yardageMatrix && typeof p.yardageMatrix === "object" ? p.yardageMatrix : {};
+}
+
+export function getYardageCell(club, shotType) {
+  const m = getYardageMatrix();
+  const row = m[club];
+  if (!row) {
+    // Fall back to legacy single distance for "full" so existing users
+    // don't see an empty matrix.
+    if (shotType === "full") {
+      const legacy = getClubDistance(club);
+      return legacy != null ? legacy : null;
+    }
+    return null;
+  }
+  return row[shotType] != null ? row[shotType] : null;
+}
+
+export function setYardageCell(club, shotType, yards) {
+  const p = getProfile();
+  if (!p.yardageMatrix) p.yardageMatrix = {};
+  if (!p.yardageMatrix[club]) p.yardageMatrix[club] = {};
+  if (yards === "" || yards == null) delete p.yardageMatrix[club][shotType];
+  else p.yardageMatrix[club][shotType] = Number(yards) || 0;
+  // Keep the legacy single-distance field synced to the full-swing entry
+  // so the rest of the app (rounds, practice) keeps working unchanged.
+  if (shotType === "full") {
+    if (yards === "" || yards == null) {
+      if (p.clubDistances) delete p.clubDistances[club];
+    } else {
+      if (!p.clubDistances) p.clubDistances = {};
+      p.clubDistances[club] = Number(yards) || 0;
+    }
+  }
+  saveProfile(p);
+}
+
 export function getObservedClubCarry(club) {
   const aliases = {
     "Driver": ["Driver"],

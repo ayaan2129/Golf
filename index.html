@@ -78,6 +78,7 @@
       <button class="drawer-item" data-go-tab="statsTab">▦  Stats &amp; History</button>
       <button class="drawer-item" data-go-tab="practiceTab">🎯  Practice</button>
       <button class="drawer-item" data-go-tab="clubsTab">🏌  My Bag &amp; Distances</button>
+      <button class="drawer-item" data-go-tab="yardageMatrixTab">📐  Yardage Matrix</button>
       <button class="drawer-item" data-go-tab="videosTab">▶  Swing Videos</button>
       <button class="drawer-item" data-go-tab="coachTab">💬  Coach</button>
       <button class="drawer-item" data-go-tab="profileTab">◯  My Profile</button>
@@ -373,6 +374,107 @@
 
         <div class="page-nav">
           <button class="btn-next" data-go="setupTab">Start a Round →</button>
+        </div>
+      </div>
+
+      <div id="yardageMatrixTab" class="tab-page" style="display:none;">
+        <div class="setup-hero-card" style="margin-bottom:0;">
+          <div class="setup-hero-icon">📐</div>
+          <div>
+            <p class="setup-hero-eyebrow">Distances</p>
+            <h1 class="setup-hero-title-v2">Yardage Matrix</h1>
+          </div>
+        </div>
+
+        <div class="clubs-card">
+          <h2>Today's Conditions</h2>
+          <p>Pulled from the course location. We auto-adjust your baseline distances for altitude, temperature, and wind.</p>
+          <div class="ym-cond-row">
+            <label class="ym-cond-field">Course
+              <select id="ymCourseSelect"></select>
+            </label>
+            <button id="ymRefreshBtn" type="button" class="clubs-action-btn">Refresh</button>
+          </div>
+          <div class="ym-cond-grid">
+            <div class="ym-cond-stat"><span class="ym-cond-lbl">Location</span><span id="ymCondLoc">—</span></div>
+            <div class="ym-cond-stat"><span class="ym-cond-lbl">Altitude</span><span id="ymCondElev">—</span></div>
+            <div class="ym-cond-stat"><span class="ym-cond-lbl">Temp</span><span id="ymCondTemp">—</span></div>
+            <div class="ym-cond-stat"><span class="ym-cond-lbl">Wind</span><span id="ymCondWind">—</span></div>
+          </div>
+        </div>
+
+        <div class="clubs-card">
+          <h2>Override Wind</h2>
+          <p>On the course you'll feel wind better than the forecast. Override here and the matrix updates instantly.</p>
+          <div class="ym-wind-row">
+            <label class="ym-cond-field">Speed (mph)
+              <input id="ymWindMph" type="number" min="0" inputmode="numeric" placeholder="e.g. 8" />
+            </label>
+            <label class="ym-cond-field">Direction
+              <select id="ymWindRel">
+                <option value="calm">Calm</option>
+                <option value="head">Into (head)</option>
+                <option value="tail">Down (tail)</option>
+                <option value="cross">Cross</option>
+              </select>
+            </label>
+            <button id="ymWindApply" type="button" class="clubs-action-btn">Apply</button>
+            <button id="ymWindClear" type="button" class="clubs-action-btn">Use forecast</button>
+            <button id="ymGrassBtn" type="button" class="clubs-action-btn" style="background:var(--green-bright);">🌱 How to measure wind</button>
+          </div>
+        </div>
+
+        <div class="clubs-card">
+          <h2>Carry Yardages by Shot Length</h2>
+          <p>Enter your calm-day carry for each shot length. The smaller "→" number under each input is today's adjusted carry given the conditions above.</p>
+          <div class="ym-matrix">
+            <div class="ym-row ym-row-head">
+              <div class="ym-row-club">Club</div>
+              <div class="ym-cell ym-cell-head">Full</div>
+              <div class="ym-cell ym-cell-head">¾</div>
+              <div class="ym-cell ym-cell-head">Half</div>
+              <div class="ym-cell ym-cell-head">¼</div>
+            </div>
+            <div id="ymMatrixBody"></div>
+          </div>
+        </div>
+
+        <div class="page-nav">
+          <button class="btn-next" data-go="clubsTab">← Back to My Bag</button>
+        </div>
+      </div>
+
+      <div id="ymGrassModal" class="ym-modal" style="display:none;">
+        <div class="ym-modal-inner">
+          <div class="ym-modal-head">
+            <h2>Reading Wind with Grass</h2>
+            <button id="ymGrassClose" type="button" class="header-btn">×</button>
+          </div>
+          <div class="ym-modal-body">
+            <p><strong>The technique pros use when there's no flag in sight:</strong></p>
+            <ol>
+              <li>Pluck a small pinch of dry grass blades from the ground.</li>
+              <li>Stand tall, hold the grass at <em>arm's length above your shoulder</em>.</li>
+              <li>Open your fingers and let the grass fall freely.</li>
+              <li>Watch where the blades drift — that's the wind <em>direction</em>.</li>
+              <li>Watch how horizontally they travel before they hit the ground — that's the <em>speed</em>.</li>
+            </ol>
+            <p><strong>Speed estimate:</strong></p>
+            <ul>
+              <li><strong>Falls straight down</strong> → less than 5 mph (effectively calm).</li>
+              <li><strong>Drifts gently sideways</strong> → 5–10 mph (about one club).</li>
+              <li><strong>Carries clearly sideways before landing</strong> → 10–15 mph (one to two clubs).</li>
+              <li><strong>Blown away nearly horizontally</strong> → 15+ mph (two or more clubs; consider knockdown).</li>
+            </ul>
+            <p><strong>Cross-check your read:</strong></p>
+            <ul>
+              <li>Flag on the green — direction and how much it's snapping.</li>
+              <li>Treetops (not lower branches — they shelter).</li>
+              <li>Cloud movement for the upper-air wind.</li>
+              <li>Your own trouser legs and cap brim.</li>
+            </ul>
+            <p style="color:var(--muted); font-size:12px;">Once you have a feel for it, enter the result in the Override Wind box and the matrix shows your adjusted yardages.</p>
+          </div>
         </div>
       </div>
 
@@ -1393,6 +1495,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=202605277"></script>
+    <script type="module" src="script.js?v=202605278"></script>
   </body>
 </html>
