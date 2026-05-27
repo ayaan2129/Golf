@@ -187,6 +187,18 @@
         </div>
 
         <div class="setup-card">
+          <label class="profile-section-title">Tee-off time</label>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Used to tag rounds as morning / afternoon / evening so scoring trends by time of day are visible.</p>
+          <div class="profile-row">
+            <label>Start time</label>
+            <div style="display:flex; gap:8px; align-items:center; flex:1; justify-content:flex-end;">
+              <input type="time" id="teeOffTime" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font:inherit; max-width:130px;" />
+              <span id="teeOffBlock" style="font-size:12px; font-weight:700; color:var(--green-deep); min-width:75px; text-align:right;">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-card">
           <label class="profile-section-title">Game Type</label>
           <div class="pill-group" id="gameTypePills">
             <button class="pill active" data-game="Normal Game" type="button">Normal</button>

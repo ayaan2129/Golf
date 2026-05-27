@@ -777,8 +777,37 @@ document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
 function autoSetTodayOnSetup() {
   const dateInput = document.getElementById("roundDate");
   if (dateInput) dateInput.value = todayISO();
+  // Tee-off time: default to now if blank, derive block label
+  const timeInput = document.getElementById("teeOffTime");
+  if (timeInput && !timeInput.value) {
+    const now = new Date();
+    timeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  }
+  renderTimeBlockLabel();
 }
 autoSetTodayOnSetup();
+
+function deriveTimeBlock(hhmm) {
+  if (!hhmm) return null;
+  const h = parseInt(hhmm.split(":")[0], 10);
+  if (isNaN(h)) return null;
+  if (h < 11) return "Morning";
+  if (h < 16) return "Afternoon";
+  if (h < 19) return "Late afternoon";
+  return "Evening";
+}
+
+function renderTimeBlockLabel() {
+  const t = document.getElementById("teeOffTime");
+  const lbl = document.getElementById("teeOffBlock");
+  if (!t || !lbl) return;
+  const block = deriveTimeBlock(t.value);
+  lbl.textContent = block || "—";
+}
+
+document.addEventListener("input", function (e) {
+  if (e.target && e.target.id === "teeOffTime") renderTimeBlockLabel();
+});
 
 // Restore the previously chosen green speed (per device)
 (function restoreGreenSpeed() {
@@ -2317,6 +2346,7 @@ function showHole(index) {
   if (steps.length === 0) return;
   if (index < 0) index = 0;
   if (index >= steps.length) index = steps.length - 1;
+  const prevIndex = currentHoleIndex;
   currentHoleIndex = index;
   steps.forEach(function (s, i) {
     s.style.display = i === currentHoleIndex ? "" : "none";
@@ -2324,6 +2354,26 @@ function showHole(index) {
   updateHoleNav();
   localStorage.setItem("currentHoleIndex", String(index));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  // Detect crossing from hole 9 → hole 10 (only for 18-hole rounds).
+  // Stamp back-9 start time + refresh weather so conditions per 9 are captured.
+  const active = getActiveHoles();
+  if (active.length >= 18 && prevIndex < 9 && currentHoleIndex >= 9) {
+    captureBack9Conditions();
+  }
+}
+
+function captureBack9Conditions() {
+  if (localStorage.getItem("back9StartTime")) return; // already captured this round
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  localStorage.setItem("back9StartTime", hhmm);
+  // Re-fetch weather using the same path as setup
+  if (typeof fetchWeatherForDate === "function") {
+    const courseKey = (document.getElementById("courseSelect") || {}).value || "RCGC";
+    fetchWeatherForDate(todayISO(), courseKey).then(function (w) {
+      if (w) localStorage.setItem("weatherBack9", JSON.stringify(w));
+    }).catch(function () { /* offline — silent */ });
+  }
 }
 
 function updateHoleNav() {
@@ -3279,6 +3329,18 @@ function saveRoundToHistory() {
     tournamentName: document.getElementById("tournamentName").value || "",
     tournamentFormat: document.getElementById("tournamentFormat").value || "",
     greenSpeed: localStorage.getItem("greenSpeedToday") || "",
+    teeOffTime: (document.getElementById("teeOffTime") || {}).value || "",
+    timeBlock: deriveTimeBlock((document.getElementById("teeOffTime") || {}).value || ""),
+    back9StartTime: localStorage.getItem("back9StartTime") || "",
+    back9TimeBlock: deriveTimeBlock(localStorage.getItem("back9StartTime") || ""),
+    weatherFront9: (function () {
+      try { return JSON.parse(localStorage.getItem("currentWeather") || "null"); }
+      catch (e) { return null; }
+    })(),
+    weatherBack9: (function () {
+      try { return JSON.parse(localStorage.getItem("weatherBack9") || "null"); }
+      catch (e) { return null; }
+    })(),
     energyLevel: (document.getElementById("energyLevel") || {}).value || "",
     confidenceLevel: (document.getElementById("confidenceLevel") || {}).value || "",
     sleepQuality: (document.getElementById("sleepQuality") || {}).value || "",
@@ -3605,6 +3667,10 @@ function clearCurrentRound() {
   toggleSetupRows();
   applyCourseData();
   localStorage.removeItem("golfRound");
+  // Per-round transient state (back-9 timestamp + weather snapshot) should
+  // not bleed into the next round.
+  localStorage.removeItem("back9StartTime");
+  localStorage.removeItem("weatherBack9");
   updateSummary();
   analyze();
 }
@@ -4843,6 +4909,11 @@ function aiBaseContext() {
       ];
       if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
       if (r.greenSpeed) parts.push("greens " + r.greenSpeed);
+      if (r.teeOffTime) parts.push("tee-off " + r.teeOffTime + (r.timeBlock ? " (" + r.timeBlock + ")" : ""));
+      if (r.back9StartTime) parts.push("back-9 " + r.back9StartTime + (r.back9TimeBlock ? " (" + r.back9TimeBlock + ")" : ""));
+      if (r.weatherBack9 && (!r.weatherData || r.weatherBack9.tempMax !== r.weatherData.tempMax || r.weatherBack9.windKmh !== r.weatherData.windKmh)) {
+        parts.push("wx-back9 " + Math.round(r.weatherBack9.tempMax || 0) + "C " + Math.round(r.weatherBack9.windKmh || 0) + "kmh");
+      }
       lines.push("  - " + parts.join(", "));
     }
   }
