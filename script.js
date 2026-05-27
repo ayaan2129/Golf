@@ -643,6 +643,35 @@ document.querySelectorAll("#greenSpeedPills .pill").forEach(function (pill) {
   });
 });
 
+// Stats detail (Basic / Advanced) pill — drives the existing roundMode
+// (quick = basic = score + putts only; full = advanced = shot-by-shot
+// data feeding the AI Coach).
+function applyStatsMode(mode) {
+  const rmode = mode === "basic" ? "quick" : "full";
+  localStorage.setItem("roundMode", rmode);
+  const sel = document.getElementById("roundMode");
+  if (sel) sel.value = rmode;
+  if (typeof applyRoundMode === "function") applyRoundMode();
+}
+(function restoreStatsMode() {
+  // Derive the pill state from existing roundMode if statsMode isn't set yet.
+  const existingRoundMode = localStorage.getItem("roundMode") || "full";
+  const saved = localStorage.getItem("statsMode") || (existingRoundMode === "quick" ? "basic" : "advanced");
+  applyStatsMode(saved);
+  localStorage.setItem("statsMode", saved);
+  document.querySelectorAll("#statsModePills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.statsMode === saved);
+  });
+})();
+document.querySelectorAll("#statsModePills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#statsModePills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    localStorage.setItem("statsMode", pill.dataset.statsMode);
+    applyStatsMode(pill.dataset.statsMode);
+  });
+});
+
 // Game type pill buttons → update the hidden select that the rest of the code reads
 document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
   pill.addEventListener("click", function () {
