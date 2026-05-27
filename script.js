@@ -237,6 +237,76 @@ function getPracticeInsight(pi, ci, ii, di) {
   return cues[0];
 }
 
+function renderPlayIndex() {
+  // Resume card
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("golfRound") || "null"); } catch (e) {}
+  const resumeCard = document.getElementById("playResumeCard");
+  if (resumeCard) {
+    const hasActive = saved && saved.holes && Object.keys(saved.holes).length > 0;
+    resumeCard.style.display = hasActive ? "" : "none";
+    if (hasActive) {
+      const title = document.getElementById("playResumeTitle");
+      const sub = document.getElementById("playResumeSub");
+      if (title) title.textContent = (saved.courseName || "Round") + (saved.date ? " · " + saved.date : "");
+      if (sub) {
+        const filled = Object.keys(saved.holes).length;
+        const total = saved.holesCount || 18;
+        sub.textContent = "Hole " + filled + " of " + total;
+      }
+    }
+  }
+  // Recent rounds
+  const list = document.getElementById("playRecentList");
+  if (list) {
+    const history = (typeof getHistory === "function") ? getHistory() : [];
+    if (!history.length) {
+      list.innerHTML = '<p class="section-empty">No rounds saved yet.</p>';
+    } else {
+      const recent = history.slice(-5).reverse();
+      list.innerHTML = recent.map(function (r) {
+        const par = r.coursePar || 72;
+        const score = r.totalScore || "—";
+        const vs = (typeof r.scoreVsPar === "number") ? (r.scoreVsPar >= 0 ? "+" + r.scoreVsPar : String(r.scoreVsPar)) : "";
+        return '<div class="section-list-row">'
+          + '<div><div class="section-list-row-main">' + escapeHtml(r.courseName || "Round") + '</div>'
+          + '<div class="section-list-row-sub">' + escapeHtml(r.date || "") + (vs ? " · " + vs + " vs par" : "") + '</div></div>'
+          + '<div class="section-list-row-score">' + score + '</div>'
+          + '</div>';
+      }).join("");
+    }
+  }
+}
+
+function renderTrainIndex() {
+  const practice = (typeof getPractice === "function") ? getPractice() : { putting: [], chipping: [], iron: [], driver: [] };
+  const count = function (arr) { return Array.isArray(arr) ? arr.length : 0; };
+  const set = function (id, txt) { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set("trainPuttingSub",  count(practice.putting)  + " sessions");
+  set("trainChippingSub", count(practice.chipping) + " sessions");
+  set("trainIronSub",     count(practice.iron)     + " sessions");
+  set("trainDriverSub",   count(practice.driver)   + " sessions");
+
+  // Week summary
+  const summary = document.getElementById("trainWeekSummary");
+  if (summary) {
+    const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+    const all = [].concat(practice.putting || [], practice.chipping || [], practice.iron || [], practice.driver || []);
+    const recent = all.filter(function (s) { return s && s.timestamp && s.timestamp > weekAgo; });
+    summary.textContent = recent.length ? recent.length + " sessions this week." : "No sessions yet.";
+  }
+}
+
+// Wire train tiles: jump into practiceTab and pre-select the chosen drill type.
+document.addEventListener("click", function (e) {
+  const t = e.target.closest && e.target.closest(".section-tile[data-practice]");
+  if (!t) return;
+  const type = t.dataset.practice;
+  if (type) {
+    try { localStorage.setItem("practicePreselect", type); } catch (err) {}
+  }
+});
+
 function renderHomeDashboard() {
   const profile = getProfile();
   const acct = currentAccount();
@@ -302,8 +372,7 @@ function renderHomeDashboard() {
         if (!hcStat._wired) {
           hcStat._wired = true;
           hcStat.addEventListener("click", function () {
-            showApp(); switchTab("profileTab");
-            syncDrawerActive("profileTab"); syncBottomTabs("profileTab");
+            pushView("profileTab");
           });
         }
       }
@@ -474,8 +543,12 @@ function renderHomeDashboard() {
 }
 
 function syncDrawerActive(target) {
+  // Accept either a section id ("play") or a legacy view id ("setupTab").
+  const sec = (typeof SECTIONS !== "undefined" && SECTIONS[target])
+    ? target
+    : (typeof VIEW_TO_SECTION !== "undefined" ? (VIEW_TO_SECTION[target] || target) : target);
   document.querySelectorAll(".drawer-item").forEach(function (b) {
-    if (b.dataset.goTab === target) b.classList.add("active");
+    if (b.dataset.section === sec) b.classList.add("active");
     else b.classList.remove("active");
   });
 }
@@ -494,7 +567,10 @@ function showWelcome() {
   document.getElementById("welcomeScreen").style.display = "";
   document.getElementById("appScreen").style.display = "none";
   setShellVisible(true);
+  if (typeof navState !== "undefined") { navState.section = null; navState.stack = []; }
   syncBottomTabs("home");
+  if (typeof syncDrawerActive === "function") syncDrawerActive("home");
+  if (typeof updateAppBar === "function") updateAppBar();
   autoSeedIfNeeded(); // seed demo data on first login for ayaan account
   renderHomeDashboard();
   renderWelcome();
@@ -532,9 +608,7 @@ function renderWelcome() {
   if (byoBtn && !byoBtn._wired) {
     byoBtn._wired = true;
     byoBtn.addEventListener("click", function () {
-      showApp();
-      switchTab("statsTab");
-      syncBottomTabs("statsTab");
+      goToSection("settings");
       setTimeout(function () {
         const card = document.getElementById("grokApiKey");
         if (card) {
@@ -735,8 +809,8 @@ if (continueBtnEl) {
       const roundDate = document.getElementById("roundDate");
       if (roundDate) roundDate.value = d.value;
     }
-    showApp();
-    switchTab("setupTab");
+    goToSection("play");
+    pushView("setupTab");
   });
 }
 
@@ -883,6 +957,8 @@ function switchTab(tabId) {
   if (tabId === "settingsTab") {
     if (typeof renderAiStatus === "function") renderAiStatus();
   }
+  if (tabId === "playIndex") renderPlayIndex();
+  if (tabId === "trainIndex") renderTrainIndex();
   if (tabId === "coachTab") {
     // Always show the launcher on (re-)entry; the chat panel is opt-in.
     const launcher = document.getElementById("chatLauncher");
@@ -892,6 +968,21 @@ function switchTab(tabId) {
   }
   if (tabId === "setupTab") {
     if (typeof autoSetTodayOnSetup === "function") autoSetTodayOnSetup();
+  }
+  // Lazy navState sync: any switchTab call that bypasses the router still
+  // updates the AppBar and bottom-nav highlight.
+  if (typeof navState !== "undefined" && typeof VIEW_TO_SECTION !== "undefined") {
+    const top = navState.stack[navState.stack.length - 1];
+    if (top !== tabId) {
+      const sec = VIEW_TO_SECTION[tabId];
+      if (sec) {
+        navState.section = sec;
+        navState.stack = [tabId];
+        if (typeof syncBottomTabs === "function") syncBottomTabs(sec);
+        if (typeof syncDrawerActive === "function") syncDrawerActive(sec);
+      }
+    }
+    if (typeof updateAppBar === "function") updateAppBar();
   }
   window.scrollTo(0, 0);
 }
@@ -909,47 +1000,163 @@ function syncAiStatusOnProfile() {
 }
 
 document.addEventListener("click", function (e) {
-  const btn = e.target.closest && e.target.closest("[data-go]");
+  const btn = e.target.closest && e.target.closest("[data-go], [data-push]");
   if (!btn) return;
+  const push = btn.dataset.push;
   const target = btn.dataset.go;
+  if (push) {
+    pushView(push);
+    return;
+  }
   if (target === "welcome") {
     showWelcome();
-  } else if (target === "setupTab" || target === "clubsTab" || target === "trackerTab" || target === "statsTab" || target === "coachTab" || target === "profileTab" || target === "practiceTab" || target === "videosTab" || target === "settingsTab") {
-    showApp();
-    switchTab(target);
-    syncBottomTabs(target);
+    return;
+  }
+  if (VIEW_TO_SECTION[target]) {
+    pushView(target);
   }
 });
 
-function syncBottomTabs(tabId) {
-  // trackerTab sits within the Round flow — highlight the Round button
-  const mapped = tabId === "trackerTab" ? "setupTab" : tabId;
+// ===== Section router (Phase 1 navigation shell) =====
+// Sections are the top-level tabs; each section has an index view and may
+// push subviews onto a stack. The AppBar shows a back button when the
+// stack has depth > 1.
+
+const SECTIONS = {
+  play:     { label: "Play",     index: "playIndex",   titles: { playIndex: "Play", setupTab: "New Round", trackerTab: "Current Round" } },
+  train:    { label: "Train",    index: "trainIndex",  titles: { trainIndex: "Train", practiceTab: "Practice" } },
+  analyze:  { label: "Analyze",  index: "statsTab",    titles: { statsTab: "Stats & History" } },
+  coach:    { label: "Coach",    index: "coachTab",    titles: { coachTab: "Coach" } },
+  settings: { label: "Settings", index: "settingsTab", titles: { settingsTab: "Settings", profileTab: "Profile", clubsTab: "My Bag", videosTab: "Swing Videos" } },
+};
+
+// Map: view id -> section id, for back-mapping when code uses switchTab directly.
+const VIEW_TO_SECTION = (function () {
+  const m = {};
+  Object.keys(SECTIONS).forEach(function (sec) {
+    m[SECTIONS[sec].index] = sec;
+    Object.keys(SECTIONS[sec].titles).forEach(function (v) { m[v] = sec; });
+  });
+  return m;
+})();
+
+const navState = { section: null, stack: [] };
+
+function currentView() { return navState.stack[navState.stack.length - 1] || null; }
+
+function appBarTitleFor(viewId) {
+  const sec = VIEW_TO_SECTION[viewId];
+  if (sec && SECTIONS[sec].titles[viewId]) return SECTIONS[sec].titles[viewId];
+  return "Golf Tracker";
+}
+
+function updateAppBar() {
+  const view = currentView();
+  const titleEl = document.getElementById("appBarTitle");
+  const backEl = document.getElementById("backBtn");
+  const menuEl = document.getElementById("menuBtn");
+  if (titleEl) titleEl.textContent = view ? appBarTitleFor(view) : "Golf Tracker";
+  const canGoBack = navState.stack.length > 1;
+  if (backEl) backEl.style.display = canGoBack ? "" : "none";
+  if (menuEl) menuEl.style.display = canGoBack ? "none" : "";
+}
+
+function playSlideAnim(viewId, direction) {
+  const el = document.getElementById(viewId);
+  if (!el) return;
+  el.classList.remove("slide-in-right", "slide-in-left", "fade-in");
+  // force reflow
+  // eslint-disable-next-line no-unused-expressions
+  void el.offsetWidth;
+  if (direction === "push") el.classList.add("slide-in-right");
+  else if (direction === "pop") el.classList.add("slide-in-left");
+  else el.classList.add("fade-in");
+}
+
+function goToSection(sectionId) {
+  if (sectionId === "home") {
+    navState.section = null;
+    navState.stack = [];
+    showWelcome();
+    syncBottomTabs("home");
+    syncDrawerActive("home");
+    updateAppBar();
+    return;
+  }
+  const sec = SECTIONS[sectionId];
+  if (!sec) return;
+  showApp();
+  const prevSection = navState.section;
+  navState.section = sectionId;
+  navState.stack = [sec.index];
+  switchTab(sec.index);
+  syncBottomTabs(sectionId);
+  syncDrawerActive(sectionId);
+  updateAppBar();
+  playSlideAnim(sec.index, prevSection === sectionId ? "fade" : "fade");
+}
+
+function pushView(viewId) {
+  if (!viewId) return;
+  const sec = VIEW_TO_SECTION[viewId];
+  if (sec && sec !== navState.section) {
+    // Cross-section navigation: switch section first, then push.
+    navState.section = sec;
+    navState.stack = [SECTIONS[sec].index];
+    syncBottomTabs(sec);
+    syncDrawerActive(sec);
+  }
+  // Don't re-push if already on this view at top of stack.
+  if (currentView() === viewId) {
+    switchTab(viewId);
+    updateAppBar();
+    return;
+  }
+  navState.stack.push(viewId);
+  showApp();
+  switchTab(viewId);
+  updateAppBar();
+  playSlideAnim(viewId, "push");
+}
+
+function popView() {
+  if (navState.stack.length <= 1) {
+    // Already at section root — go back to Home as a courtesy.
+    goToSection("home");
+    return;
+  }
+  navState.stack.pop();
+  const view = currentView();
+  switchTab(view);
+  updateAppBar();
+  playSlideAnim(view, "pop");
+}
+
+function syncBottomTabs(sectionId) {
+  // Accept either a section id or a view id (back-compat).
+  const sec = SECTIONS[sectionId] ? sectionId : (VIEW_TO_SECTION[sectionId] || sectionId);
   document.querySelectorAll(".bt").forEach(function (b) {
-    if (b.dataset.goTab === mapped) b.classList.add("active");
+    if (b.dataset.section === sec) b.classList.add("active");
     else b.classList.remove("active");
   });
 }
 
+// Bottom nav: each button is a section.
 document.querySelectorAll(".bt").forEach(function (btn) {
   btn.addEventListener("click", function () {
-    const target = btn.dataset.goTab;
-    if (target === "home") {
-      showWelcome();
-    } else {
-      showApp();
-      switchTab(target);
-      syncBottomTabs(target);
-    }
+    const section = btn.dataset.section;
+    goToSection(section);
   });
 });
+
+// AppBar back button
+const backBtn = document.getElementById("backBtn");
+if (backBtn) backBtn.addEventListener("click", popView);
 
 const homeOngoingResume = document.getElementById("homeOngoingResume");
 if (homeOngoingResume) {
   homeOngoingResume.addEventListener("click", function () {
-    showApp();
-    switchTab("trackerTab");
-    syncBottomTabs("trackerTab");
-    syncDrawerActive("trackerTab");
+    pushView("trackerTab");
   });
 }
 const homeOngoingDiscard = document.getElementById("homeOngoingDiscard");
@@ -966,19 +1173,13 @@ if (homeOngoingDiscard) {
 const homeStart = document.getElementById("homeStartBtn");
 if (homeStart) {
   homeStart.addEventListener("click", function () {
-    showApp();
-    switchTab("setupTab");
-    syncDrawerActive("setupTab");
-    syncBottomTabs("setupTab");
+    pushView("setupTab");
   });
 }
 
 // Deep-link a home card tap → Coach Chat with a pre-filled question
 function openCoachWithQuestion(question) {
-  showApp();
-  switchTab("coachTab");
-  syncDrawerActive("coachTab");
-  syncBottomTabs("coachTab");
+  goToSection("coach");
   openChatPanel();
   const input = document.getElementById("chatInput");
   if (input) {
@@ -1244,19 +1445,13 @@ if (startRoundBtn) {
     // Rebuild holes and fill course data fresh on each round start
     buildHoles();
     applyCourseData();
-    showApp();
-    switchTab("trackerTab");
-    syncDrawerActive("trackerTab");
-    syncBottomTabs("trackerTab");
+    pushView("trackerTab");
   });
 }
 const homePractice = document.getElementById("homePracticeBtn");
 if (homePractice) {
   homePractice.addEventListener("click", function () {
-    showApp();
-    switchTab("practiceTab");
-    syncDrawerActive("practiceTab");
-    syncBottomTabs("practiceTab");
+    goToSection("train");
     setTimeout(function () {
       const picker = document.getElementById("practicePickerView");
       if (picker) picker.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1273,15 +1468,8 @@ if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
 
 document.querySelectorAll(".drawer-item").forEach(function (item) {
   item.addEventListener("click", function () {
-    const target = item.dataset.goTab;
-    if (target === "home") {
-      showWelcome();
-    } else if (target) {
-      showApp();
-      switchTab(target);
-    }
-    syncDrawerActive(target);
-    syncBottomTabs(target);
+    const section = item.dataset.section;
+    if (section) goToSection(section);
     closeDrawer();
   });
 });
@@ -1321,7 +1509,7 @@ if (settingsLogout) {
 
 const headerHome = document.getElementById("headerHomeBtn");
 if (headerHome) {
-  headerHome.addEventListener("click", function () { showWelcome(); });
+  headerHome.addEventListener("click", function () { goToSection("home"); });
 }
 const headerLogout = document.getElementById("headerLogoutBtn");
 if (headerLogout) {
@@ -3728,7 +3916,7 @@ function initDashboard() {
   const goToAiSettingsBtn = document.getElementById("goToAiSettingsBtn");
   if (goToAiSettingsBtn) {
     goToAiSettingsBtn.addEventListener("click", function () {
-      switchTab("settingsTab");
+      goToSection("settings");
       setTimeout(function () {
         const card = document.getElementById("grokApiKey");
         if (card) {
@@ -5819,8 +6007,7 @@ if (nextHoleBtn) {
   nextHoleBtn.addEventListener("click", function () {
     const steps = holesContainer.querySelectorAll(".hole-step");
     if (currentHoleIndex >= steps.length - 1) {
-      showApp();
-      switchTab("statsTab");
+      goToSection("analyze");
     } else {
       showHole(currentHoleIndex + 1);
     }

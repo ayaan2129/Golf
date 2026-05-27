@@ -60,10 +60,11 @@
       </div>
     </div>
 
-    <header class="app-header" id="appHeader" style="display:none;">
-      <button class="header-btn" id="menuBtn" title="Menu">☰</button>
-      <h1 class="header-title">Golf Tracker</h1>
-      <button class="header-btn" id="headerHomeBtn" title="Home">⌂</button>
+    <header class="app-bar" id="appHeader" style="display:none;">
+      <button class="header-btn app-bar-left" id="menuBtn" title="Menu">☰</button>
+      <button class="header-btn app-bar-left" id="backBtn" title="Back" style="display:none;">‹</button>
+      <h1 class="header-title app-bar-title" id="appBarTitle">Golf Tracker</h1>
+      <button class="header-btn app-bar-right" id="headerHomeBtn" title="Home">⌂</button>
     </header>
 
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
@@ -72,13 +73,12 @@
         <h2 id="drawerWelcome">Menu</h2>
         <button class="header-btn" id="closeDrawerBtn" title="Close">×</button>
       </div>
-      <button class="drawer-item active" data-go-tab="home">⌂  Home</button>
-      <button class="drawer-item" data-go-tab="setupTab">⚙  New Round Setup</button>
-      <button class="drawer-item" data-go-tab="trackerTab">⛳  Current Round</button>
-      <button class="drawer-item" data-go-tab="statsTab">▦  Stats &amp; History</button>
-      <button class="drawer-item" data-go-tab="practiceTab">🎯  Practice</button>
-      <button class="drawer-item" data-go-tab="coachTab">💬  Coach</button>
-      <button class="drawer-item" data-go-tab="settingsTab">⚙  Settings</button>
+      <button class="drawer-item active" data-section="home">⌂  Home</button>
+      <button class="drawer-item" data-section="play">⛳  Play</button>
+      <button class="drawer-item" data-section="train">🎯  Train</button>
+      <button class="drawer-item" data-section="analyze">▦  Analyze</button>
+      <button class="drawer-item" data-section="coach">💬  Coach</button>
+      <button class="drawer-item" data-section="settings">⚙  Settings</button>
       <div class="drawer-divider"></div>
       <button class="drawer-item" id="drawerLogout" style="color:#b71c1c;">↩  Logout</button>
     </aside>
@@ -184,6 +184,77 @@
     <div id="appScreen" style="display:none;">
       <div class="app-body">
 
+      <div id="playIndex" class="tab-page" style="display:none;">
+        <div class="section-index">
+          <div class="section-index-hero">
+            <div class="section-index-eyebrow">PLAY</div>
+            <h1 class="section-index-title">Round</h1>
+            <p class="section-index-sub">Set up, play, review.</p>
+          </div>
+
+          <div class="section-index-card" id="playResumeCard" style="display:none;">
+            <div class="section-index-card-tag">In Progress</div>
+            <h3 id="playResumeTitle">Round in progress</h3>
+            <p id="playResumeSub" class="section-index-card-sub">—</p>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button class="section-cta primary" id="playResumeBtn">Resume →</button>
+              <button class="btn-secondary danger" id="playDiscardBtn">Discard</button>
+            </div>
+          </div>
+
+          <button class="section-cta primary block" data-push="setupTab">⛳  Start New Round</button>
+
+          <div class="section-list">
+            <div class="section-list-header">
+              <h3>Recent Rounds</h3>
+              <button class="section-list-more" data-push="statsTab" data-section="analyze">View all →</button>
+            </div>
+            <div id="playRecentList" class="section-list-body">
+              <p class="section-empty">No rounds saved yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="trainIndex" class="tab-page" style="display:none;">
+        <div class="section-index">
+          <div class="section-index-hero">
+            <div class="section-index-eyebrow">TRAIN</div>
+            <h1 class="section-index-title">Practice</h1>
+            <p class="section-index-sub">Sharpen one shot at a time.</p>
+          </div>
+
+          <div class="section-tile-grid">
+            <button class="section-tile" data-push="practiceTab" data-practice="putting">
+              <div class="section-tile-icon">⛳</div>
+              <div class="section-tile-label">Putting</div>
+              <div class="section-tile-sub" id="trainPuttingSub">—</div>
+            </button>
+            <button class="section-tile" data-push="practiceTab" data-practice="chipping">
+              <div class="section-tile-icon">🎯</div>
+              <div class="section-tile-label">Chipping</div>
+              <div class="section-tile-sub" id="trainChippingSub">—</div>
+            </button>
+            <button class="section-tile" data-push="practiceTab" data-practice="iron">
+              <div class="section-tile-icon">🏌</div>
+              <div class="section-tile-label">Iron</div>
+              <div class="section-tile-sub" id="trainIronSub">—</div>
+            </button>
+            <button class="section-tile" data-push="practiceTab" data-practice="driver">
+              <div class="section-tile-icon">💥</div>
+              <div class="section-tile-label">Driver</div>
+              <div class="section-tile-sub" id="trainDriverSub">—</div>
+            </button>
+          </div>
+
+          <div class="section-list">
+            <div class="section-list-header">
+              <h3>This Week</h3>
+            </div>
+            <p class="section-empty" id="trainWeekSummary">No sessions yet.</p>
+          </div>
+        </div>
+      </div>
 
       <div id="setupTab" class="tab-page">
         <div class="setup-hero-card">
@@ -1437,28 +1508,28 @@
     </div>
 
     <nav class="bottom-tabs" id="bottomNav" style="display:none;">
-      <button class="bt" data-go-tab="home">
+      <button class="bt" data-section="home">
         <span class="bt-icon">⌂</span>
         <span class="bt-label">Home</span>
       </button>
-      <button class="bt" data-go-tab="setupTab">
+      <button class="bt" data-section="play">
         <span class="bt-icon">⛳</span>
-        <span class="bt-label">Round</span>
+        <span class="bt-label">Play</span>
       </button>
-      <button class="bt" data-go-tab="practiceTab">
+      <button class="bt" data-section="train">
         <span class="bt-icon">🎯</span>
-        <span class="bt-label">Practice</span>
+        <span class="bt-label">Train</span>
       </button>
-      <button class="bt" data-go-tab="statsTab">
+      <button class="bt" data-section="analyze">
         <span class="bt-icon">▦</span>
-        <span class="bt-label">Stats</span>
+        <span class="bt-label">Analyze</span>
       </button>
-      <button class="bt" data-go-tab="coachTab">
+      <button class="bt" data-section="coach">
         <span class="bt-icon">💬</span>
         <span class="bt-label">Coach</span>
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=202605280"></script>
+    <script type="module" src="script.js?v=202605281"></script>
   </body>
 </html>
