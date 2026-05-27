@@ -1041,10 +1041,33 @@ const courseSelectEl = document.getElementById("courseSelect");
 if (courseSelectEl) {
   courseSelectEl.addEventListener("change", function () {
     renderCourseExtras();
+    updateSetupSummary();
     const d = todayISO();
     loadTemperatureForDate(d);
   });
 }
+
+function updateSetupSummary() {
+  const el = document.getElementById("setupRoundSummary");
+  if (!el) return;
+  const courseVal = (document.getElementById("courseSelect") || {}).value || "";
+  const teeActive = document.querySelector("#teePillGroup .pill.active");
+  const holesActive = document.querySelector("#holesPillGroup .pill.active");
+  const parts = [];
+  if (courseVal && courseVal !== "Other") parts.push(courseVal);
+  else if (courseVal === "Other") {
+    const custom = ((document.getElementById("customCourseName") || {}).value || "").trim();
+    if (custom) parts.push(custom);
+  }
+  if (teeActive) parts.push(teeActive.dataset.tee + " tees");
+  if (holesActive) parts.push(holesActive.dataset.holes === "18" ? "18 holes" : holesActive.dataset.holes.replace("9", " 9"));
+  el.textContent = parts.length > 0 ? parts.join(" · ") : "";
+}
+
+// Wire tee + holes pill clicks to also refresh summary
+document.querySelectorAll("#teePillGroup .pill, #holesPillGroup .pill").forEach(function (p) {
+  p.addEventListener("click", function () { setTimeout(updateSetupSummary, 50); });
+});
 
 // Start Round button
 const startRoundBtn = document.getElementById("startRoundBtn");

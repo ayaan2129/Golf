@@ -182,16 +182,17 @@
           </div>
         </div>
 
+        <!-- ── ESSENTIAL FIELDS ── -->
         <div class="setup-card">
           <label class="profile-section-title">Course</label>
           <select id="courseSelect" class="big-select">
             <option value="">Choose a course</option>
             <option value="RCGC">RCGC — Royal Calcutta GC</option>
-            <option value="Tolly">Tolly — coming soon</option>
+            <option value="Tolly" disabled>Tolly — coming soon</option>
             <option value="Other">Add custom course</option>
           </select>
-          <label id="customCourseRow" style="display:none; margin-top:12px;">Course Name
-            <input type="text" id="customCourseName" placeholder="e.g. DLF Golf &amp; Country Club" />
+          <label id="customCourseRow" style="display:none; margin-top:12px; font-size:13px; font-weight:700; color:var(--ink-soft);">Course name
+            <input type="text" id="customCourseName" placeholder="e.g. DLF Golf &amp; Country Club" style="margin-top:4px;" />
           </label>
           <p id="courseNotice" class="course-notice" style="display:none;"></p>
         </div>
@@ -215,80 +216,85 @@
           </div>
         </div>
 
-        <div class="setup-card">
-          <label class="profile-section-title">Green speed today</label>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Greens change daily — set it now so your putting stats know what they were rolling on.</p>
-          <div class="pill-group" id="greenSpeedPills">
-            <button class="pill" data-stimp="slow" type="button">Slow<br><span style="font-size:11px; opacity:0.7;">~8 stimp</span></button>
-            <button class="pill" data-stimp="medium" type="button">Medium<br><span style="font-size:11px; opacity:0.7;">~9 stimp</span></button>
-            <button class="pill active" data-stimp="medium-fast" type="button">Medium-fast<br><span style="font-size:11px; opacity:0.7;">~10 stimp</span></button>
-            <button class="pill" data-stimp="fast" type="button">Fast<br><span style="font-size:11px; opacity:0.7;">~11 stimp</span></button>
-            <button class="pill" data-stimp="tournament" type="button">Tournament<br><span style="font-size:11px; opacity:0.7;">~12+ stimp</span></button>
-          </div>
-        </div>
-
+        <!-- Course info appears once course is selected -->
         <div class="setup-card course-info-card" id="courseInfo" style="display:none;">
           <label class="profile-section-title">Course Info</label>
           <div class="info-grid">
-            <div class="info-cell"><div class="info-val" id="ciCoursePar">—</div><div class="info-lbl">Course Par</div></div>
-            <div class="info-cell"><div class="info-val" id="ciTotalDistance">—</div><div class="info-lbl">Total Yds</div></div>
-            <div class="info-cell"><div class="info-val" id="ciFront9">—</div><div class="info-lbl">Front 9</div></div>
-            <div class="info-cell"><div class="info-val" id="ciBack9">—</div><div class="info-lbl">Back 9</div></div>
+            <div class="info-cell"><div class="info-val" id="ciCoursePar">—</div><div class="info-lbl">Par</div></div>
+            <div class="info-cell"><div class="info-val" id="ciTotalDistance">—</div><div class="info-lbl">Yds</div></div>
+            <div class="info-cell"><div class="info-val" id="ciFront9">—</div><div class="info-lbl">Front</div></div>
+            <div class="info-cell"><div class="info-val" id="ciBack9">—</div><div class="info-lbl">Back</div></div>
           </div>
           <p class="info-foot" id="courseGreenSpeed"></p>
           <p class="info-foot" id="courseNotes"></p>
         </div>
 
-        <div class="setup-card weather-card-setup">
-          <label class="profile-section-title">Today's Weather</label>
-          <p class="weather-line" id="defaultsTemp">Pick a course to load weather</p>
-        </div>
+        <!-- ── MORE OPTIONS (collapsed by default) ── -->
+        <details class="setup-more-options">
+          <summary>More options</summary>
 
-        <div class="setup-card">
-          <label class="profile-section-title">Tee-off time</label>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Used to tag rounds as morning / afternoon / evening so scoring trends by time of day are visible.</p>
-          <div class="profile-row">
-            <label>Start time</label>
-            <div style="display:flex; gap:8px; align-items:center; flex:1; justify-content:flex-end;">
-              <input type="time" id="teeOffTime" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font:inherit; max-width:130px;" />
-              <span id="teeOffBlock" style="font-size:12px; font-weight:700; color:var(--green-deep); min-width:75px; text-align:right;">—</span>
+          <div class="setup-card" style="margin-top:8px;">
+            <label class="profile-section-title">Green Speed</label>
+            <div class="pill-group" id="greenSpeedPills">
+              <button class="pill" data-stimp="slow" type="button">Slow <span class="pill-sub">~8</span></button>
+              <button class="pill" data-stimp="medium" type="button">Medium <span class="pill-sub">~9</span></button>
+              <button class="pill active" data-stimp="medium-fast" type="button">Med-fast <span class="pill-sub">~10</span></button>
+              <button class="pill" data-stimp="fast" type="button">Fast <span class="pill-sub">~11</span></button>
+              <button class="pill" data-stimp="tournament" type="button">Tourn. <span class="pill-sub">12+</span></button>
             </div>
           </div>
-        </div>
 
-        <div class="setup-card">
-          <label class="profile-section-title">Stats detail</label>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Basic skips shot-by-shot inputs (just score, putts, chips per hole). Advanced gives full data for the AI Coach.</p>
-          <div class="pill-group" id="statsModePills">
-            <button class="pill" data-stats-mode="basic" type="button">Basic</button>
-            <button class="pill active" data-stats-mode="advanced" type="button">Advanced</button>
+          <div class="setup-card weather-card-setup">
+            <label class="profile-section-title">Weather</label>
+            <p class="weather-line" id="defaultsTemp">Pick a course to load weather</p>
           </div>
-        </div>
 
-        <div class="setup-card">
-          <label class="profile-section-title">Game Type</label>
-          <div class="pill-group" id="gameTypePills">
-            <button class="pill active" data-game="Normal Game" type="button">Normal</button>
-            <button class="pill" data-game="Tournament" type="button">Tournament</button>
+          <div class="setup-card">
+            <label class="profile-section-title">Tee-off Time</label>
+            <div class="profile-row" style="margin:0;">
+              <label style="font-weight:600; font-size:13px;">Start time</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="time" id="teeOffTime" style="padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font:inherit; font-size:15px; max-width:130px;" />
+                <span id="teeOffBlock" style="font-size:12px; font-weight:700; color:var(--green-deep);">—</span>
+              </div>
+            </div>
           </div>
-          <div class="profile-row" id="tournamentNameRow" style="display:none; margin-top:10px;">
-            <label>Tournament</label>
-            <input type="text" id="tournamentName" placeholder="Name" />
-          </div>
-          <div class="profile-row" id="tournamentFormatRow" style="display:none;">
-            <label>Format</label>
-            <select id="tournamentFormat">
-              <option value="">—</option>
-              <option value="Stroke play">Stroke play</option>
-              <option value="Match play">Match play</option>
-              <option value="5-club tournament">5-club</option>
-              <option value="Stableford">Stableford</option>
-              <option value="Scramble">Scramble</option>
-              <option value="Practice tournament">Practice</option>
-            </select>
-          </div>
-        </div>
 
+          <div class="setup-card">
+            <label class="profile-section-title">Stats Detail</label>
+            <div class="pill-group" id="statsModePills">
+              <button class="pill" data-stats-mode="basic" type="button">Basic</button>
+              <button class="pill active" data-stats-mode="advanced" type="button">Advanced</button>
+            </div>
+            <p style="margin:8px 0 0; font-size:11px; color:var(--muted);">Advanced = full shot-by-shot data for AI analysis</p>
+          </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Game Type</label>
+            <div class="pill-group" id="gameTypePills">
+              <button class="pill active" data-game="Normal Game" type="button">Normal</button>
+              <button class="pill" data-game="Tournament" type="button">Tournament</button>
+            </div>
+            <div class="profile-row" id="tournamentNameRow" style="display:none; margin-top:10px;">
+              <label>Tournament</label>
+              <input type="text" id="tournamentName" placeholder="Name" />
+            </div>
+            <div class="profile-row" id="tournamentFormatRow" style="display:none;">
+              <label>Format</label>
+              <select id="tournamentFormat">
+                <option value="">—</option>
+                <option value="Stroke play">Stroke play</option>
+                <option value="Match play">Match play</option>
+                <option value="5-club tournament">5-club</option>
+                <option value="Stableford">Stableford</option>
+                <option value="Scramble">Scramble</option>
+                <option value="Practice tournament">Practice</option>
+              </select>
+            </div>
+          </div>
+        </details>
+
+        <!-- Hidden sync inputs (written by JS, read by tracker) -->
         <div style="display:none;">
           <input type="date" id="roundDate" />
           <select id="gameType">
@@ -303,9 +309,12 @@
           <div id="customHolesRow"><div id="customHolesChecks"></div></div>
         </div>
 
-        <div style="height:80px;"></div><!-- spacer so sticky CTA doesn't cover content -->
+        <div style="height:100px;"></div>
         <div class="setup-sticky-cta">
-          <button id="startRoundBtn" class="home-cta-btn">Start Round →</button>
+          <div style="width:100%; max-width:460px;">
+            <button id="startRoundBtn" class="home-cta-btn" style="width:100%; margin:0;">Start Round →</button>
+            <p id="setupRoundSummary" style="text-align:center; font-size:12px; color:var(--green-deep); font-weight:700; margin:6px 0 0; opacity:0.8;"></p>
+          </div>
         </div>
       </div>
 
@@ -1355,6 +1364,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527w"></script>
+    <script type="module" src="script.js?v=20260527x"></script>
   </body>
 </html>
