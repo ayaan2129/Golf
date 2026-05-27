@@ -311,9 +311,17 @@ function renderPuttingDeepDive(body, rounds) {
 
   let html = "";
   html += '<div class="dd-row">';
-  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Round</div><div class="dd-stat-num">' + (avgPutts != null ? avgPutts.toFixed(1) : "—") + '</div></div>';
-  const ppHoleVal = totalHoles > 0 ? (rounds.reduce(function (s, r) { return s + (r.totalPutts || 0); }, 0) / totalHoles).toFixed(2) : "—";
-  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Hole</div><div class="dd-stat-num">' + ppHoleVal + '</div></div>';
+  if (rounds.length === 0) {
+    // No rounds — show practice-derived stats so the panel isn't a row of dashes.
+    const practiceMake = practice && practice.distanceRates ? practice.distanceRates.reduce(function (acc, b) { acc.n += b.count; if (b.pct != null) acc.weighted += b.pct * b.count; return acc; }, { n: 0, weighted: 0 }) : null;
+    const overallPct = practiceMake && practiceMake.n > 0 ? Math.round(practiceMake.weighted / practiceMake.n) : null;
+    html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts logged</div><div class="dd-stat-num">' + (practice ? practice.totalShots : 0) + '</div></div>';
+    html += '  <div class="dd-stat"><div class="dd-stat-lbl">Make rate</div><div class="dd-stat-num">' + (overallPct != null ? overallPct + "%" : "—") + '</div></div>';
+  } else {
+    html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Round</div><div class="dd-stat-num">' + (avgPutts != null ? avgPutts.toFixed(1) : "—") + '</div></div>';
+    const ppHoleVal = totalHoles > 0 ? (rounds.reduce(function (s, r) { return s + (r.totalPutts || 0); }, 0) / totalHoles).toFixed(2) : "—";
+    html += '  <div class="dd-stat"><div class="dd-stat-lbl">Putts/Hole</div><div class="dd-stat-num">' + ppHoleVal + '</div></div>';
+  }
   html += '</div>';
 
   if (totalHoles > 0) {

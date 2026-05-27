@@ -797,6 +797,15 @@
         </div>
 
         <div class="profile-section">
+          <h3 class="profile-section-title">Practice ranges</h3>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">Bands you see as pills inside each drill. Edit min/max — leave the highest band's max blank for "+ ft / yd".</p>
+          <h4 style="margin:10px 0 6px; font-size:13px; color:var(--green-deep);">Putting (ft)</h4>
+          <div id="puttingRangesEditor"></div>
+          <h4 style="margin:18px 0 6px; font-size:13px; color:var(--green-deep);">Chipping (yd)</h4>
+          <div id="chippingRangesEditor"></div>
+        </div>
+
+        <div class="profile-section">
           <h3 class="profile-section-title">AI Coach (BYO key)</h3>
           <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">Bring your own xAI Grok key (free credit on signup at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock the AI coach. Each user's key stays on their own device.</p>
           <p id="aiStatusProfile" class="ai-status" style="margin:0 0 10px;">AI coach off — add a key on the Stats tab to enable.</p>
@@ -880,6 +889,11 @@
             <label class="profile-section-title">Recent Driver / Wood Stats</label>
             <div id="driverStatsSummary">Log some tee shots to see your fairway %.</div>
           </div>
+
+          <div class="setup-card">
+            <label class="profile-section-title">Your sessions</label>
+            <div id="practiceHistoryList" style="font-size:13px;">No sessions yet. Your first one shows up here.</div>
+          </div>
         </div>
 
         <div id="puttingView" style="display:none;">
@@ -893,58 +907,26 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Conditions</label>
-            <div class="profile-row">
-              <label>Distance</label>
+            <label class="profile-section-title">Distance</label>
+            <div class="pill-group small-pills" id="puttRangePills"><!-- populated from getPuttingRanges() --></div>
+            <div class="profile-row" id="puttCustomDistanceRow" style="display:none; margin-top:8px;">
+              <label>Custom (ft)</label>
               <div style="display:flex; gap:6px; align-items:center;">
                 <input type="number" id="puttDistance" placeholder="ft" min="1" style="width:80px; text-align:right;" />
                 <span style="color:var(--muted); font-size:14px;">ft</span>
               </div>
             </div>
-            <div class="profile-row">
-              <label>Break</label>
-              <div class="pill-group small-pills" id="puttBreakPills">
-                <button class="pill active" data-break="straight" type="button">— Straight</button>
-                <button class="pill" data-break="L-to-R" type="button">↘ L→R</button>
-                <button class="pill" data-break="R-to-L" type="button">↙ R→L</button>
-              </div>
-            </div>
-            <div class="profile-row">
-              <label>Slope</label>
-              <div class="pill-group small-pills" id="puttSlopePills">
-                <button class="pill active" data-slope="flat" type="button">Flat</button>
-                <button class="pill" data-slope="uphill" type="button">Uphill</button>
-                <button class="pill" data-slope="downhill" type="button">Downhill</button>
-              </div>
-            </div>
-            <div class="profile-row">
-              <label>Green</label>
-              <div class="pill-group small-pills" id="puttSpeedPills">
-                <button class="pill" data-speed="slow" type="button">Slow</button>
-                <button class="pill active" data-speed="medium" type="button">Medium</button>
-                <button class="pill" data-speed="fast" type="button">Fast</button>
-              </div>
-            </div>
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Intent</label>
-            <div class="pill-group" id="puttIntentPills">
-              <button class="pill active" data-intent="make" type="button">Try to Make</button>
-              <button class="pill" data-intent="lag" type="button">Lag (just close)</button>
-            </div>
-            <div class="profile-row" id="puttLagRow" style="display:none;">
-              <label>Circle target</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input type="number" id="puttCircle" value="5" min="1" style="width:80px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">ft circle</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <label class="profile-section-title" style="margin:0;">Intent</label>
+              <div class="pill-group small-pills" id="puttIntentPills" style="margin:0;">
+                <button class="pill active" data-intent="make" type="button">Make</button>
+                <button class="pill" data-intent="lag" type="button">Lag</button>
               </div>
             </div>
-          </div>
-
-          <div class="setup-card" id="puttMakeResults">
-            <label class="profile-section-title">Result</label>
-            <div class="result-grid">
+            <div class="result-grid" id="puttMakeResults">
               <button class="result-btn good" data-result="Holed">✓ Holed</button>
               <button class="result-btn miss" data-result="Lip-out">⊝ Lip-out</button>
               <button class="result-btn miss" data-result="Short">↓ Short</button>
@@ -952,22 +934,59 @@
               <button class="result-btn miss" data-result="Left">← Missed left</button>
               <button class="result-btn miss" data-result="Right">→ Missed right</button>
             </div>
-          </div>
-
-          <div class="setup-card" id="puttLagResults" style="display:none;">
-            <label class="profile-section-title">Where did it finish?</label>
-            <div class="profile-row">
-              <label>Distance left</label>
-              <div style="display:flex; gap:6px;align-items:center;">
-                <input type="number" id="puttFinishDist" placeholder="ft" min="0" style="width:80px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">ft</span>
+            <div id="puttLagResults" style="display:none;">
+              <div class="profile-row" style="margin-top:8px;">
+                <label>Finish distance</label>
+                <div style="display:flex; gap:6px;align-items:center;">
+                  <input type="number" id="puttFinishDist" placeholder="ft" min="0" style="width:80px; text-align:right;" />
+                  <span style="color:var(--muted); font-size:14px;">ft</span>
+                </div>
+              </div>
+              <div class="result-grid" style="margin-top:8px;">
+                <button class="result-btn good" data-lag-result="Holed">✓ Holed</button>
+                <button class="result-btn" data-lag-result="In Circle">○ In circle</button>
+                <button class="result-btn miss" data-lag-result="Outside Circle">⊝ Outside</button>
               </div>
             </div>
-            <div class="result-grid">
-              <button class="result-btn good" data-lag-result="Holed">✓ Holed</button>
-              <button class="result-btn" data-lag-result="In Circle">○ Inside circle</button>
-              <button class="result-btn miss" data-lag-result="Outside Circle">⊝ Outside</button>
-            </div>
+          </div>
+
+          <div class="setup-card" style="padding:0; overflow:hidden;">
+            <details class="drill-conditions">
+              <summary>Conditions <span style="font-size:11px; font-weight:400; color:var(--muted);">(Break · Slope · Green speed)</span></summary>
+              <div class="conditions-inner" style="padding:8px 14px 10px;">
+                <div class="profile-row">
+                  <label>Break</label>
+                  <div class="pill-group small-pills" id="puttBreakPills">
+                    <button class="pill active" data-break="straight" type="button">— Straight</button>
+                    <button class="pill" data-break="L-to-R" type="button">↘ L→R</button>
+                    <button class="pill" data-break="R-to-L" type="button">↙ R→L</button>
+                  </div>
+                </div>
+                <div class="profile-row">
+                  <label>Slope</label>
+                  <div class="pill-group small-pills" id="puttSlopePills">
+                    <button class="pill active" data-slope="flat" type="button">Flat</button>
+                    <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                    <button class="pill" data-slope="downhill" type="button">Downhill</button>
+                  </div>
+                </div>
+                <div class="profile-row">
+                  <label>Green</label>
+                  <div class="pill-group small-pills" id="puttSpeedPills">
+                    <button class="pill" data-speed="slow" type="button">Slow</button>
+                    <button class="pill active" data-speed="medium" type="button">Medium</button>
+                    <button class="pill" data-speed="fast" type="button">Fast</button>
+                  </div>
+                </div>
+                <div class="profile-row" id="puttLagRow" style="display:none;">
+                  <label>Circle target</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" id="puttCircle" value="5" min="1" style="width:80px; text-align:right;" />
+                    <span style="color:var(--muted); font-size:14px;">ft</span>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
 
@@ -982,47 +1001,31 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Conditions</label>
-            <div class="profile-row">
-              <label>Distance</label>
+            <label class="profile-section-title">Distance</label>
+            <div class="pill-group small-pills" id="chipRangePills"></div>
+            <div class="profile-row" id="chipCustomDistanceRow" style="display:none; margin-top:8px;">
+              <label>Custom (yd)</label>
               <div style="display:flex; gap:6px; align-items:center;">
                 <input type="number" id="chipDistance" placeholder="yd" min="1" style="width:80px; text-align:right;" />
                 <span style="color:var(--muted); font-size:14px;">yd</span>
               </div>
             </div>
-            <div class="profile-row">
-              <label>Lie</label>
-              <div class="pill-group small-pills" id="chipLiePills">
-                <button class="pill active" data-lie="fairway" type="button">Fairway</button>
-                <button class="pill" data-lie="light-rough" type="button">Light Rough</button>
-                <button class="pill" data-lie="heavy-rough" type="button">Heavy Rough</button>
-                <button class="pill" data-lie="sand" type="button">Sand</button>
-                <button class="pill" data-lie="hardpan" type="button">Hardpan</button>
-              </div>
-            </div>
-            <div class="profile-row">
-              <label>Slope</label>
-              <div class="pill-group small-pills" id="chipSlopePills">
-                <button class="pill active" data-slope="flat" type="button">Flat</button>
-                <button class="pill" data-slope="uphill" type="button">Uphill</button>
-                <button class="pill" data-slope="downhill" type="button">Downhill</button>
-              </div>
-            </div>
-            <div class="profile-row">
+          </div>
+
+          <div class="setup-card">
+            <div class="profile-row drill-club-row" style="padding:0 0 6px;">
               <label>Club</label>
               <div class="pill-group small-pills" id="chipClubPills">
                 <button class="pill" data-club="LW" type="button">LW</button>
                 <button class="pill active" data-club="SW" type="button">SW</button>
+                <button class="pill" data-club="GW" type="button">GW</button>
                 <button class="pill" data-club="PW" type="button">PW</button>
                 <button class="pill" data-club="9i" type="button">9i</button>
                 <button class="pill" data-club="8i" type="button">8i</button>
                 <button class="pill" data-club="7i" type="button">7i</button>
               </div>
             </div>
-          </div>
-
-          <div class="setup-card">
-            <label class="profile-section-title">Result — where did it stop?</label>
+            <label class="profile-section-title" style="margin-top:8px;">Result — where did it stop?</label>
             <div class="result-grid">
               <button class="result-btn good" data-chip-result="Holed">✓ Holed</button>
               <button class="result-btn good" data-chip-result="In 3ft">○ Inside 3 ft</button>
@@ -1033,6 +1036,32 @@
               <button class="result-btn miss" data-chip-result="Chunked">✗ Chunked / fat</button>
               <button class="result-btn miss" data-chip-result="Bladed">⤴ Bladed / thin</button>
             </div>
+          </div>
+
+          <div class="setup-card" style="padding:0; overflow:hidden;">
+            <details class="drill-conditions">
+              <summary>Conditions <span style="font-size:11px; font-weight:400; color:var(--muted);">(Lie · Slope)</span></summary>
+              <div class="conditions-inner" style="padding:8px 14px 10px;">
+                <div class="profile-row">
+                  <label>Lie</label>
+                  <div class="pill-group small-pills" id="chipLiePills">
+                    <button class="pill active" data-lie="fairway" type="button">Fairway</button>
+                    <button class="pill" data-lie="light-rough" type="button">Lt. Rough</button>
+                    <button class="pill" data-lie="heavy-rough" type="button">Hy. Rough</button>
+                    <button class="pill" data-lie="sand" type="button">Sand</button>
+                    <button class="pill" data-lie="hardpan" type="button">Hardpan</button>
+                  </div>
+                </div>
+                <div class="profile-row">
+                  <label>Slope</label>
+                  <div class="pill-group small-pills" id="chipSlopePills">
+                    <button class="pill active" data-slope="flat" type="button">Flat</button>
+                    <button class="pill" data-slope="uphill" type="button">Uphill</button>
+                    <button class="pill" data-slope="downhill" type="button">Downhill</button>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
 
@@ -1047,15 +1076,7 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Shot Setup</label>
-            <div class="profile-row">
-              <label>Target</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input type="number" id="ironTarget" placeholder="optional" min="30" style="width:90px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">yd</span>
-              </div>
-            </div>
-            <div class="profile-row">
+            <div class="profile-row drill-club-row" style="padding:0 0 4px;">
               <label>Club</label>
               <div class="pill-group small-pills" id="ironClubPills">
                 <button class="pill" data-club="3i" type="button">3i</button>
@@ -1071,28 +1092,7 @@
                 <button class="pill" data-club="5H" type="button">5H</button>
               </div>
             </div>
-            <div class="profile-row">
-              <label>Carry</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input type="number" id="ironCarry" placeholder="yd" min="30" style="width:90px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">yd</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="setup-card">
-            <label class="profile-section-title">Shape</label>
-            <div class="pill-group small-pills" id="ironShapePills">
-              <button class="pill active" data-shape="straight" type="button">— Straight</button>
-              <button class="pill" data-shape="draw" type="button">↶ Draw</button>
-              <button class="pill" data-shape="fade" type="button">↷ Fade</button>
-              <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
-              <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
-            </div>
-          </div>
-
-          <div class="setup-card">
-            <label class="profile-section-title">Result — where did it land?</label>
+            <label class="profile-section-title" style="margin-top:8px;">Result — where did it land?</label>
             <div class="result-grid">
               <button class="result-btn good" data-iron-result="On target">✓ On target</button>
               <button class="result-btn" data-iron-result="Short">↓ Short</button>
@@ -1103,6 +1103,35 @@
               <button class="result-btn miss" data-iron-result="Thin">⤴ Thin / topped</button>
               <button class="result-btn miss" data-iron-result="OB">⊝ OB / hazard</button>
             </div>
+          </div>
+
+          <div class="setup-card" style="padding:0; overflow:hidden;">
+            <details class="drill-conditions">
+              <summary>Shot detail <span style="font-size:11px; font-weight:400; color:var(--muted);">(Shape · Carry · Target)</span></summary>
+              <div class="conditions-inner" style="padding:8px 14px 10px;">
+                <div class="pill-group small-pills" id="ironShapePills" style="margin-bottom:10px;">
+                  <button class="pill active" data-shape="straight" type="button">— Straight</button>
+                  <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+                  <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+                  <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+                  <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+                </div>
+                <div class="profile-row">
+                  <label>Carry</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" id="ironCarry" placeholder="yd" min="30" style="width:90px; text-align:right;" />
+                    <span style="color:var(--muted); font-size:14px;">yd</span>
+                  </div>
+                </div>
+                <div class="profile-row">
+                  <label>Target</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" id="ironTarget" placeholder="optional" min="30" style="width:90px; text-align:right;" />
+                    <span style="color:var(--muted); font-size:14px;">yd</span>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
 
@@ -1117,8 +1146,7 @@
           </div>
 
           <div class="setup-card">
-            <label class="profile-section-title">Shot Setup</label>
-            <div class="profile-row">
+            <div class="profile-row drill-club-row" style="padding:0 0 4px;">
               <label>Club</label>
               <div class="pill-group small-pills" id="drvClubPills">
                 <button class="pill active" data-club="Driver" type="button">Driver</button>
@@ -1128,46 +1156,48 @@
                 <button class="pill" data-club="4H" type="button">4H</button>
               </div>
             </div>
-            <div class="profile-row">
-              <label>Carry</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input type="number" id="drvCarry" placeholder="yd" min="100" style="width:90px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">yd</span>
-              </div>
-            </div>
-            <div class="profile-row">
-              <label>Total</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input type="number" id="drvTotal" placeholder="yd" min="100" style="width:90px; text-align:right;" />
-                <span style="color:var(--muted); font-size:14px;">yd</span>
-              </div>
-            </div>
-            <div class="profile-row">
-              <label>Shape</label>
-              <div class="pill-group small-pills" id="drvShapePills">
-                <button class="pill active" data-shape="straight" type="button">— Straight</button>
-                <button class="pill" data-shape="draw" type="button">↶ Draw</button>
-                <button class="pill" data-shape="fade" type="button">↷ Fade</button>
-                <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
-                <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
-                <button class="pill" data-shape="pull" type="button">← Pull</button>
-                <button class="pill" data-shape="push" type="button">→ Push</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="setup-card">
-            <label class="profile-section-title">Result — where did it finish?</label>
+            <label class="profile-section-title" style="margin-top:8px;">Result — where did it finish?</label>
             <div class="result-grid">
               <button class="result-btn good" data-drv-result="Fairway">✓ Fairway</button>
               <button class="result-btn" data-drv-result="Light rough L">L. rough left</button>
               <button class="result-btn" data-drv-result="Light rough R">L. rough right</button>
               <button class="result-btn miss" data-drv-result="Heavy rough">⌀ Heavy rough</button>
               <button class="result-btn miss" data-drv-result="Bunker">⊝ Fairway bunker</button>
-              <button class="result-btn miss" data-drv-result="Trees">↶ Trees / tree trouble</button>
+              <button class="result-btn miss" data-drv-result="Trees">↶ Trees / OB</button>
               <button class="result-btn miss" data-drv-result="OB">✗ OB / hazard</button>
               <button class="result-btn miss" data-drv-result="Topped">⤴ Topped / thin</button>
             </div>
+          </div>
+
+          <div class="setup-card" style="padding:0; overflow:hidden;">
+            <details class="drill-conditions">
+              <summary>Shot detail <span style="font-size:11px; font-weight:400; color:var(--muted);">(Shape · Carry · Total)</span></summary>
+              <div class="conditions-inner" style="padding:8px 14px 10px;">
+                <div class="pill-group small-pills" id="drvShapePills" style="margin-bottom:10px;">
+                  <button class="pill active" data-shape="straight" type="button">— Straight</button>
+                  <button class="pill" data-shape="draw" type="button">↶ Draw</button>
+                  <button class="pill" data-shape="fade" type="button">↷ Fade</button>
+                  <button class="pill" data-shape="hook" type="button">⤵ Hook</button>
+                  <button class="pill" data-shape="slice" type="button">⤴ Slice</button>
+                  <button class="pill" data-shape="pull" type="button">← Pull</button>
+                  <button class="pill" data-shape="push" type="button">→ Push</button>
+                </div>
+                <div class="profile-row">
+                  <label>Carry</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" id="drvCarry" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                    <span style="color:var(--muted); font-size:14px;">yd</span>
+                  </div>
+                </div>
+                <div class="profile-row">
+                  <label>Total</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" id="drvTotal" placeholder="yd" min="100" style="width:90px; text-align:right;" />
+                    <span style="color:var(--muted); font-size:14px;">yd</span>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -1196,6 +1226,15 @@
           <div id="videoLibraryGrid" class="video-library-grid">
             <div class="video-empty" id="videoEmpty">No videos yet. Upload one above to start your library.</div>
           </div>
+        </div>
+      </div>
+
+      <div id="sessionSummaryModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:440px;">
+          <button class="modal-close" id="sessionSummaryClose">×</button>
+          <h3 style="margin:0 0 14px; color:var(--green-deep);" id="sessionSummaryTitle">Session done</h3>
+          <div id="sessionSummaryBody"></div>
+          <button id="sessionSummaryOk" class="ai-action-btn" style="width:100%; margin-top:14px;">OK</button>
         </div>
       </div>
 
@@ -1258,6 +1297,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js?v=20260527p"></script>
+    <script type="module" src="script.js?v=20260527r"></script>
   </body>
 </html>
