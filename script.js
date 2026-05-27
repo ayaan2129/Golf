@@ -55,6 +55,7 @@ import {
   renderChippingStatsSummary,
   renderIronStatsSummary,
   renderDriverStatsSummary,
+  renderPracticeActivity,
   wirePracticeUi,
 } from "./src/screens/practice-ui.js";
 import { renderVideoLibrary, wireVideosUi } from "./src/screens/videos-ui.js";
@@ -549,6 +550,7 @@ function switchTab(tabId) {
     renderClubDistances();
   }
   if (tabId === "practiceTab") {
+    renderPracticeActivity();
     renderPuttingStatsSummary();
     renderChippingStatsSummary();
     renderIronStatsSummary();
