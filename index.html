@@ -9,38 +9,45 @@
   <body>
     <div id="loginScreen" class="login-screen">
       <div class="login-box">
-        <h1>Junior Golf Tracker</h1>
-        <h2>Page 1 — Login</h2>
+        <div class="login-logo">⛳</div>
+        <h1>Golf Tracker</h1>
+        <p class="login-tagline">Track · Train · Improve</p>
 
-        <label>Username
-          <input type="text" id="usernameInput" autocomplete="username" />
+        <label class="login-label">Username
+          <input type="text" id="usernameInput" autocomplete="username"
+            autocapitalize="off" autocorrect="off" spellcheck="false"
+            enterkeyhint="next" placeholder="your username" />
         </label>
 
-        <label>Password
-          <input type="password" id="passwordInput" autocomplete="current-password" />
+        <label class="login-label">Password
+          <input type="password" id="passwordInput" autocomplete="current-password"
+            enterkeyhint="go" placeholder="password" />
         </label>
 
-        <button id="loginBtn">Login</button>
-        <p id="loginError" class="login-error"></p>
+        <button id="loginBtn" class="login-btn-primary">Sign In →</button>
+        <p id="loginError" class="login-error" style="display:none;"></p>
 
-        <p style="text-align:center; margin-top:14px; font-size:13px;">
-          Don't have an account?
-          <a href="#" id="openSignupBtn" style="color:var(--green-deep); font-weight:800;">Sign up</a>
+        <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--muted);">
+          New here?
+          <a href="#" id="openSignupBtn" style="color:var(--green-mid); font-weight:800;">Create account</a>
         </p>
 
-        <div id="signupBox" style="display:none; margin-top:14px; border-top:1px solid #ddd; padding-top:12px;">
-          <h2 style="text-align:center; margin:0 0 8px;">Create Account</h2>
-          <label>Display Name (your name)
-            <input type="text" id="signupDisplayName" placeholder="e.g. Ayaan" />
+        <div id="signupBox" style="display:none; margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+          <p class="login-section-label">New account</p>
+          <label class="login-label">Your name
+            <input type="text" id="signupDisplayName" placeholder="e.g. Ayaan"
+              autocapitalize="words" autocorrect="off" enterkeyhint="next" />
           </label>
-          <label>Username (for login)
-            <input type="text" id="signupUsername" placeholder="lowercase, no spaces" />
+          <label class="login-label">Username
+            <input type="text" id="signupUsername" placeholder="lowercase, no spaces"
+              autocapitalize="off" autocorrect="off" enterkeyhint="next" />
           </label>
-          <label>Password
-            <input type="password" id="signupPassword" />
+          <label class="login-label">Password
+            <input type="password" id="signupPassword" placeholder="min 4 characters"
+              enterkeyhint="go" />
           </label>
-          <button id="signupBtn">Create Account &amp; Login</button>
-          <p id="signupError" class="login-error"></p>
+          <button id="signupBtn" class="login-btn-primary">Create Account →</button>
+          <p id="signupError" class="login-error" style="display:none;"></p>
         </div>
       </div>
     </div>
@@ -1327,6 +1334,6 @@
       </button>
     </nav>
 
-    <script type="module" src="script.js?v=20260527u"></script>
+    <script type="module" src="script.js?v=20260527v"></script>
   </body>
 </html>
