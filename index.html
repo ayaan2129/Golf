@@ -86,6 +86,12 @@
           <button class="home-cta-btn secondary" id="homePracticeBtn">Log Practice</button>
         </div>
 
+        <div class="home-tile byo-banner" id="byoBanner" style="display:none; background: linear-gradient(135deg, rgba(240, 179, 35, 0.15), rgba(47, 175, 62, 0.1)); border:1px solid var(--gold);">
+          <h3 style="margin:0 0 6px;">🤖 Turn on the AI Coach</h3>
+          <p style="margin:0 0 10px; font-size:13px;">Bring your own API key (free credit at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock AI round reports, practice plans, and swing analysis tailored to your data.</p>
+          <button class="home-cta-btn secondary" data-go-tab="statsTab" id="byoOpenSettingsBtn" style="font-size:13px; padding:8px 14px;">Add your key →</button>
+        </div>
+
         <div class="home-tile home-place">
           <h3>Today at <span id="homeCourse">RCGC</span></h3>
           <p id="homeWeatherText">—</p>
@@ -151,6 +157,18 @@
           </div>
         </div>
 
+        <div class="setup-card">
+          <label class="profile-section-title">Green speed today</label>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Greens change daily — set it now so your putting stats know what they were rolling on.</p>
+          <div class="pill-group" id="greenSpeedPills">
+            <button class="pill" data-stimp="slow" type="button">Slow<br><span style="font-size:11px; opacity:0.7;">~8 stimp</span></button>
+            <button class="pill" data-stimp="medium" type="button">Medium<br><span style="font-size:11px; opacity:0.7;">~9 stimp</span></button>
+            <button class="pill active" data-stimp="medium-fast" type="button">Medium-fast<br><span style="font-size:11px; opacity:0.7;">~10 stimp</span></button>
+            <button class="pill" data-stimp="fast" type="button">Fast<br><span style="font-size:11px; opacity:0.7;">~11 stimp</span></button>
+            <button class="pill" data-stimp="tournament" type="button">Tournament<br><span style="font-size:11px; opacity:0.7;">~12+ stimp</span></button>
+          </div>
+        </div>
+
         <div class="setup-card course-info-card" id="courseInfo" style="display:none;">
           <label class="profile-section-title">Course Info</label>
           <div class="info-grid">
@@ -168,20 +186,25 @@
           <p class="weather-line" id="defaultsTemp">Pick a course to load weather</p>
         </div>
 
-        <details class="setup-card">
-          <summary class="profile-section-title">Advanced</summary>
+        <div class="setup-card">
+          <label class="profile-section-title">Tee-off time</label>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Used to tag rounds as morning / afternoon / evening so scoring trends by time of day are visible.</p>
           <div class="profile-row">
-            <label>Date</label>
-            <input type="date" id="roundDate" />
+            <label>Start time</label>
+            <div style="display:flex; gap:8px; align-items:center; flex:1; justify-content:flex-end;">
+              <input type="time" id="teeOffTime" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font:inherit; max-width:130px;" />
+              <span id="teeOffBlock" style="font-size:12px; font-weight:700; color:var(--green-deep); min-width:75px; text-align:right;">—</span>
+            </div>
           </div>
-          <div class="profile-row">
-            <label>Game Type</label>
-            <select id="gameType">
-              <option value="Normal Game">Normal</option>
-              <option value="Tournament">Tournament</option>
-            </select>
+        </div>
+
+        <div class="setup-card">
+          <label class="profile-section-title">Game Type</label>
+          <div class="pill-group" id="gameTypePills">
+            <button class="pill active" data-game="Normal Game" type="button">Normal</button>
+            <button class="pill" data-game="Tournament" type="button">Tournament</button>
           </div>
-          <div class="profile-row" id="tournamentNameRow" style="display:none;">
+          <div class="profile-row" id="tournamentNameRow" style="display:none; margin-top:10px;">
             <label>Tournament</label>
             <input type="text" id="tournamentName" placeholder="Name" />
           </div>
@@ -197,9 +220,14 @@
               <option value="Practice tournament">Practice</option>
             </select>
           </div>
-        </details>
+        </div>
 
         <div style="display:none;">
+          <input type="date" id="roundDate" />
+          <select id="gameType">
+            <option value="Normal Game">Normal Game</option>
+            <option value="Tournament">Tournament</option>
+          </select>
           <input type="text" id="playerName" value="Ayaan" />
           <select id="playedIn"><option value="India" selected>India</option><option value="Outside India">Outside India</option></select>
           <label id="countryRow"><input type="text" id="country" /></label>
@@ -401,22 +429,29 @@
           <div class="club-stats-card" id="weatherImpactCard"></div>
 
           <div class="ai-card">
-            <h3>AI Coach Settings</h3>
-            <p style="font-size:13px; margin:0 0 8px;">Two ways to enable the AI Coach. Pick one.</p>
-            <label>AI Proxy URL (recommended — keeps key on the server)
-              <input type="text" id="aiProxyUrl" placeholder="https://...workers.dev" autocomplete="off" />
-            </label>
-            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Deploy the Cloudflare Worker in <code>proxy/</code> (see proxy/README.md), then paste its URL here. The xAI key stays on the worker as an env secret.</p>
-            <label>Or: Grok API Key (key stored on this device only)
+            <h3>AI Coach Settings (BYO key)</h3>
+            <p style="font-size:13px; margin:0 0 10px;">Bring your own AI key. Two options — pick whichever is easier.</p>
+
+            <div style="background:rgba(47, 175, 62, 0.08); border-left:3px solid var(--green-bright); padding:10px 12px; margin:0 0 12px; font-size:12px; line-height:1.5;">
+              <strong>Don't have a key yet?</strong><br/>
+              Sign in at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>, click "API Keys", and copy a new key. xAI gives every new account some free credit to start.
+            </div>
+
+            <label>Option A — Grok API key (stored on this device only)
               <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
             </label>
+            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Lives in your browser's localStorage under your account. Other accounts on this device don't see it.</p>
+
+            <label>Option B — AI Proxy URL (key stays on a server you own)
+              <input type="text" id="aiProxyUrl" placeholder="https://...workers.dev" autocomplete="off" />
+            </label>
+            <p style="font-size:12px; color:#666; margin:4px 0 12px;">Deploy the Cloudflare Worker in <code>proxy/</code> (see proxy/README.md), then paste its URL. Best if you don't want any key in your browser.</p>
+
             <label>
               <input type="checkbox" id="aiModeToggle" style="width:auto; margin-right:6px;" />
-              Use AI for chat & reports
+              Use AI for chat &amp; reports
             </label>
-            <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
-            <button id="seedDemoBtn" class="ai-action-btn" style="background:#1976d2; color:white;">Seed Ayaan demo data</button>
-            <button id="wipeDemoBtn" class="ai-action-btn" style="background:#444; color:#eee; margin-top:6px;">Wipe ALL local data</button>
+            <p id="aiStatus" class="ai-status">AI coach off — add a key above to enable.</p>
           </div>
 
           <div class="ai-card">
@@ -594,16 +629,10 @@
         </div>
 
         <div class="profile-section">
-          <h3 class="profile-section-title">AI Coach</h3>
-          <div class="profile-row">
-            <label>Grok API Key</label>
-            <input type="password" id="grokApiKey" placeholder="xai-..." autocomplete="off" />
-          </div>
-          <div class="profile-row profile-row-toggle">
-            <label>Use AI for chat &amp; reports</label>
-            <input type="checkbox" id="aiModeToggle" />
-          </div>
-          <p id="aiStatus" class="ai-status">AI coach off (rule-based responses).</p>
+          <h3 class="profile-section-title">AI Coach (BYO key)</h3>
+          <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">Bring your own xAI Grok key (free credit on signup at <a href="https://console.x.ai" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:700;">console.x.ai</a>) to unlock the AI coach. Each user's key stays on their own device.</p>
+          <p id="aiStatusProfile" class="ai-status" style="margin:0 0 10px;">AI coach off — add a key on the Stats tab to enable.</p>
+          <button id="goToAiSettingsBtn" class="ai-action-btn" style="width:100%;">Add / change my AI key →</button>
         </div>
 
         <details class="profile-section">
@@ -626,8 +655,6 @@
         </details>
 
         <div class="profile-actions">
-          <button id="seedDemoBtn" class="btn-secondary">Load Demo Data</button>
-          <button id="wipeDemoBtn" class="btn-secondary danger">Wipe All Data</button>
           <button id="profileLogoutBtn" class="btn-danger">Logout</button>
         </div>
       </div>
@@ -1009,22 +1036,27 @@
       <div id="coachTab" class="tab-page" style="display:none;">
         <h2 class="section-header">Coach Chat</h2>
 
-        <div class="chat-card">
-          <h2>Coach Chat</h2>
-          <div id="chatMessages" class="chat-messages"></div>
-
+        <div class="chat-launcher" id="chatLauncher">
+          <div class="chat-launcher-icon">💬</div>
+          <h2>Talk to your coach</h2>
+          <p style="margin:6px 0 16px; color:var(--muted); font-size:14px;">Ask anything about your game — putting %, driver gap, what to work on this week, course strategy. Replies use your saved practice + round data.</p>
+          <button class="home-cta-btn" id="startChatBtn">Start a chat →</button>
+          <p style="font-size:12px; color:var(--muted); margin-top:10px;">Or tap a quick question:</p>
           <div class="quick-replies" id="quickReplies">
             <button class="quick-reply" data-q="How is my putting?">How is my putting?</button>
             <button class="quick-reply" data-q="How is my driving?">How is my driving?</button>
             <button class="quick-reply" data-q="What's my biggest weakness?">What's my biggest weakness?</button>
             <button class="quick-reply" data-q="What should I practice today?">What should I practice today?</button>
-            <button class="quick-reply" data-q="How am I doing overall?">How am I doing overall?</button>
-            <button class="quick-reply" data-q="How are my tournaments?">How are my tournaments?</button>
-            <button class="quick-reply" data-q="What about RCGC?">What about RCGC?</button>
-            <button class="quick-reply" data-q="What are my strengths?">What are my strengths?</button>
-            <button class="quick-reply" data-q="Am I improving?">Am I improving?</button>
-            <button class="quick-reply" data-q="What about chipping?">What about chipping?</button>
           </div>
+        </div>
+
+        <div class="chat-card" id="chatPanel" style="display:none;">
+          <div class="chat-header">
+            <button class="header-btn" id="closeChatBtn" title="Close chat">←</button>
+            <h2 style="margin:0; flex:1;">Coach Chat</h2>
+            <button class="header-btn" id="clearChatBtn" title="Clear messages">⟲</button>
+          </div>
+          <div id="chatMessages" class="chat-messages"></div>
 
           <div class="chat-input-row">
             <input type="text" id="chatInput" placeholder="Ask the coach..." />

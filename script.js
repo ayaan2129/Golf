@@ -262,6 +262,25 @@ function renderWelcome() {
   }
   nameEl.textContent = name;
 
+  // BYO banner: show only when the AI coach isn't configured yet
+  const byo = document.getElementById("byoBanner");
+  if (byo) byo.style.display = (typeof aiEnabled === "function" && aiEnabled()) ? "none" : "";
+  const byoBtn = document.getElementById("byoOpenSettingsBtn");
+  if (byoBtn && !byoBtn._wired) {
+    byoBtn._wired = true;
+    byoBtn.addEventListener("click", function () {
+      showApp();
+      switchTab("statsTab");
+      setTimeout(function () {
+        const card = document.getElementById("grokApiKey");
+        if (card) {
+          card.scrollIntoView({ block: "center", behavior: "smooth" });
+          card.focus();
+        }
+      }, 250);
+    });
+  }
+
   const goalsDiv = document.getElementById("welcomeGoals");
   goalsDiv.innerHTML = "";
   const goal = suggestTeeProgression();
@@ -624,7 +643,32 @@ function switchTab(tabId) {
     renderDashboard();
     renderHistory();
   }
+  if (tabId === "profileTab") {
+    syncAiStatusOnProfile();
+  }
+  if (tabId === "coachTab") {
+    // Always show the launcher on (re-)entry; the chat panel is opt-in.
+    const launcher = document.getElementById("chatLauncher");
+    const panel = document.getElementById("chatPanel");
+    if (launcher) launcher.style.display = "";
+    if (panel) panel.style.display = "none";
+  }
+  if (tabId === "setupTab") {
+    if (typeof autoSetTodayOnSetup === "function") autoSetTodayOnSetup();
+  }
   window.scrollTo(0, 0);
+}
+
+function syncAiStatusOnProfile() {
+  const el = document.getElementById("aiStatusProfile");
+  if (!el) return;
+  if (typeof aiEnabled === "function" && aiEnabled()) {
+    el.textContent = "AI coach ON — your key is set.";
+    el.classList.add("on");
+  } else {
+    el.textContent = "AI coach off — add a key on the Stats tab to enable.";
+    el.classList.remove("on");
+  }
 }
 
 document.addEventListener("click", function (e) {
@@ -699,6 +743,80 @@ document.querySelectorAll("#holesPillGroup .pill").forEach(function (pill) {
     }
   });
 });
+
+// Green speed pill buttons → store under setup state
+document.querySelectorAll("#greenSpeedPills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#greenSpeedPills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    localStorage.setItem("greenSpeedToday", pill.dataset.stimp);
+  });
+});
+
+// Game type pill buttons → update the hidden select that the rest of the code reads
+document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#gameTypePills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    const v = pill.dataset.game;
+    const sel = document.getElementById("gameType");
+    if (sel) {
+      sel.value = v;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    // Show / hide tournament rows
+    const tourName = document.getElementById("tournamentNameRow");
+    const tourFmt = document.getElementById("tournamentFormatRow");
+    const show = v === "Tournament";
+    if (tourName) tourName.style.display = show ? "" : "none";
+    if (tourFmt) tourFmt.style.display = show ? "" : "none";
+  });
+});
+
+// Date auto-pickup: every time the setup tab is visited, stamp today's date
+function autoSetTodayOnSetup() {
+  const dateInput = document.getElementById("roundDate");
+  if (dateInput) dateInput.value = todayISO();
+  // Tee-off time: default to now if blank, derive block label
+  const timeInput = document.getElementById("teeOffTime");
+  if (timeInput && !timeInput.value) {
+    const now = new Date();
+    timeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  }
+  renderTimeBlockLabel();
+}
+autoSetTodayOnSetup();
+
+function deriveTimeBlock(hhmm) {
+  if (!hhmm) return null;
+  const h = parseInt(hhmm.split(":")[0], 10);
+  if (isNaN(h)) return null;
+  if (h < 11) return "Morning";
+  if (h < 16) return "Afternoon";
+  if (h < 19) return "Late afternoon";
+  return "Evening";
+}
+
+function renderTimeBlockLabel() {
+  const t = document.getElementById("teeOffTime");
+  const lbl = document.getElementById("teeOffBlock");
+  if (!t || !lbl) return;
+  const block = deriveTimeBlock(t.value);
+  lbl.textContent = block || "—";
+}
+
+document.addEventListener("input", function (e) {
+  if (e.target && e.target.id === "teeOffTime") renderTimeBlockLabel();
+});
+
+// Restore the previously chosen green speed (per device)
+(function restoreGreenSpeed() {
+  const saved = localStorage.getItem("greenSpeedToday");
+  if (!saved) return;
+  document.querySelectorAll("#greenSpeedPills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.stimp === saved);
+  });
+})();
 
 // Show green speed + notes when course picked
 function renderCourseExtras() {
@@ -2228,6 +2346,7 @@ function showHole(index) {
   if (steps.length === 0) return;
   if (index < 0) index = 0;
   if (index >= steps.length) index = steps.length - 1;
+  const prevIndex = currentHoleIndex;
   currentHoleIndex = index;
   steps.forEach(function (s, i) {
     s.style.display = i === currentHoleIndex ? "" : "none";
@@ -2235,6 +2354,26 @@ function showHole(index) {
   updateHoleNav();
   localStorage.setItem("currentHoleIndex", String(index));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  // Detect crossing from hole 9 → hole 10 (only for 18-hole rounds).
+  // Stamp back-9 start time + refresh weather so conditions per 9 are captured.
+  const active = getActiveHoles();
+  if (active.length >= 18 && prevIndex < 9 && currentHoleIndex >= 9) {
+    captureBack9Conditions();
+  }
+}
+
+function captureBack9Conditions() {
+  if (localStorage.getItem("back9StartTime")) return; // already captured this round
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  localStorage.setItem("back9StartTime", hhmm);
+  // Re-fetch weather using the same path as setup
+  if (typeof fetchWeatherForDate === "function") {
+    const courseKey = (document.getElementById("courseSelect") || {}).value || "RCGC";
+    fetchWeatherForDate(todayISO(), courseKey).then(function (w) {
+      if (w) localStorage.setItem("weatherBack9", JSON.stringify(w));
+    }).catch(function () { /* offline — silent */ });
+  }
 }
 
 function updateHoleNav() {
@@ -3189,6 +3328,19 @@ function saveRoundToHistory() {
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
     tournamentFormat: document.getElementById("tournamentFormat").value || "",
+    greenSpeed: localStorage.getItem("greenSpeedToday") || "",
+    teeOffTime: (document.getElementById("teeOffTime") || {}).value || "",
+    timeBlock: deriveTimeBlock((document.getElementById("teeOffTime") || {}).value || ""),
+    back9StartTime: localStorage.getItem("back9StartTime") || "",
+    back9TimeBlock: deriveTimeBlock(localStorage.getItem("back9StartTime") || ""),
+    weatherFront9: (function () {
+      try { return JSON.parse(localStorage.getItem("currentWeather") || "null"); }
+      catch (e) { return null; }
+    })(),
+    weatherBack9: (function () {
+      try { return JSON.parse(localStorage.getItem("weatherBack9") || "null"); }
+      catch (e) { return null; }
+    })(),
     energyLevel: (document.getElementById("energyLevel") || {}).value || "",
     confidenceLevel: (document.getElementById("confidenceLevel") || {}).value || "",
     sleepQuality: (document.getElementById("sleepQuality") || {}).value || "",
@@ -3515,6 +3667,10 @@ function clearCurrentRound() {
   toggleSetupRows();
   applyCourseData();
   localStorage.removeItem("golfRound");
+  // Per-round transient state (back-9 timestamp + weather snapshot) should
+  // not bleed into the next round.
+  localStorage.removeItem("back9StartTime");
+  localStorage.removeItem("weatherBack9");
   updateSummary();
   analyze();
 }
@@ -3868,12 +4024,21 @@ function initDashboard() {
   const grokKeyInput = document.getElementById("grokApiKey");
   const proxyUrlInput = document.getElementById("aiProxyUrl");
   const aiToggle = document.getElementById("aiModeToggle");
+  function autoEnableAiOnFirstCredential() {
+    // Whenever a user enters any credential, flip aiMode on automatically
+    // (unless they've explicitly turned it off).
+    if (localStorage.getItem("aiMode") !== "off" && (getProxyUrl() || getGrokKey())) {
+      localStorage.setItem("aiMode", "on");
+      if (aiToggle) aiToggle.checked = true;
+    }
+  }
   if (grokKeyInput) {
     grokKeyInput.value = localStorage.getItem("grokApiKey") || "";
     grokKeyInput.addEventListener("input", function () {
       const v = grokKeyInput.value.trim();
       if (v) localStorage.setItem("grokApiKey", v);
       else localStorage.removeItem("grokApiKey");
+      autoEnableAiOnFirstCredential();
       renderAiStatus();
     });
   }
@@ -3883,14 +4048,12 @@ function initDashboard() {
       const v = proxyUrlInput.value.trim();
       if (v) localStorage.setItem("aiProxyUrl", v);
       else localStorage.removeItem("aiProxyUrl");
+      autoEnableAiOnFirstCredential();
       renderAiStatus();
     });
   }
   if (aiToggle) {
-    // Auto-on the first time the user enters any credential
-    if (localStorage.getItem("aiMode") === null && (getProxyUrl() || getGrokKey())) {
-      localStorage.setItem("aiMode", "on");
-    }
+    autoEnableAiOnFirstCredential();
     aiToggle.checked = localStorage.getItem("aiMode") === "on";
     aiToggle.addEventListener("change", function () {
       localStorage.setItem("aiMode", aiToggle.checked ? "on" : "off");
@@ -3898,6 +4061,20 @@ function initDashboard() {
     });
   }
   renderAiStatus();
+
+  const goToAiSettingsBtn = document.getElementById("goToAiSettingsBtn");
+  if (goToAiSettingsBtn) {
+    goToAiSettingsBtn.addEventListener("click", function () {
+      switchTab("statsTab");
+      setTimeout(function () {
+        const card = document.getElementById("grokApiKey");
+        if (card) {
+          card.scrollIntoView({ block: "center", behavior: "smooth" });
+          try { card.focus(); } catch (e) {}
+        }
+      }, 250);
+    });
+  }
 
   const reportBtn = document.getElementById("genRoundReportBtn");
   if (reportBtn) reportBtn.addEventListener("click", generateRoundReport);
@@ -4706,8 +4883,10 @@ function aiBaseContext() {
   if (course) {
     let locLine = "Home course: " + (course.name || courseKey);
     if (course.location) locLine += " (lat " + course.location.lat + ", lon " + course.location.lon + ")";
-    if (course.greenSpeed) locLine += ", green speed " + course.greenSpeed;
+    if (course.greenSpeed) locLine += ", typical greens " + course.greenSpeed;
     lines.push(locLine + ".");
+    const greensToday = localStorage.getItem("greenSpeedToday");
+    if (greensToday) lines.push("Greens today: " + greensToday + ".");
     if (course.notes) lines.push("Course notes: " + course.notes);
   }
   lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
@@ -4729,6 +4908,12 @@ function aiBaseContext() {
         "pens " + (r.totalPenalties != null ? r.totalPenalties : "?"),
       ];
       if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
+      if (r.greenSpeed) parts.push("greens " + r.greenSpeed);
+      if (r.teeOffTime) parts.push("tee-off " + r.teeOffTime + (r.timeBlock ? " (" + r.timeBlock + ")" : ""));
+      if (r.back9StartTime) parts.push("back-9 " + r.back9StartTime + (r.back9TimeBlock ? " (" + r.back9TimeBlock + ")" : ""));
+      if (r.weatherBack9 && (!r.weatherData || r.weatherBack9.tempMax !== r.weatherData.tempMax || r.weatherBack9.windKmh !== r.weatherData.windKmh)) {
+        parts.push("wx-back9 " + Math.round(r.weatherBack9.tempMax || 0) + "C " + Math.round(r.weatherBack9.windKmh || 0) + "kmh");
+      }
       lines.push("  - " + parts.join(", "));
     }
   }
@@ -5038,14 +5223,12 @@ function seedDemoData(silent) {
 }
 
 function autoSeedIfNeeded() {
-  if (localStorage.getItem("demoSeeded")) return;
-  if (localStorage.getItem("roundHistory")) return;
-  try {
-    seedDemoData(true);
-    localStorage.setItem("demoSeeded", "yes");
-  } catch (e) {
-    // Silent fail - seeding is best-effort
-  }
+  // Intentionally disabled: in a multi-user world, auto-seeding leaks demo
+  // data into every new account's namespace on first visit. Users who want
+  // sample data can click 'Seed Ayaan demo data' on the AI Coach card (or
+  // we'll wire a dedicated demo flow later). For real accounts, the app
+  // starts empty as it should.
+  return;
 }
 
 function wipeAllLocalData() {
@@ -5249,16 +5432,18 @@ async function generatePreRoundBrief() {
 
 function renderAiStatus() {
   const el = document.getElementById("aiStatus");
-  if (!el) return;
-  if (aiEnabled()) {
-    el.textContent = getProxyUrl()
-      ? "AI coach ON — routing through your proxy (key stays on server)."
-      : "AI coach ON — calling Grok directly with your local key.";
-    el.classList.add("on");
-  } else {
-    el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
-    el.classList.remove("on");
+  if (el) {
+    if (aiEnabled()) {
+      el.textContent = getProxyUrl()
+        ? "AI coach ON — routing through your proxy (key stays on server)."
+        : "AI coach ON — calling Grok directly with your local key.";
+      el.classList.add("on");
+    } else {
+      el.textContent = "AI coach off — add an AI Proxy URL or a Grok API key to enable.";
+      el.classList.remove("on");
+    }
   }
+  if (typeof syncAiStatusOnProfile === "function") syncAiStatusOnProfile();
 }
 
 function renderWeatherImpact() {
@@ -6403,13 +6588,10 @@ async function sendChatMessage(text) {
 }
 
 function initChat() {
-  const messages = document.getElementById("chatMessages");
-  if (!messages) return;
-  if (messages.children.length === 0) {
-    addChatMessage("Hi! I'm your coach. Ask me anything about your golf game - or tap a question below to start.", "coach");
-  }
+  // Greeting is added lazily when the user opens the chat panel.
   const sendBtn = document.getElementById("sendBtn");
   const input = document.getElementById("chatInput");
+  if (!sendBtn || !input) return;
   sendBtn.addEventListener("click", function () {
     sendChatMessage(input.value);
     input.value = "";
@@ -6422,9 +6604,44 @@ function initChat() {
   });
   document.querySelectorAll(".quick-reply").forEach(function (btn) {
     btn.addEventListener("click", function () {
+      openChatPanel();
       sendChatMessage(btn.dataset.q);
     });
   });
+
+  const startChatBtn = document.getElementById("startChatBtn");
+  if (startChatBtn) startChatBtn.addEventListener("click", function () { openChatPanel(); setTimeout(function () { const el = document.getElementById("chatInput"); if (el) el.focus(); }, 100); });
+  const closeChatBtn = document.getElementById("closeChatBtn");
+  if (closeChatBtn) closeChatBtn.addEventListener("click", closeChatPanel);
+  const clearChatBtn = document.getElementById("clearChatBtn");
+  if (clearChatBtn) clearChatBtn.addEventListener("click", function () {
+    const m = document.getElementById("chatMessages");
+    if (m) m.innerHTML = "";
+    chatHistory.length = 0;
+    addInitialChatGreeting();
+  });
+}
+
+function openChatPanel() {
+  const launcher = document.getElementById("chatLauncher");
+  const panel = document.getElementById("chatPanel");
+  if (launcher) launcher.style.display = "none";
+  if (panel) panel.style.display = "";
+  const msgs = document.getElementById("chatMessages");
+  if (msgs && msgs.children.length === 0) addInitialChatGreeting();
+}
+
+function closeChatPanel() {
+  const launcher = document.getElementById("chatLauncher");
+  const panel = document.getElementById("chatPanel");
+  if (panel) panel.style.display = "none";
+  if (launcher) launcher.style.display = "";
+}
+
+function addInitialChatGreeting() {
+  if (typeof addChatMessage === "function") {
+    addChatMessage("Hi! I'm your coach. Ask me anything about your golf game — or tap a question on the previous screen.", "coach");
+  }
 }
 
 const roundModeSel = document.getElementById("roundMode");
