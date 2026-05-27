@@ -2,7 +2,7 @@
 // Strategy: cache-first for static assets, network-first for API calls.
 // Version bump = cache invalidation.
 
-const CACHE_NAME = "golf-tracker-v3";
+const CACHE_NAME = "golf-tracker-v4";
 
 // Static assets to pre-cache on install
 const PRECACHE = [
@@ -26,6 +26,8 @@ const PRECACHE = [
   "./src/screens/stats.js",
   "./src/screens/practice-ui.js",
   "./src/screens/stats-categories.js",
+  "./src/screens/yardage-matrix.js",
+  "./src/data/weather.js",
   "./src/screens/videos-ui.js",
 ];
 
