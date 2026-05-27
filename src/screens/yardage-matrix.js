@@ -43,6 +43,22 @@ function getEffectiveConditions() {
   };
 }
 
+// Snapshot the effective conditions to localStorage so other screens
+// (notably the AI coach context builder) can pick them up.
+function persistConditionsCache() {
+  try {
+    const eff = getEffectiveConditions();
+    localStorage.setItem("ymConditionsCache", JSON.stringify({
+      elevationFt: eff.elevationFt,
+      tempF: eff.tempF,
+      windMph: eff.windMph,
+      windRelation: eff.windRelation,
+      locationName: eff.locationName,
+      fetchedAt: Date.now(),
+    }));
+  } catch (e) {}
+}
+
 function renderConditionsBar() {
   const eff = getEffectiveConditions();
   setText("ymCondElev", Math.round(eff.elevationFt) + " ft");
@@ -126,6 +142,7 @@ async function refreshConditions(courseKey) {
   }
   renderConditionsBar();
   renderMatrix();
+  persistConditionsCache();
 }
 
 function populateCourseSelect() {
@@ -147,6 +164,7 @@ function applyManualWindFromUi() {
   manualWind = { mph: mph, relation: rel };
   renderConditionsBar();
   renderMatrix();
+  persistConditionsCache();
 }
 
 function openGrassHelp() {
@@ -169,6 +187,7 @@ export function renderYardageMatrix() {
   } else {
     renderConditionsBar();
     renderMatrix();
+    persistConditionsCache();
   }
 }
 
@@ -188,6 +207,7 @@ export function wireYardageMatrix() {
     if (relEl) relEl.value = "calm";
     renderConditionsBar();
     renderMatrix();
+    persistConditionsCache();
   });
   const grassBtn = document.getElementById("ymGrassBtn");
   if (grassBtn) grassBtn.addEventListener("click", openGrassHelp);
