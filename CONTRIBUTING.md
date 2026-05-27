@@ -41,11 +41,24 @@ widget tree: one file = one concern, imports declare its dependencies.
         └── profile.js
 ```
 
-### Current state (after PR #8)
+### Current state (after PR #9)
 
-- `src/core/storage.js`, `src/core/utils.js`, `src/core/courses.js` are extracted
-- `script.js` is loaded as `<script type="module">` and imports from those modules
-- Everything else still lives in `script.js` and will be extracted in subsequent PRs
+Extracted:
+- `src/core/storage.js`, `src/core/utils.js`, `src/core/courses.js`
+- `src/data/rounds.js` — getHistory, saveHistory, getUpcoming, saveUpcoming
+- `src/data/practice.js` — getPractice, savePractice + the four insights
+  getters (getPuttingInsights / getChippingInsights / getIronInsights /
+  getDriverInsights) and shared result-classifier constants
+- `src/data/profile.js` — getProfile, saveProfile, setProfileField,
+  getClubDistance, setClubDistance, getSelectedClubs, saveSelectedClubs,
+  getObservedClubCarry, MAX_CLUBS
+- `src/data/videos.js` — IndexedDB blob storage + metadata index
+- `src/data/weather.js` — fetchWeatherForDate + weatherCodeToText
+
+Pending (still in script.js):
+- AI layer (callGrok, aiBaseContext, generators) — Phase 3 / PR #10
+- Screen modules — Phase 4 / PR #11
+- Final cleanup — PR #12
 
 ### Adding new code
 
