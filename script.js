@@ -355,15 +355,16 @@ function renderHomeDashboard() {
     for (const r of recent) for (const m of (r.mistakes || [])) allMistakes.push(m);
     if (allMistakes.length > 0) {
       fEl.textContent = allMistakes[0];
-      if (fCard) fCard.style.display = "";
+      if (fCard) { fCard.style.display = ""; fCard.dataset.hasPattern = "1"; }
     } else if (history.length > 0) {
-      // Rounds logged but no mistakes tagged — positive signal
+      // Rounds logged but no mistakes tagged — positive signal, no actionable click
       fEl.textContent = "No patterns flagged in your last 3 rounds. Keep going.";
-      if (fCard) fCard.style.display = "";
+      if (fCard) { fCard.style.display = ""; fCard.dataset.hasPattern = "0"; }
     } else {
       // No rounds at all — hide the card
-      if (fCard) fCard.style.display = "none";
+      if (fCard) { fCard.style.display = "none"; fCard.dataset.hasPattern = "0"; }
     }
+    if (typeof refreshFocusCardCursor === "function") refreshFocusCardCursor();
   }
 
   const tEl = document.getElementById("homeThoughtText");
@@ -890,12 +891,18 @@ function openCoachWithQuestion(question) {
 // Work On This card → ask coach about that specific mistake pattern
 const focusCard = document.getElementById("homeFocusCard");
 if (focusCard) {
-  focusCard.style.cursor = "pointer";
   focusCard.addEventListener("click", function () {
+    if (focusCard.dataset.hasPattern !== "1") return;
     const txt = (document.getElementById("homeFocusText") || {}).textContent || "";
     if (!txt || txt === "—") return;
     openCoachWithQuestion("I keep making this mistake: " + txt + ". What's causing it and how do I fix it?");
   });
+}
+// Cursor reflects whether the card is actionable; renderHomeDashboard sets
+// data-has-pattern when there's a real mistake to discuss.
+function refreshFocusCardCursor() {
+  if (!focusCard) return;
+  focusCard.style.cursor = focusCard.dataset.hasPattern === "1" ? "pointer" : "default";
 }
 
 // Coach Intel card → ask about confidence club or avoidance pattern
@@ -4516,14 +4523,73 @@ function seedDemoData(silent) {
   const merged = existing.concat(rounds);
   localStorage.setItem("roundHistory", JSON.stringify(merged));
 
-  // Practice sessions
+  // Practice sessions — use the live shot-array schema so insights render.
+  // Putting shots: { intent: "make"|"lag", rangeId, distance, result }
+  // Chipping shots: { rangeId, distance, lie, result }
+  // Iron shots:    { club, carry, shape, result }
+  // Driver shots:  { club, carry, total, shape, result }
+  function mkSession(date, type, focus, notes, shots) {
+    return { date, type, area: type, focus, notes, shots, duration: 30, savedAt: new Date().toISOString() };
+  }
+  const puttingShots1 = [
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Left" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Holed" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Short" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Left" },
+    { intent: "make", rangeId: "mid",   distance: 6, result: "Holed" },
+    { intent: "lag",  rangeId: "lag",   distance: 35, result: "In Circle" },
+    { intent: "lag",  rangeId: "lag",   distance: 35, result: "Short" },
+  ];
+  const puttingShots2 = [
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "Short" },
+    { intent: "lag", rangeId: "lag", distance: 35, result: "In Circle" },
+    { intent: "lag", rangeId: "long", distance: 15, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Holed" },
+    { intent: "make", rangeId: "short", distance: 3, result: "Right" },
+  ];
+  const chippingShots = [
+    { rangeId: "close",  distance: 8,  lie: "Fairway", result: "In 3ft" },
+    { rangeId: "close",  distance: 8,  lie: "Fairway", result: "Holed" },
+    { rangeId: "close",  distance: 8,  lie: "Rough",   result: "In 6ft" },
+    { rangeId: "medium", distance: 18, lie: "Rough",   result: "Chunked" },
+    { rangeId: "medium", distance: 18, lie: "Fairway", result: "In 6ft" },
+    { rangeId: "medium", distance: 18, lie: "Sand",    result: "Bladed" },
+    { rangeId: "long",   distance: 35, lie: "Rough",   result: "In 6ft" },
+  ];
+  const ironShots = [
+    { club: "7i", carry: 130, shape: "straight", result: "On target" },
+    { club: "7i", carry: 128, shape: "draw",     result: "On target" },
+    { club: "7i", carry: 122, shape: "fade",     result: "Short" },
+    { club: "7i", carry: 132, shape: "straight", result: "On target" },
+    { club: "7i", carry: 118, shape: "fade",     result: "Fat" },
+    { club: "8i", carry: 118, shape: "straight", result: "On target" },
+    { club: "8i", carry: 115, shape: "straight", result: "Short" },
+    { club: "PW", carry: 95,  shape: "straight", result: "On target" },
+    { club: "PW", carry: 92,  shape: "draw",     result: "Short" },
+  ];
+  const driverShots = [
+    { club: "Driver", carry: 210, total: 230, shape: "straight", result: "Fairway" },
+    { club: "Driver", carry: 205, total: 225, shape: "fade",     result: "Light rough R" },
+    { club: "Driver", carry: 215, total: 235, shape: "straight", result: "Fairway" },
+    { club: "Driver", carry: 200, total: 218, shape: "slice",    result: "Light rough R" },
+    { club: "Driver", carry: 208, total: 228, shape: "fade",     result: "Light rough R" },
+    { club: "Driver", carry: 195, total: 215, shape: "slice",    result: "OB R" },
+    { club: "3W",     carry: 195, total: 210, shape: "straight", result: "Fairway" },
+    { club: "3W",     carry: 190, total: 205, shape: "draw",     result: "Fairway" },
+  ];
   const practices = [
-    { date: daysAgo(40), area: "Putting", duration: 30, focus: "3-foot circle drill", notes: "Holed 4 of 5 last attempt", savedAt: new Date().toISOString() },
-    { date: daysAgo(35), area: "Range", duration: 45, focus: "7-iron half swings", notes: "Cleaner contact", savedAt: new Date().toISOString() },
-    { date: daysAgo(20), area: "Chipping", duration: 30, focus: "Sand wedge 15-25 yards", notes: "", savedAt: new Date().toISOString() },
-    { date: daysAgo(10), area: "Range", duration: 60, focus: "Driver tempo work", notes: "Less right miss", savedAt: new Date().toISOString() },
-    { date: daysAgo(6), area: "Putting", duration: 30, focus: "Lag putts 30+ feet", notes: "Most ended within 4 ft", savedAt: new Date().toISOString() },
-    { date: daysAgo(2), area: "Mixed", duration: 90, focus: "Short game routine", notes: "Range + chip + putt", savedAt: new Date().toISOString() },
+    mkSession(daysAgo(40), "Putting",  "3-foot circle drill",     "Holed 4 of 5 last attempt", puttingShots1),
+    mkSession(daysAgo(35), "Irons",    "7-iron half swings",      "Cleaner contact", ironShots.slice(0, 5)),
+    mkSession(daysAgo(20), "Chipping", "Sand wedge 15-25 yards",  "", chippingShots),
+    mkSession(daysAgo(10), "Driver",   "Driver tempo work",       "Less right miss", driverShots),
+    mkSession(daysAgo(6),  "Putting",  "Lag putts 30+ feet",      "Most ended within 4 ft", puttingShots2),
+    mkSession(daysAgo(2),  "Irons",    "8-iron + PW gapping",     "Smooth tempo", ironShots.slice(5)),
   ];
   const existingP = JSON.parse(localStorage.getItem("practiceSessions") || "[]");
   localStorage.setItem("practiceSessions", JSON.stringify(existingP.concat(practices)));
