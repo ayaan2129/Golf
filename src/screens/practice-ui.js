@@ -173,12 +173,12 @@ export function renderPuttingStatsSummary() {
     return;
   }
   let html = "";
+  // distanceRates only covers make-intent putts; skip buckets with no shots
+  // rather than showing greyed-out rows (that avoids a confusing "Lag — no putts"
+  // next to a working "Lag in circle" line below)
   for (const b of ins.distanceRates) {
-    if (b.count === 0) {
-      html += '<div class="stat-line" style="opacity:0.5;"><span>' + b.label + "</span><span class=\"stat-num\" style=\"color:var(--muted); font-weight:400;\">— no putts</span></div>";
-    } else {
-      html += '<div class="stat-line"><span>' + b.label + " (" + b.count + ")</span><span class=\"stat-num\">" + b.pct + "%</span></div>";
-    }
+    if (b.count === 0) continue;
+    html += '<div class="stat-line"><span>' + b.label + " (" + b.count + ")</span><span class=\"stat-num\">" + b.pct + "%</span></div>";
   }
   if (ins.topMiss) html += '<div class="stat-line"><span>Most common miss</span><span class="stat-num">' + ins.topMiss + "</span></div>";
   if (ins.lag) html += '<div class="stat-line"><span>Lag in circle (' + ins.lag.count + ")</span><span class=\"stat-num\">" + ins.lag.inCirclePct + "%</span></div>";
@@ -212,6 +212,7 @@ function startPuttingDrill() {
   if (lagRes) lagRes.style.display = "none";
   document.getElementById("practicePickerView").style.display = "none";
   document.getElementById("puttingView").style.display = "";
+  document.body.classList.add("drill-mode");
   renderPuttingRangePills();
   updatePuttingRunningStat();
 }
@@ -287,7 +288,7 @@ function endPuttingDrill() {
   }
   puttingState.active = false;
   puttingState.shots = [];
-  document.getElementById("puttingView").style.display = "none";
+  document.getElementById("puttingView").style.display = "none"; document.body.classList.remove("drill-mode");
   document.getElementById("practicePickerView").style.display = "";
   renderPuttingStatsSummary();
   renderPracticeActivity();
@@ -339,6 +340,13 @@ function recordPutt(result, lagResult) {
   updatePuttingRunningStat();
   const fd = document.getElementById("puttFinishDist");
   if (fd) fd.value = "";
+}
+
+// Brief visual tap-flash so the player knows the shot registered.
+function flashBtn(btn) {
+  if (!btn) return;
+  btn.classList.add("tapped");
+  setTimeout(function () { btn.classList.remove("tapped"); }, 120);
 }
 
 function setPracticePill(group, key, value) {
@@ -403,6 +411,7 @@ function startChippingDrill() {
   chippingState.shots = [];
   document.getElementById("practicePickerView").style.display = "none";
   document.getElementById("chippingView").style.display = "";
+  document.body.classList.add("drill-mode");
   renderChippingRangePills();
   updateChippingRunningStat();
 }
@@ -444,7 +453,7 @@ function endChippingDrill() {
   }
   chippingState.active = false;
   chippingState.shots = [];
-  document.getElementById("chippingView").style.display = "none";
+  document.getElementById("chippingView").style.display = "none"; document.body.classList.remove("drill-mode");
   document.getElementById("practicePickerView").style.display = "";
   renderChippingStatsSummary();
   renderPracticeActivity();
@@ -515,6 +524,7 @@ function startIronDrill() {
   ironState.shots = [];
   document.getElementById("practicePickerView").style.display = "none";
   document.getElementById("ironView").style.display = "";
+  document.body.classList.add("drill-mode");
   updateIronRunningStat();
 }
 
@@ -555,7 +565,7 @@ function endIronDrill() {
   }
   ironState.active = false;
   ironState.shots = [];
-  document.getElementById("ironView").style.display = "none";
+  document.getElementById("ironView").style.display = "none"; document.body.classList.remove("drill-mode");
   document.getElementById("practicePickerView").style.display = "";
   renderIronStatsSummary();
   renderPracticeActivity();
@@ -625,6 +635,7 @@ function startDriverDrill() {
   driverState.shots = [];
   document.getElementById("practicePickerView").style.display = "none";
   document.getElementById("driverView").style.display = "";
+  document.body.classList.add("drill-mode");
   updateDriverRunningStat();
 }
 
@@ -665,7 +676,7 @@ function endDriverDrill() {
   }
   driverState.active = false;
   driverState.shots = [];
-  document.getElementById("driverView").style.display = "none";
+  document.getElementById("driverView").style.display = "none"; document.body.classList.remove("drill-mode");
   document.getElementById("practicePickerView").style.display = "";
   renderDriverStatsSummary();
   renderPracticeActivity();
@@ -860,7 +871,7 @@ export function wirePracticeUi() {
     p.addEventListener("click", function () { setDrvPill("drvShapePills", "shape", p.dataset.shape); });
   });
   document.querySelectorAll("#driverView .result-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () { recordDriver(btn.dataset.drvResult); });
+    btn.addEventListener("click", function () { flashBtn(btn); recordDriver(btn.dataset.drvResult); });
   });
   const drvBackBtn = document.getElementById("drvBackBtn");
   if (drvBackBtn) drvBackBtn.addEventListener("click", endDriverDrill);
@@ -874,7 +885,7 @@ export function wirePracticeUi() {
     p.addEventListener("click", function () { setIronPill("ironShapePills", "shape", p.dataset.shape); });
   });
   document.querySelectorAll("#ironView .result-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () { recordIron(btn.dataset.ironResult); });
+    btn.addEventListener("click", function () { flashBtn(btn); recordIron(btn.dataset.ironResult); });
   });
   const ironBackBtn = document.getElementById("ironBackBtn");
   if (ironBackBtn) ironBackBtn.addEventListener("click", endIronDrill);
@@ -891,7 +902,7 @@ export function wirePracticeUi() {
     p.addEventListener("click", function () { setChipPill("chipClubPills", "club", p.dataset.club); });
   });
   document.querySelectorAll("#chippingView .result-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () { recordChip(btn.dataset.chipResult); });
+    btn.addEventListener("click", function () { flashBtn(btn); recordChip(btn.dataset.chipResult); });
   });
   const chipBackBtn = document.getElementById("chipBackBtn");
   if (chipBackBtn) chipBackBtn.addEventListener("click", endChippingDrill);
@@ -925,10 +936,10 @@ export function wirePracticeUi() {
     });
   });
   document.querySelectorAll("#puttMakeResults .result-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () { recordPutt(btn.dataset.result); });
+    btn.addEventListener("click", function () { flashBtn(btn); recordPutt(btn.dataset.result); });
   });
   document.querySelectorAll("#puttLagResults .result-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () { recordPutt(null, btn.dataset.lagResult); });
+    btn.addEventListener("click", function () { flashBtn(btn); recordPutt(null, btn.dataset.lagResult); });
   });
   const puttBackBtn = document.getElementById("puttBackBtn");
   if (puttBackBtn) puttBackBtn.addEventListener("click", endPuttingDrill);

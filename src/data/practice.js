@@ -174,15 +174,15 @@ export function getChippingInsights() {
     const ud = set.filter(function (sh) { return CHIP_UD.indexOf(sh.result) !== -1; }).length;
     return { count: set.length, ud, pct: Math.round(ud / set.length * 100) };
   }
-  const buckets = [
-    { lbl: "0-10 y", fn: function (sh) { return sh.distance <= 10; } },
-    { lbl: "10-20 y", fn: function (sh) { return sh.distance > 10 && sh.distance <= 20; } },
-    { lbl: "20-40 y", fn: function (sh) { return sh.distance > 20 && sh.distance <= 40; } },
-    { lbl: "40+ y", fn: function (sh) { return sh.distance > 40; } },
-  ];
-  const distanceRates = buckets.map(function (b) {
-    const r = udRate(allShots.filter(b.fn));
-    return { label: b.lbl, count: r ? r.count : 0, pct: r ? r.pct : null };
+  const ranges = getChippingRanges();
+  const distanceRates = ranges.map(function (r) {
+    const set = allShots.filter(function (sh) {
+      if (sh.rangeId && sh.rangeId !== "custom") return sh.rangeId === r.id;
+      return sh.distance >= r.min && sh.distance < (r.max >= 999 ? 99999 : r.max);
+    });
+    const res = udRate(set);
+    const lbl = r.label + " (" + (r.max < 999 ? r.min + "-" + r.max : r.min + "+") + " yd)";
+    return { label: lbl, count: res ? res.count : 0, pct: res ? res.pct : null };
   });
   const lieGroups = {};
   for (const sh of allShots) {

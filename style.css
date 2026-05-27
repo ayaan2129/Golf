@@ -3130,3 +3130,56 @@ textarea { resize: vertical; }
   .calendar { gap: 6px; }
   .cal-day { padding: 12px 0; font-size: 14px; }
 }
+
+/* ========== DRILL ZONE MODE ========== */
+/* When a drill is active, collapse the app chrome so the player's full
+   attention goes to the current shot. The drill's own title bar is enough
+   navigation: ← to cancel, End to save. */
+body.drill-mode #appHeader,
+body.drill-mode .setup-hero {
+  display: none !important;
+}
+
+/* Collapsible conditions inside drills */
+.drill-conditions {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+.drill-conditions summary {
+  list-style: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.drill-conditions summary::-webkit-details-marker { display: none; }
+.drill-conditions summary::after {
+  content: '▾';
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+.drill-conditions[open] summary::after { transform: rotate(-180deg); }
+.drill-conditions .conditions-inner {
+  padding: 4px 0 6px;
+  border-top: 1px solid var(--line);
+}
+/* Club row stays visible outside conditions (quick-change while drilling) */
+.drill-club-row {
+  padding: 8px 0 4px;
+}
+
+/* Flash feedback on result-btn tap */
+.result-btn.tapped {
+  background: var(--green-bright) !important;
+  color: white !important;
+  border-color: var(--green-deep) !important;
+  transform: scale(0.96);
+  transition: background 0.05s, transform 0.05s;
+}
+
