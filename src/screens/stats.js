@@ -119,6 +119,9 @@ function openDeepDive(cat) {
   else if (cat === "putting") renderPuttingDeepDive(body, rounds);
   else if (cat === "fairways") renderFairwaysDeepDive(body, rounds);
   else if (cat === "greens") renderGreensDeepDive(body, rounds);
+  else if (cat === "updowns") renderUpDownsDeepDive(body, rounds);
+  else if (cat === "sandsaves") renderSandSavesDeepDive(body, rounds);
+  else if (cat === "penalties") renderPenaltiesDeepDive(body, rounds);
   else body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">Deep-dive for <strong>' + titles[cat] + '</strong> is coming next.</p>';
   modal.style.display = "flex";
 }
@@ -654,6 +657,215 @@ function renderGreenMissCompass(d) {
          '<text x="222" y="115" text-anchor="middle" font-size="18" font-weight="800" fill="#c62828">' + pct(d.Right) + '</text>' +
          '<text x="222" y="130" text-anchor="middle" font-size="10" fill="#888">' + d.Right + '</text>' +
          '</svg></div>';
+}
+
+// ---------- Up & Downs deep-dive: scramble % + chips/round donut + distribution ----------
+function renderUpDownsDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let scrSave = 0, scrAns = 0;
+  let totalChips = 0;
+  const chipDist = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };  // 4 = "3+ chips"
+  let chipsRoundsN = 0;
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    let chipsThisRound = 0;
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      if (par < 3 || !Array.isArray(h.shots)) continue;
+      const greenIdx = h.shots.findIndex(function (s) { return s.result === "Green" || s.result === "On green" || s.result === "Holed"; });
+      const gir = greenIdx !== -1 && (greenIdx + 1) <= (par - 2);
+      const score = Number(h.score) || 0;
+      if (!gir && score > 0) {
+        scrAns++;
+        if (score <= par) scrSave++;
+      }
+      // Count chips: any short-game shot (Wedge / chip-distance) after missing GIR
+      for (const s of h.shots) {
+        const club = (s.club || "").toLowerCase();
+        if ((club.indexOf("wedge") !== -1 || club === "chipper") && s.lie !== "Tee") {
+          chipsThisRound++;
+        }
+      }
+    }
+    totalChips += chipsThisRound;
+    const key = chipsThisRound >= 4 ? 4 : (chipsThisRound > 3 ? 3 : chipsThisRound);
+    chipDist[key] = (chipDist[key] || 0) + 1;
+    chipsRoundsN++;
+  }
+  const scrPct = scrAns > 0 ? Math.round(scrSave / scrAns * 100) : null;
+  const avgChips = chipsRoundsN > 0 ? totalChips / chipsRoundsN : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Scrambling</div><div class="dd-stat-num">' + (scrPct != null ? scrPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Up &amp; Down</div><div class="dd-stat-num">' + scrSave + "/" + scrAns + '</div></div>';
+  html += '</div>';
+
+  if (chipsRoundsN > 0) {
+    html += '<div class="dd-section-title">Chip shots per round</div>';
+    html += renderChipsDonut(chipDist, chipsRoundsN, avgChips);
+    html += '<div class="putt-dist-legend">';
+    const legend = [
+      { key: 0, lbl: "0 Chips", col: "#1b5e20" },
+      { key: 1, lbl: "1 Chip",  col: "#2faf3e" },
+      { key: 2, lbl: "2 Chips", col: "#a5d6a7" },
+      { key: 3, lbl: "3 Chips", col: "#ef9a9a" },
+      { key: 4, lbl: "3+ Chips", col: "#c62828" },
+    ];
+    for (const l of legend) {
+      const c = chipDist[l.key] || 0;
+      const pct = Math.round(c / chipsRoundsN * 100);
+      html += '<div class="putt-dist-chip"><span class="putt-dist-dot" style="background:' + l.col + ';"></span>' + l.lbl + ' · ' + pct + '% (' + c + ')</div>';
+    }
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function renderChipsDonut(buckets, totalRounds, avgChips) {
+  const segments = [
+    { key: 0, col: "#1b5e20" },
+    { key: 1, col: "#2faf3e" },
+    { key: 2, col: "#a5d6a7" },
+    { key: 3, col: "#ef9a9a" },
+    { key: 4, col: "#c62828" },
+  ];
+  const cx = 100, cy = 100, r = 70, stroke = 22;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let arcs = '';
+  for (const seg of segments) {
+    const count = buckets[seg.key] || 0;
+    const frac = count / totalRounds;
+    if (frac === 0) continue;
+    const len = circ * frac;
+    arcs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.col + '" stroke-width="' + stroke + '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')" />';
+    offset += len;
+  }
+  const centerLbl = avgChips != null ? avgChips.toFixed(1) : "—";
+  return '<div style="display:flex; justify-content:center; padding:10px 0;">' +
+         '<svg viewBox="0 0 200 200" width="180" height="180">' +
+         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#eee" stroke-width="' + stroke + '" />' +
+         arcs +
+         '<text x="100" y="98" text-anchor="middle" font-size="34" font-weight="800" fill="#0b3d0b">' + centerLbl + '</text>' +
+         '<text x="100" y="118" text-anchor="middle" font-size="11" fill="#888">chips / round</text>' +
+         '</svg></div>';
+}
+
+// ---------- Sand Saves deep-dive ----------
+function renderSandSavesDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let bunkerHoles = 0, sandSaves = 0;
+  let bunkerShots = 0;
+  const perRound = [];
+  for (const r of rounds) {
+    const holes = (r.fullData && r.fullData.holes) || {};
+    let bunkersThisRound = 0;
+    for (const k in holes) {
+      const h = holes[k];
+      if (!Array.isArray(h.shots)) continue;
+      const par = Number(h.par) || 0;
+      const score = Number(h.score) || 0;
+      const fromBunker = h.shots.some(function (s) { return s.lie === "Bunker"; });
+      if (fromBunker) {
+        bunkerHoles++;
+        if (score > 0 && score <= par + 1) sandSaves++;  // Sand save = bogey-or-better from sand
+        bunkersThisRound += h.shots.filter(function (s) { return s.lie === "Bunker"; }).length;
+        bunkerShots += h.shots.filter(function (s) { return s.lie === "Bunker"; }).length;
+      }
+    }
+    perRound.push(bunkersThisRound);
+  }
+  const ssPct = bunkerHoles > 0 ? Math.round(sandSaves / bunkerHoles * 100) : null;
+  const avgBunkers = perRound.length > 0 ? perRound.reduce(function (a, b) { return a + b; }, 0) / perRound.length : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Sand Save %</div><div class="dd-stat-num">' + (ssPct != null ? ssPct + "%" : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">From Sand</div><div class="dd-stat-num">' + sandSaves + "/" + bunkerHoles + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Bunker shots / round</div><div class="dd-stat-num">' + (avgBunkers != null ? avgBunkers.toFixed(1) : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Total bunker shots</div><div class="dd-stat-num">' + bunkerShots + '</div></div>';
+  html += '</div>';
+
+  if (bunkerHoles === 0) {
+    html += '<p style="text-align:center; font-size:13px; color:var(--muted); margin-top:14px;">No bunker shots logged in this filter. Sand save % shows up once you log a bunker shot.</p>';
+  } else {
+    html += '<p style="font-size:11px; color:var(--muted); margin-top:14px; text-align:center;">Sand save = bogey-or-better on a hole where you played a bunker shot.</p>';
+  }
+
+  body.innerHTML = html;
+}
+
+// ---------- Penalties deep-dive ----------
+function renderPenaltiesDeepDive(body, rounds) {
+  if (rounds.length === 0) {
+    body.innerHTML = '<p style="text-align:center; padding:30px 10px; color:var(--muted);">No rounds in this filter yet.</p>';
+    return;
+  }
+
+  let totalPens = 0;
+  const perRound = [];
+  const penDist = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+  const perPar = { 3: 0, 4: 0, 5: 0 };
+  let cleanRounds = 0;
+  for (const r of rounds) {
+    let pensThisRound = 0;
+    const holes = (r.fullData && r.fullData.holes) || {};
+    for (const k in holes) {
+      const h = holes[k];
+      const par = Number(h.par) || 0;
+      if (!Array.isArray(h.shots)) continue;
+      const pens = h.shots.filter(function (s) { return s.result === "Penalty"; }).length;
+      pensThisRound += pens;
+      if (pens > 0 && perPar[par] != null) perPar[par] += pens;
+    }
+    totalPens += pensThisRound;
+    perRound.push(pensThisRound);
+    if (pensThisRound === 0) cleanRounds++;
+    const key = pensThisRound >= 4 ? 4 : pensThisRound;
+    penDist[key] = (penDist[key] || 0) + 1;
+  }
+  const avgPens = perRound.length > 0 ? totalPens / perRound.length : null;
+
+  let html = "";
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Avg / Round</div><div class="dd-stat-num">' + (avgPens != null ? avgPens.toFixed(1) : "—") + '</div></div>';
+  html += '  <div class="dd-stat"><div class="dd-stat-lbl">Total</div><div class="dd-stat-num">' + totalPens + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dd-row">';
+  html += '  <div class="dd-stat" style="background:rgba(47,175,62,0.1);"><div class="dd-stat-lbl">Clean rounds</div><div class="dd-stat-num">' + cleanRounds + '</div><div style="font-size:11px; color:var(--muted);">' + (perRound.length > 0 ? Math.round(cleanRounds / perRound.length * 100) : 0) + '% of rounds</div></div>';
+  html += '  <div class="dd-stat" style="background:rgba(198,40,40,0.08);"><div class="dd-stat-lbl">Worst round</div><div class="dd-stat-num">' + (perRound.length > 0 ? Math.max.apply(null, perRound) : 0) + '</div></div>';
+  html += '</div>';
+
+  if (perPar[3] + perPar[4] + perPar[5] > 0) {
+    html += '<div class="dd-section-title">Penalties by Par</div>';
+    const maxV = Math.max(perPar[3], perPar[4], perPar[5], 1);
+    for (const p of [3, 4, 5]) {
+      const v = perPar[p];
+      const widthPct = Math.round(v / maxV * 100);
+      html += '<div class="dd-vs-par-row">';
+      html += '  <div class="dd-vs-par-lbl">PAR ' + p + '</div>';
+      html += '  <div class="dd-vs-par-bar-wrap"><div class="dd-vs-par-bar" style="width:' + widthPct + '%; left:0; background:var(--crimson);"></div></div>';
+      html += '  <div class="dd-vs-par-val">' + v + '</div>';
+      html += '</div>';
+    }
+  }
+
+  body.innerHTML = html;
 }
 
 function openCategoryFilterSheet() {
