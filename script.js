@@ -37,6 +37,19 @@ import {
   getVideoIndex, saveVideoIndex, videoNewId,
 } from "./src/data/videos.js";
 import { fetchWeatherForDate, weatherCodeToText } from "./src/data/weather.js";
+import { aiEnabled, getGrokKey, getProxyUrl, callGrok } from "./src/ai/grok.js";
+import { aiBaseContext, setAiOutput } from "./src/ai/context.js";
+import {
+  generateRoundReport,
+  generatePracticePlan,
+  generatePreRoundBrief,
+  generateTournamentBrief,
+  generateGoalPlan,
+  generateCourseStrategy,
+  generateTodaysFocus,
+  analyseSwingFrame,
+  analyzeSwingPhoto,
+} from "./src/ai/generators.js";
 
 // One-click activation URL handler: read ?key= / ?proxy= from the URL,
 // stash them, and clean the URL bar so the credentials don't linger in
@@ -4403,212 +4416,6 @@ function renderPracticeInsightsCard() {
   }
 }
 
-function aiEnabled() {
-  if (localStorage.getItem("aiMode") !== "on") return false;
-  // Proxy doesn't need a local key; direct api.x.ai calls do.
-  return !!getProxyUrl() || !!getGrokKey();
-}
-
-function getGrokKey() {
-  return localStorage.getItem("grokApiKey") || "";
-}
-
-function getProxyUrl() {
-  return (localStorage.getItem("aiProxyUrl") || "").trim();
-}
-
-async function callGrok(systemPrompt, userPrompt, opts) {
-  const proxyUrl = getProxyUrl();
-  const key = getGrokKey();
-  if (!proxyUrl && !key) throw new Error("Set an AI Proxy URL or a Grok API key first.");
-  const messages = [];
-  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-  if (Array.isArray(userPrompt)) {
-    for (const m of userPrompt) messages.push(m);
-  } else if (userPrompt) {
-    messages.push({ role: "user", content: userPrompt });
-  }
-  const body = {
-    model: (opts && opts.model) || "grok-2-latest",
-    messages,
-    temperature: (opts && opts.temperature !== undefined) ? opts.temperature : 0.5,
-  };
-  const url = proxyUrl || "https://api.x.ai/v1/chat/completions";
-  const headers = { "Content-Type": "application/json" };
-  if (!proxyUrl) headers["Authorization"] = "Bearer " + key;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: headers,
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    let detail = "";
-    try { detail = (await res.text()).substring(0, 200); } catch (e) {}
-    throw new Error("API " + res.status + " " + detail);
-  }
-  const data = await res.json();
-  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
-}
-
-function aiBaseContext() {
-  const profile = getProfile();
-  const history = getHistory();
-  const last5 = history.slice(-5).reverse();
-  const age = calcAge(profile.birthday) || 12;
-  const hc = profile.handicap != null ? profile.handicap : "unknown";
-  const bag = getSelectedClubs().join(", ");
-  const clubDist = profile.clubDistances || {};
-
-  const playerName = profile.displayName || (typeof getCurrentUsername === "function" ? getCurrentUsername() : "") || "Ayaan";
-  const dream = profile.bigGoal || "become World No. 1, beat Rory McIlroy";
-  const courseKey = ((document.getElementById("courseSelect") || {}).value) || "RCGC";
-  const course = COURSES[courseKey];
-  let lines = [];
-  lines.push("Player: " + playerName + ", age " + age + ", based in Kolkata India.");
-  lines.push("Dream: " + dream + ". Junior aspiring pro.");
-  lines.push("Handicap: " + hc + ".");
-  if (course) {
-    let locLine = "Home course: " + (course.name || courseKey);
-    if (course.location) locLine += " (lat " + course.location.lat + ", lon " + course.location.lon + ")";
-    if (course.greenSpeed) locLine += ", typical greens " + course.greenSpeed;
-    lines.push(locLine + ".");
-    const greensToday = localStorage.getItem("greenSpeedToday");
-    if (greensToday) lines.push("Greens today: " + greensToday + ".");
-    if (course.notes) lines.push("Course notes: " + course.notes);
-  }
-  lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
-  if (Object.keys(clubDist).length > 0) {
-    lines.push("Club distances: " + Object.keys(clubDist).map(function (c) { return c + " " + clubDist[c] + "y"; }).join(", ") + ".");
-  }
-  lines.push("Total rounds saved: " + history.length + ".");
-  if (last5.length > 0) {
-    lines.push("Last " + last5.length + " rounds:");
-    for (const r of last5) {
-      const parts = [
-        r.date,
-        r.courseName + (r.tee ? " " + r.tee : ""),
-        "score " + r.totalScore + " (" + (r.scoreVsPar >= 0 ? "+" : "") + r.scoreVsPar + ")",
-        "putts " + (r.totalPutts != null ? r.totalPutts : "?"),
-        "GIR " + (r.girPct != null ? r.girPct + "%" : "?"),
-        "FW " + (r.fairwayPct != null ? r.fairwayPct + "%" : "?"),
-        "scramble " + (r.scramblePct != null ? r.scramblePct + "%" : "?"),
-        "pens " + (r.totalPenalties != null ? r.totalPenalties : "?"),
-      ];
-      if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
-      if (r.greenSpeed) parts.push("greens " + r.greenSpeed);
-      if (r.teeOffTime) parts.push("tee-off " + r.teeOffTime + (r.timeBlock ? " (" + r.timeBlock + ")" : ""));
-      if (r.back9StartTime) parts.push("back-9 " + r.back9StartTime + (r.back9TimeBlock ? " (" + r.back9TimeBlock + ")" : ""));
-      if (r.weatherBack9 && (!r.weatherData || r.weatherBack9.tempMax !== r.weatherData.tempMax || r.weatherBack9.windKmh !== r.weatherData.windKmh)) {
-        parts.push("wx-back9 " + Math.round(r.weatherBack9.tempMax || 0) + "C " + Math.round(r.weatherBack9.windKmh || 0) + "kmh");
-      }
-      lines.push("  - " + parts.join(", "));
-    }
-  }
-  const practice = getPractice().slice(-5).reverse();
-  if (practice.length > 0) {
-    lines.push("Recent practice:");
-    for (const s of practice) {
-      lines.push("  - " + s.date + " " + s.area + " " + (s.duration || "?") + "min" + (s.focus ? " (" + s.focus + ")" : ""));
-    }
-  }
-  if (typeof getPuttingInsights === "function") {
-    const pi = getPuttingInsights();
-    if (pi.totalShots > 0) {
-      lines.push("Putting practice — " + pi.totalShots + " putts across " + pi.sessions + " sessions:");
-      for (const b of pi.distanceRates) {
-        if (b.count > 0) lines.push("  - " + b.label + ": " + b.pct + "% (" + b.count + " putts)");
-      }
-      if (pi.topMiss) lines.push("  - Most common miss: " + pi.topMiss);
-      if (pi.lag) lines.push("  - Lag in 5-ft circle: " + pi.lag.inCirclePct + "% (" + pi.lag.count + " putts)");
-    }
-  }
-  if (typeof getChippingInsights === "function") {
-    const ci = getChippingInsights();
-    if (ci.totalShots > 0) {
-      lines.push("Chipping practice — " + ci.totalShots + " chips across " + ci.sessions + " sessions (up-&-down = inside 6 ft):");
-      for (const b of ci.distanceRates) {
-        if (b.count > 0) lines.push("  - " + b.label + ": " + b.pct + "% UD (" + b.count + " chips)");
-      }
-      for (const l of ci.lieRates) {
-        lines.push("  - From " + l.lie + ": " + l.pct + "% UD (" + l.count + " chips)");
-      }
-      if (ci.topMiss) lines.push("  - Most common chip miss: " + ci.topMiss);
-      if (ci.mishitPct != null) lines.push("  - Chunk/blade rate: " + ci.mishitPct + "%");
-    }
-  }
-  if (typeof getIronInsights === "function") {
-    const ii = getIronInsights();
-    if (ii.totalShots > 0) {
-      lines.push("Iron practice — " + ii.totalShots + " shots across " + ii.sessions + " sessions:");
-      for (const cs of ii.clubStats) {
-        const carryStr = cs.avgCarry != null ? cs.avgCarry + "y avg (" + cs.minCarry + "-" + cs.maxCarry + ")" : "no carry data";
-        lines.push("  - " + cs.club + " (" + cs.count + " shots): " + carryStr + ", " + cs.onTargetPct + "% on target");
-      }
-      if (ii.pureStrikePct != null) lines.push("  - Pure-strike rate: " + ii.pureStrikePct + "%");
-      if (ii.topMiss) lines.push("  - Most common iron miss: " + ii.topMiss);
-    }
-  }
-  if (typeof getDriverInsights === "function") {
-    const di = getDriverInsights();
-    if (di.totalShots > 0) {
-      lines.push("Tee shot practice — " + di.totalShots + " shots across " + di.sessions + " sessions:");
-      for (const cs of di.clubStats) {
-        const carryStr = cs.avgCarry != null ? cs.avgCarry + "y carry" : "no carry";
-        const totalStr = cs.avgTotal != null ? ", " + cs.avgTotal + "y total" : "";
-        lines.push("  - " + cs.club + " (" + cs.count + " shots): " + carryStr + totalStr + ", " + cs.fairwayPct + "% FW (" + cs.playablePct + "% playable)");
-      }
-      if (di.topMiss) lines.push("  - Most common tee miss: " + di.topMiss);
-      if (di.leftMisses > di.rightMisses) lines.push("  - Miss bias: left side (" + di.leftMisses + " vs " + di.rightMisses + " right)");
-      else if (di.rightMisses > di.leftMisses) lines.push("  - Miss bias: right side (" + di.rightMisses + " vs " + di.leftMisses + " left)");
-    }
-  }
-  return lines.join("\n");
-}
-
-function setAiOutput(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-
-async function generateRoundReport() {
-  const out = "aiRoundReport";
-  setAiOutput(out, "Asking the coach...");
-  const history = getHistory();
-  if (history.length === 0) { setAiOutput(out, "Save a round first."); return; }
-  const r = history[history.length - 1];
-  const sys = "You are Coach. Speak directly to a 12-year-old budding pro golfer named Ayaan. Be specific, kind, and honest. 4-6 short paragraphs. No emojis.";
-  const ctx = aiBaseContext();
-  const detailed = JSON.stringify({
-    course: r.courseName, tee: r.tee, date: r.date,
-    score: r.totalScore, vsPar: r.scoreVsPar,
-    putts: r.totalPutts, chips: r.totalChips, penalties: r.totalPenalties,
-    fairwayPct: r.fairwayPct, girPct: r.girPct, scramblePct: r.scramblePct,
-    mistakes: r.mistakes, strengths: r.strengths, blunders: r.blunders,
-    weather: r.weatherData,
-  });
-  const userMsg = "Player context:\n" + ctx + "\n\nMost recent round JSON:\n" + detailed + "\n\nWrite a personal post-round report covering: what went well, the 1-2 critical mistakes with the exact hole numbers, and what to practise in the next 3 days. End with one motivational sentence tied to his dream of beating Rory.";
-  try {
-    const reply = await callGrok(sys, userMsg);
-    setAiOutput(out, reply);
-  } catch (e) {
-    setAiOutput(out, "Error: " + e.message);
-  }
-}
-
-async function generatePracticePlan() {
-  const out = "aiPracticePlan";
-  setAiOutput(out, "Asking the coach...");
-  const sys = "You are Coach. Build a 7-day practice plan for a budding 12-year-old golfer named Ayaan. Each day: one focus area + a specific drill + duration. Match his data. Be concrete. No emojis.";
-  const ctx = aiBaseContext();
-  const userMsg = "Player context:\n" + ctx + "\n\nReturn a Mon-Sun plan, one line per day in this format:\nMonday — focus — drill — minutes\nUse his actual weakest stats from above.";
-  try {
-    const reply = await callGrok(sys, userMsg);
-    setAiOutput(out, reply);
-  } catch (e) {
-    setAiOutput(out, "Error: " + e.message);
-  }
-}
-
 function buildDemoShot(club, distHit, lie, dir, q, res) {
   return { club, distanceHit: String(distHit), distanceLeft: "", lie, direction: dir, quality: q, result: res };
 }
@@ -4854,118 +4661,6 @@ async function generateHoleTip() {
   catch (e) { setAiOutput(out, "Error: " + e.message); }
 }
 
-async function generateTournamentBrief() {
-  const out = "aiTournamentBrief";
-  setAiOutput(out, "Asking the coach...");
-  const upcoming = getUpcoming();
-  const next = upcoming[0] || null;
-  const sys = "You are Coach. Multi-day tournament prep plan for a 12-year-old. Specific, kind, honest. No emojis.";
-  const ctx = aiBaseContext();
-  const target = next ? "Next event: " + next.date + " at " + next.course + " " + (next.tee || "") + " (" + next.holes + " holes)" : "No upcoming round scheduled — assume RCGC Blue tees in 7 days.";
-  const userMsg = "Player context:\n" + ctx + "\n\n" + target + "\n\nReturn a 5-day countdown plan (D-5 to D-day). For each day: focus area + drill + duration. Add a 'tournament day' bullet block: warm-up routine, scoring strategy, mental cue.";
-  try { setAiOutput(out, await callGrok(sys, userMsg)); }
-  catch (e) { setAiOutput(out, "Error: " + e.message); }
-}
-
-async function generateGoalPlan() {
-  const out = "aiGoalsOutput";
-  setAiOutput(out, "Asking the coach...");
-  const sys = "You are Coach. Set realistic but ambitious milestones for a 12-year-old budding pro. Reference his current data. No emojis.";
-  const ctx = aiBaseContext();
-  const userMsg = "Player context:\n" + ctx + "\n\nReturn 3 sections: 3-month goal (handicap + skill), 6-month goal, 1-year goal. Each section: target number + 2 key milestones to hit it. End with one sentence about how this lines up with his dream of becoming World No. 1.";
-  try { setAiOutput(out, await callGrok(sys, userMsg)); }
-  catch (e) { setAiOutput(out, "Error: " + e.message); }
-}
-
-async function generateCourseStrategy() {
-  const out = "aiCourseOutput";
-  setAiOutput(out, "Asking the coach...");
-  const counts = {};
-  for (const r of getHistory()) {
-    if (r.courseName) counts[r.courseName] = (counts[r.courseName] || 0) + 1;
-  }
-  const top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || "RCGC";
-  const courseRounds = getHistory().filter(function (r) { return r.courseName === top; });
-  const sys = "You are Coach. Build a hole-by-hole strategy for a junior. Reference his actual scoring patterns. No emojis.";
-  const ctx = aiBaseContext();
-  const summary = courseRounds.slice(-3).map(function (r) {
-    if (r.fullData && r.fullData.holes) {
-      const ss = [];
-      for (const k in r.fullData.holes) {
-        const h = r.fullData.holes[k];
-        const st = getHoleStatsFromSavedHole(h);
-        ss.push("h" + k + " par" + st.par + " score" + st.score);
-      }
-      return r.date + ": " + ss.join(", ");
-    }
-    return r.date + ": " + r.totalScore;
-  }).join(" | ");
-  const userMsg = "Player context:\n" + ctx + "\n\nCourse: " + top + ". Recent rounds there: " + (summary || "none") + ".\n\nReturn an 18-hole strategy: one short line per hole with tee club + key thing to avoid. Group as 'Front 9' and 'Back 9'.";
-  try { setAiOutput(out, await callGrok(sys, userMsg)); }
-  catch (e) { setAiOutput(out, "Error: " + e.message); }
-}
-
-async function generateTodaysFocus() {
-  const out = "aiFocusOutput";
-  setAiOutput(out, "Asking the coach...");
-  const sys = "You are Coach. One short paragraph (3-4 sentences) on what to focus on today. Warm tone. No emojis. Tie it to his dream of beating Rory.";
-  const ctx = aiBaseContext();
-  const userMsg = "Player context:\n" + ctx + "\n\nGive Ayaan today's focus.";
-  try { setAiOutput(out, await callGrok(sys, userMsg)); }
-  catch (e) { setAiOutput(out, "Error: " + e.message); }
-}
-
-async function analyseSwingFrame(dataUrl, notes, outEl) {
-  if (!outEl) return;
-  outEl.textContent = "Analysing frame...";
-  const sys = "You are a golf swing coach for a 12-year-old budding pro. From the video frame, give 3-5 specific observations on grip, posture, alignment, takeaway, top-of-backswing, or impact. Be honest, kind, specific. No emojis.";
-  const messages = [{
-    role: "user",
-    content: [
-      { type: "text", text: "Analyse this swing frame. " + (notes ? "Player note: " + notes : "") + "\nPlayer context:\n" + aiBaseContext() },
-      { type: "image_url", image_url: { url: dataUrl } }
-    ]
-  }];
-  try {
-    const reply = await callGrok(sys, messages, { model: "grok-2-vision-1212" });
-    outEl.textContent = reply;
-  } catch (e) {
-    outEl.textContent = "Error: " + (e.message || e);
-  }
-}
-
-async function analyzeSwingPhoto() {
-  const out = "aiSwingOutput";
-  setAiOutput(out, "Analysing swing...");
-  const fileInput = document.getElementById("swingPhoto");
-  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-    setAiOutput(out, "Pick an image first.");
-    return;
-  }
-  const notes = (document.getElementById("swingNotes") || {}).value || "";
-  const file = fileInput.files[0];
-  const dataUrl = await new Promise(function (resolve, reject) {
-    const r = new FileReader();
-    r.onload = function () { resolve(r.result); };
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-  const sys = "You are a golf swing coach for a 12-year-old budding pro. From the image, give 3-5 specific observations on grip, posture, alignment, takeaway, top-of-backswing, or impact. Be honest, kind, specific. No emojis.";
-  const messages = [{
-    role: "user",
-    content: [
-      { type: "text", text: "Analyse this swing. " + (notes ? "Player note: " + notes : "") + "\nPlayer context:\n" + aiBaseContext() },
-      { type: "image_url", image_url: { url: dataUrl } }
-    ]
-  }];
-  try {
-    const reply = await callGrok(sys, messages, { model: "grok-2-vision-1212" });
-    setAiOutput(out, reply);
-  } catch (e) {
-    setAiOutput(out, "Error: " + e.message);
-  }
-}
-
 function startVoiceInput() {
   const Sp = window.SpeechRecognition || window.webkitSpeechRecognition;
   const micBtn = document.getElementById("micBtn");
@@ -4997,24 +4692,6 @@ function startVoiceInput() {
     if (micStatus) micStatus.textContent = "Heard: \"" + text + "\" — tap Send.";
   };
   rec.start();
-}
-
-async function generatePreRoundBrief() {
-  const out = "aiPreRoundBrief";
-  setAiOutput(out, "Asking the coach...");
-  const sys = "You are Coach. Give a tight 5-bullet pre-round game plan for a 12-year-old budding pro golfer named Ayaan. Be specific. No emojis.";
-  const ctx = aiBaseContext();
-  let weather = null;
-  try { weather = JSON.parse(localStorage.getItem("currentWeather") || "null"); } catch (e) {}
-  const course = (document.getElementById("courseSelect") || {}).value || "RCGC";
-  const tee = (document.getElementById("teeSelect") || {}).value || "";
-  const userMsg = "Player context:\n" + ctx + "\n\nNext round: " + course + " " + tee + ". Weather: " + (weather ? Math.round(weather.tempMax || 0) + "C, wind " + Math.round(weather.windKmh || 0) + " kmh, " + (weather.condition || "?") : "unknown") + ".\n\nReturn 5 short bullets covering: (1) tee strategy today, (2) which club is hot, (3) what to avoid based on past mistakes, (4) putting focus, (5) one mental cue.";
-  try {
-    const reply = await callGrok(sys, userMsg);
-    setAiOutput(out, reply);
-  } catch (e) {
-    setAiOutput(out, "Error: " + e.message);
-  }
 }
 
 function renderAiStatus() {
