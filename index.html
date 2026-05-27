@@ -325,6 +325,130 @@
       <div id="statsTab" class="tab-page" style="display:none;">
         <h2 class="section-header">Stats &amp; History</h2>
 
+        <div class="categories-card">
+          <div class="categories-header">
+            <h2 style="margin:0; font-size:18px; color:var(--green-deep);">Categories</h2>
+            <button id="categoriesFilterBtn" class="header-btn" title="Filters">⚙</button>
+          </div>
+          <div class="categories-filter-pills" id="categoriesFilterPills">
+            <button class="cat-filter-pill" data-range="last5">Last 5</button>
+            <button class="cat-filter-pill active" data-range="last20">Last 20</button>
+            <button class="cat-filter-pill" data-range="year">This Year</button>
+            <button class="cat-filter-pill" data-range="all">All</button>
+          </div>
+          <p id="categoriesFilterSummary" style="font-size:11px; color:var(--muted); margin:4px 0 12px;">All courses · 18 + 9 holes</p>
+
+          <div class="categories-grid" id="categoriesGrid">
+            <button class="category-tile" data-cat="scoring">
+              <div class="cat-tile-icon" style="background:#0b3d0b;color:white;">🏆</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Scoring</div>
+                <div class="cat-tile-num" id="catScoringNum">—</div>
+              </div>
+              <div class="cat-tile-chev">›</div>
+            </button>
+            <button class="category-tile" data-cat="fairways">
+              <div class="cat-tile-icon" style="background:var(--green-bright);color:white;">⛳</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Fairways</div>
+                <div class="cat-tile-num" id="catFairwaysNum">—</div>
+              </div>
+              <div class="cat-tile-chev">›</div>
+            </button>
+            <button class="category-tile" data-cat="greens">
+              <div class="cat-tile-icon" style="background:var(--green-mid);color:white;">🟢</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Greens</div>
+                <div class="cat-tile-num" id="catGreensNum">—</div>
+              </div>
+              <div class="cat-tile-chev">›</div>
+            </button>
+            <button class="category-tile half" data-cat="updowns">
+              <div class="cat-tile-icon" style="background:#2faf3e;color:white;">↑</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Up &amp; Downs</div>
+                <div class="cat-tile-num" id="catUpDownsNum">—</div>
+              </div>
+            </button>
+            <button class="category-tile half" data-cat="sandsaves">
+              <div class="cat-tile-icon" style="background:#d4a017;color:white;">⛱</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Sand Saves</div>
+                <div class="cat-tile-num" id="catSandSavesNum">—</div>
+              </div>
+            </button>
+            <button class="category-tile" data-cat="putting">
+              <div class="cat-tile-icon" style="background:#1976d2;color:white;">🥌</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Putting</div>
+                <div class="cat-tile-num" id="catPuttingNum">—</div>
+              </div>
+              <div class="cat-tile-chev">›</div>
+            </button>
+            <button class="category-tile" data-cat="penalties">
+              <div class="cat-tile-icon" style="background:var(--crimson);color:white;">!</div>
+              <div class="cat-tile-body">
+                <div class="cat-tile-label">Penalties</div>
+                <div class="cat-tile-num" id="catPenaltiesNum">—</div>
+              </div>
+              <div class="cat-tile-chev">›</div>
+            </button>
+          </div>
+        </div>
+
+        <div id="categoryDeepDive" class="modal-overlay" style="display:none;">
+          <div class="modal-content" style="max-width: 460px; padding:0;">
+            <div class="deepdive-header" id="deepdiveHeader">
+              <button class="header-btn" id="deepdiveCloseBtn" style="background:transparent; color:white;">×</button>
+              <h2 id="deepdiveTitle">—</h2>
+              <span id="deepdiveScope" style="font-size:12px; opacity:0.85;">—</span>
+            </div>
+            <div id="deepdiveBody" style="padding:16px;"></div>
+          </div>
+        </div>
+
+        <div id="categoryFilterSheet" class="modal-overlay" style="display:none;">
+          <div class="modal-content" style="max-width:440px;">
+            <button class="modal-close" id="catFilterClose">×</button>
+            <h3 style="margin:0 0 14px; color:var(--green-deep);">Filters</h3>
+            <div class="profile-row">
+              <label>Holes</label>
+              <div class="pill-group small-pills" id="catFilterHolesPills">
+                <button class="pill" data-holes="18" type="button">18</button>
+                <button class="pill" data-holes="9" type="button">9</button>
+                <button class="pill active" data-holes="all" type="button">All</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <label>Course</label>
+              <select id="catFilterCourse" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+                <option value="">All courses</option>
+              </select>
+            </div>
+            <div class="profile-row">
+              <label>Round count</label>
+              <select id="catFilterRange" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+                <option value="last5">Last 5</option>
+                <option value="last20" selected>Last 20</option>
+                <option value="year">This year</option>
+                <option value="all">All</option>
+                <option value="custom">Custom date range</option>
+              </select>
+            </div>
+            <div class="profile-row" id="catFilterDateRow" style="display:none;">
+              <label>From / To</label>
+              <div style="display:flex; gap:6px;">
+                <input type="date" id="catFilterFrom" style="padding:6px; border:1px solid var(--border); border-radius:6px;" />
+                <input type="date" id="catFilterTo" style="padding:6px; border:1px solid var(--border); border-radius:6px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+              <button id="catFilterReset" class="btn-secondary" style="flex:1;">Reset</button>
+              <button id="catFilterApply" class="ai-action-btn" style="flex:1;">Apply</button>
+            </div>
+          </div>
+        </div>
+
         <div class="summary">
           <h2>Round Summary</h2>
           <p id="sumScore">Total Score: 0</p>

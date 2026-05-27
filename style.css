@@ -2796,6 +2796,164 @@ textarea { resize: vertical; }
   margin-top: 4px;
 }
 
+.categories-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 12px auto;
+  max-width: 460px;
+  box-shadow: var(--card-shadow);
+}
+
+.categories-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.categories-filter-pills {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: 24px;
+  margin: 6px 0;
+}
+.cat-filter-pill {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cat-filter-pill.active {
+  background: var(--green-bright);
+  color: white;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.category-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.category-tile:hover { border-color: var(--green-mid); }
+.category-tile:active { transform: scale(0.98); }
+.category-tile.half {
+  grid-column: span 1;
+}
+
+@media (min-width: 360px) {
+  .categories-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .category-tile[data-cat="scoring"],
+  .category-tile[data-cat="fairways"],
+  .category-tile[data-cat="greens"],
+  .category-tile[data-cat="putting"],
+  .category-tile[data-cat="penalties"] {
+    grid-column: span 2;
+  }
+}
+
+.cat-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.cat-tile-body { flex: 1; min-width: 0; }
+.cat-tile-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 2px; }
+.cat-tile-num { font-size: 22px; font-weight: 800; color: var(--green-deep); }
+.cat-tile-chev { font-size: 22px; color: var(--green-mid); }
+
+.deepdive-header {
+  background: var(--green-deep);
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.deepdive-header h2 { flex: 1; margin: 0; font-size: 18px; color: white; }
+
+.dd-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.dd-stat {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.dd-stat-lbl { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.dd-stat-num { font-size: 24px; font-weight: 800; color: var(--green-deep); }
+
+.dd-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+}
+
+.dd-dist-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 4px;
+  height: 120px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.dd-dist-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.dd-dist-bar {
+  width: 70%;
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.3s;
+}
+.dd-dist-pct { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.dd-dist-lbl { font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 4px; text-transform: uppercase; }
+.dd-dist-count { font-size: 11px; color: var(--muted); }
+
+.dd-vs-par-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.dd-vs-par-lbl { width: 50px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dd-vs-par-bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; position: relative; overflow: hidden; }
+.dd-vs-par-bar { position: absolute; top: 0; bottom: 0; background: var(--crimson); border-radius: 4px; }
+.dd-vs-par-val { width: 50px; text-align: right; font-size: 13px; font-weight: 800; color: var(--ink); }
+
 @media (min-width: 600px) {
   body { padding: 16px; }
   .calendar { gap: 6px; }
