@@ -157,6 +157,18 @@
           </div>
         </div>
 
+        <div class="setup-card">
+          <label class="profile-section-title">Green speed today</label>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 8px;">Greens change daily — set it now so your putting stats know what they were rolling on.</p>
+          <div class="pill-group" id="greenSpeedPills">
+            <button class="pill" data-stimp="slow" type="button">Slow<br><span style="font-size:11px; opacity:0.7;">~8 stimp</span></button>
+            <button class="pill" data-stimp="medium" type="button">Medium<br><span style="font-size:11px; opacity:0.7;">~9 stimp</span></button>
+            <button class="pill active" data-stimp="medium-fast" type="button">Medium-fast<br><span style="font-size:11px; opacity:0.7;">~10 stimp</span></button>
+            <button class="pill" data-stimp="fast" type="button">Fast<br><span style="font-size:11px; opacity:0.7;">~11 stimp</span></button>
+            <button class="pill" data-stimp="tournament" type="button">Tournament<br><span style="font-size:11px; opacity:0.7;">~12+ stimp</span></button>
+          </div>
+        </div>
+
         <div class="setup-card course-info-card" id="courseInfo" style="display:none;">
           <label class="profile-section-title">Course Info</label>
           <div class="info-grid">
@@ -174,20 +186,13 @@
           <p class="weather-line" id="defaultsTemp">Pick a course to load weather</p>
         </div>
 
-        <details class="setup-card">
-          <summary class="profile-section-title">Advanced</summary>
-          <div class="profile-row">
-            <label>Date</label>
-            <input type="date" id="roundDate" />
+        <div class="setup-card">
+          <label class="profile-section-title">Game Type</label>
+          <div class="pill-group" id="gameTypePills">
+            <button class="pill active" data-game="Normal Game" type="button">Normal</button>
+            <button class="pill" data-game="Tournament" type="button">Tournament</button>
           </div>
-          <div class="profile-row">
-            <label>Game Type</label>
-            <select id="gameType">
-              <option value="Normal Game">Normal</option>
-              <option value="Tournament">Tournament</option>
-            </select>
-          </div>
-          <div class="profile-row" id="tournamentNameRow" style="display:none;">
+          <div class="profile-row" id="tournamentNameRow" style="display:none; margin-top:10px;">
             <label>Tournament</label>
             <input type="text" id="tournamentName" placeholder="Name" />
           </div>
@@ -203,9 +208,14 @@
               <option value="Practice tournament">Practice</option>
             </select>
           </div>
-        </details>
+        </div>
 
         <div style="display:none;">
+          <input type="date" id="roundDate" />
+          <select id="gameType">
+            <option value="Normal Game">Normal Game</option>
+            <option value="Tournament">Tournament</option>
+          </select>
           <input type="text" id="playerName" value="Ayaan" />
           <select id="playedIn"><option value="India" selected>India</option><option value="Outside India">Outside India</option></select>
           <label id="countryRow"><input type="text" id="country" /></label>
@@ -430,8 +440,6 @@
               Use AI for chat &amp; reports
             </label>
             <p id="aiStatus" class="ai-status">AI coach off — add a key above to enable.</p>
-            <button id="seedDemoBtn" class="ai-action-btn" style="background:#1976d2; color:white;">Seed Ayaan demo data</button>
-            <button id="wipeDemoBtn" class="ai-action-btn" style="background:#444; color:#eee; margin-top:6px;">Wipe ALL local data</button>
           </div>
 
           <div class="ai-card">
@@ -635,8 +643,6 @@
         </details>
 
         <div class="profile-actions">
-          <button id="seedDemoBtn" class="btn-secondary">Load Demo Data</button>
-          <button id="wipeDemoBtn" class="btn-secondary danger">Wipe All Data</button>
           <button id="profileLogoutBtn" class="btn-danger">Logout</button>
         </div>
       </div>
@@ -1018,22 +1024,27 @@
       <div id="coachTab" class="tab-page" style="display:none;">
         <h2 class="section-header">Coach Chat</h2>
 
-        <div class="chat-card">
-          <h2>Coach Chat</h2>
-          <div id="chatMessages" class="chat-messages"></div>
-
+        <div class="chat-launcher" id="chatLauncher">
+          <div class="chat-launcher-icon">💬</div>
+          <h2>Talk to your coach</h2>
+          <p style="margin:6px 0 16px; color:var(--muted); font-size:14px;">Ask anything about your game — putting %, driver gap, what to work on this week, course strategy. Replies use your saved practice + round data.</p>
+          <button class="home-cta-btn" id="startChatBtn">Start a chat →</button>
+          <p style="font-size:12px; color:var(--muted); margin-top:10px;">Or tap a quick question:</p>
           <div class="quick-replies" id="quickReplies">
             <button class="quick-reply" data-q="How is my putting?">How is my putting?</button>
             <button class="quick-reply" data-q="How is my driving?">How is my driving?</button>
             <button class="quick-reply" data-q="What's my biggest weakness?">What's my biggest weakness?</button>
             <button class="quick-reply" data-q="What should I practice today?">What should I practice today?</button>
-            <button class="quick-reply" data-q="How am I doing overall?">How am I doing overall?</button>
-            <button class="quick-reply" data-q="How are my tournaments?">How are my tournaments?</button>
-            <button class="quick-reply" data-q="What about RCGC?">What about RCGC?</button>
-            <button class="quick-reply" data-q="What are my strengths?">What are my strengths?</button>
-            <button class="quick-reply" data-q="Am I improving?">Am I improving?</button>
-            <button class="quick-reply" data-q="What about chipping?">What about chipping?</button>
           </div>
+        </div>
+
+        <div class="chat-card" id="chatPanel" style="display:none;">
+          <div class="chat-header">
+            <button class="header-btn" id="closeChatBtn" title="Close chat">←</button>
+            <h2 style="margin:0; flex:1;">Coach Chat</h2>
+            <button class="header-btn" id="clearChatBtn" title="Clear messages">⟲</button>
+          </div>
+          <div id="chatMessages" class="chat-messages"></div>
 
           <div class="chat-input-row">
             <input type="text" id="chatInput" placeholder="Ask the coach..." />

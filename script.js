@@ -646,6 +646,16 @@ function switchTab(tabId) {
   if (tabId === "profileTab") {
     syncAiStatusOnProfile();
   }
+  if (tabId === "coachTab") {
+    // Always show the launcher on (re-)entry; the chat panel is opt-in.
+    const launcher = document.getElementById("chatLauncher");
+    const panel = document.getElementById("chatPanel");
+    if (launcher) launcher.style.display = "";
+    if (panel) panel.style.display = "none";
+  }
+  if (tabId === "setupTab") {
+    if (typeof autoSetTodayOnSetup === "function") autoSetTodayOnSetup();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -733,6 +743,51 @@ document.querySelectorAll("#holesPillGroup .pill").forEach(function (pill) {
     }
   });
 });
+
+// Green speed pill buttons → store under setup state
+document.querySelectorAll("#greenSpeedPills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#greenSpeedPills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    localStorage.setItem("greenSpeedToday", pill.dataset.stimp);
+  });
+});
+
+// Game type pill buttons → update the hidden select that the rest of the code reads
+document.querySelectorAll("#gameTypePills .pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    document.querySelectorAll("#gameTypePills .pill").forEach(function (p) { p.classList.remove("active"); });
+    pill.classList.add("active");
+    const v = pill.dataset.game;
+    const sel = document.getElementById("gameType");
+    if (sel) {
+      sel.value = v;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    // Show / hide tournament rows
+    const tourName = document.getElementById("tournamentNameRow");
+    const tourFmt = document.getElementById("tournamentFormatRow");
+    const show = v === "Tournament";
+    if (tourName) tourName.style.display = show ? "" : "none";
+    if (tourFmt) tourFmt.style.display = show ? "" : "none";
+  });
+});
+
+// Date auto-pickup: every time the setup tab is visited, stamp today's date
+function autoSetTodayOnSetup() {
+  const dateInput = document.getElementById("roundDate");
+  if (dateInput) dateInput.value = todayISO();
+}
+autoSetTodayOnSetup();
+
+// Restore the previously chosen green speed (per device)
+(function restoreGreenSpeed() {
+  const saved = localStorage.getItem("greenSpeedToday");
+  if (!saved) return;
+  document.querySelectorAll("#greenSpeedPills .pill").forEach(function (p) {
+    p.classList.toggle("active", p.dataset.stimp === saved);
+  });
+})();
 
 // Show green speed + notes when course picked
 function renderCourseExtras() {
@@ -3223,6 +3278,7 @@ function saveRoundToHistory() {
     gameType: document.getElementById("gameType").value || "Normal Game",
     tournamentName: document.getElementById("tournamentName").value || "",
     tournamentFormat: document.getElementById("tournamentFormat").value || "",
+    greenSpeed: localStorage.getItem("greenSpeedToday") || "",
     energyLevel: (document.getElementById("energyLevel") || {}).value || "",
     confidenceLevel: (document.getElementById("confidenceLevel") || {}).value || "",
     sleepQuality: (document.getElementById("sleepQuality") || {}).value || "",
@@ -4761,8 +4817,10 @@ function aiBaseContext() {
   if (course) {
     let locLine = "Home course: " + (course.name || courseKey);
     if (course.location) locLine += " (lat " + course.location.lat + ", lon " + course.location.lon + ")";
-    if (course.greenSpeed) locLine += ", green speed " + course.greenSpeed;
+    if (course.greenSpeed) locLine += ", typical greens " + course.greenSpeed;
     lines.push(locLine + ".");
+    const greensToday = localStorage.getItem("greenSpeedToday");
+    if (greensToday) lines.push("Greens today: " + greensToday + ".");
     if (course.notes) lines.push("Course notes: " + course.notes);
   }
   lines.push("Bag (" + getSelectedClubs().length + " clubs): " + bag + ".");
@@ -4784,6 +4842,7 @@ function aiBaseContext() {
         "pens " + (r.totalPenalties != null ? r.totalPenalties : "?"),
       ];
       if (r.weatherData) parts.push("wx " + Math.round(r.weatherData.tempMax || 0) + "C " + Math.round(r.weatherData.windKmh || 0) + "kmh");
+      if (r.greenSpeed) parts.push("greens " + r.greenSpeed);
       lines.push("  - " + parts.join(", "));
     }
   }
@@ -5093,14 +5152,12 @@ function seedDemoData(silent) {
 }
 
 function autoSeedIfNeeded() {
-  if (localStorage.getItem("demoSeeded")) return;
-  if (localStorage.getItem("roundHistory")) return;
-  try {
-    seedDemoData(true);
-    localStorage.setItem("demoSeeded", "yes");
-  } catch (e) {
-    // Silent fail - seeding is best-effort
-  }
+  // Intentionally disabled: in a multi-user world, auto-seeding leaks demo
+  // data into every new account's namespace on first visit. Users who want
+  // sample data can click 'Seed Ayaan demo data' on the AI Coach card (or
+  // we'll wire a dedicated demo flow later). For real accounts, the app
+  // starts empty as it should.
+  return;
 }
 
 function wipeAllLocalData() {
@@ -6460,13 +6517,10 @@ async function sendChatMessage(text) {
 }
 
 function initChat() {
-  const messages = document.getElementById("chatMessages");
-  if (!messages) return;
-  if (messages.children.length === 0) {
-    addChatMessage("Hi! I'm your coach. Ask me anything about your golf game - or tap a question below to start.", "coach");
-  }
+  // Greeting is added lazily when the user opens the chat panel.
   const sendBtn = document.getElementById("sendBtn");
   const input = document.getElementById("chatInput");
+  if (!sendBtn || !input) return;
   sendBtn.addEventListener("click", function () {
     sendChatMessage(input.value);
     input.value = "";
@@ -6479,9 +6533,44 @@ function initChat() {
   });
   document.querySelectorAll(".quick-reply").forEach(function (btn) {
     btn.addEventListener("click", function () {
+      openChatPanel();
       sendChatMessage(btn.dataset.q);
     });
   });
+
+  const startChatBtn = document.getElementById("startChatBtn");
+  if (startChatBtn) startChatBtn.addEventListener("click", function () { openChatPanel(); setTimeout(function () { const el = document.getElementById("chatInput"); if (el) el.focus(); }, 100); });
+  const closeChatBtn = document.getElementById("closeChatBtn");
+  if (closeChatBtn) closeChatBtn.addEventListener("click", closeChatPanel);
+  const clearChatBtn = document.getElementById("clearChatBtn");
+  if (clearChatBtn) clearChatBtn.addEventListener("click", function () {
+    const m = document.getElementById("chatMessages");
+    if (m) m.innerHTML = "";
+    chatHistory.length = 0;
+    addInitialChatGreeting();
+  });
+}
+
+function openChatPanel() {
+  const launcher = document.getElementById("chatLauncher");
+  const panel = document.getElementById("chatPanel");
+  if (launcher) launcher.style.display = "none";
+  if (panel) panel.style.display = "";
+  const msgs = document.getElementById("chatMessages");
+  if (msgs && msgs.children.length === 0) addInitialChatGreeting();
+}
+
+function closeChatPanel() {
+  const launcher = document.getElementById("chatLauncher");
+  const panel = document.getElementById("chatPanel");
+  if (panel) panel.style.display = "none";
+  if (launcher) launcher.style.display = "";
+}
+
+function addInitialChatGreeting() {
+  if (typeof addChatMessage === "function") {
+    addChatMessage("Hi! I'm your coach. Ask me anything about your golf game — or tap a question on the previous screen.", "coach");
+  }
 }
 
 const roundModeSel = document.getElementById("roundMode");
